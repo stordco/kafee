@@ -3,7 +3,7 @@
     "@semantic-release/commit-analyzer",
     ["@semantic-release/release-notes-generator", {
       "writerOpts": {
-        "footerPartial": "Documentation available at: https://hexdocs.pm/bauer/{{version}}"
+        "footerPartial": "Documentation available at: https://hexdocs.pm/kafee/{{version}}"
       }
     }],
     ["@google/semantic-release-replace-plugin", {

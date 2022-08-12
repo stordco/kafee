@@ -1,4 +1,4 @@
-defmodule Bauer.Partitioner do
+defmodule Kafee.Partitioner do
   @moduledoc """
   A behaviour to partition messages before sending to Kafka.
   """

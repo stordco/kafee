@@ -1,6 +1,6 @@
-defmodule Bauer.TestingProducerBackend do
+defmodule Kafee.TestingProducerBackend do
   @moduledoc """
-  A `Bauer.ProducerBackend` that sends the Kafka message to the
+  A `Kafee.ProducerBackend` that sends the Kafka message to the
   process mailbox. This allows for easy testing with `ExUnit`.
 
   ## Setup
@@ -9,8 +9,8 @@ defmodule Bauer.TestingProducerBackend do
   can be done with:
 
       defmodule MyApp.MyProducer do
-        use Bauer.Producer,
-          producer_backend: Bauer.TestingProducerBackend
+        use Kafee.Producer,
+          producer_backend: Kafee.TestingProducerBackend
       end
 
   We recommend doing this dynamically in your configuration file so it only
@@ -19,16 +19,16 @@ defmodule Bauer.TestingProducerBackend do
 
       # config.exs
       config :my_app,
-        producer_backend: Bauer.SyncProducerBackend
+        producer_backend: Kafee.SyncProducerBackend
 
       # test.exs
       config :my_app,
-        producer_backend: Bauer.TestingProducerBackend
+        producer_backend: Kafee.TestingProducerBackend
 
   and then grabbing this configuration in your module like so:
 
       defmodule MyApp.MyProducer do
-        use Bauer.Producer,
+        use Kafee.Producer,
           producer_backend: System.compile_env(:my_app, :producer_backend)
       end
 
@@ -36,7 +36,7 @@ defmodule Bauer.TestingProducerBackend do
 
   Once you have setup this backend, any message produced in your application
   will be sent to your process mailbox. You can then use the
-  `Bauer.TestAssertions` module functions to assert a message was sent in your
+  `Kafee.TestAssertions` module functions to assert a message was sent in your
   application code.
   """
 
@@ -54,7 +54,7 @@ defmodule Bauer.TestingProducerBackend do
   def handle_call({:produce_messages, topic, messages}, _from, state) do
     for message <- messages do
       for pid <- pids() do
-        Process.send(pid, {:bauer_message, topic, message}, [])
+        Process.send(pid, {:kafee_message, topic, message}, [])
       end
     end
 

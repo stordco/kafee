@@ -1,11 +1,11 @@
-defmodule Bauer.MixProject do
+defmodule Kafee.MixProject do
   use Mix.Project
 
   @version "0.1.0"
 
   def project do
     [
-      app: :bauer,
+      app: :kafee,
       version: @version,
       elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(Mix.env()),
@@ -18,7 +18,7 @@ defmodule Bauer.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {Bauer.Application, []}
+      mod: {Kafee.Application, []}
     ]
   end
 

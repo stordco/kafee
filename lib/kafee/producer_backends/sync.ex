@@ -1,4 +1,4 @@
-defmodule Bauer.SyncProducerBackend do
+defmodule Kafee.SyncProducerBackend do
   @moduledoc """
   A producer backend that sends Kafka messages synchronously. This has no
   backoff or retry logic and is more useful for testing than in production.
@@ -11,8 +11,8 @@ defmodule Bauer.SyncProducerBackend do
   also want to specify those options as well.
 
       defmodule MyApp.MyProducer do
-        use Bauer.Producer,
-          producer_backend: Bauer.SyncProducerBackend,
+        use Kafee.Producer,
+          producer_backend: Kafee.SyncProducerBackend,
           host: "localhost",
           port: 9093,
           username: "kafka",

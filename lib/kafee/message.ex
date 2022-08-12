@@ -1,6 +1,6 @@
-defmodule Bauer.Message do
+defmodule Kafee.Message do
   @moduledoc """
-  A top level struct representing any message produced or handled via Bauer.
+  A top level struct representing any message produced or handled via Kafee.
   This includes some fields needed for provisioning and producing messages like
   `partition_key` and `partitioner`, as well as fields we will only know when
   handling, like `offset`.
@@ -11,7 +11,7 @@ defmodule Bauer.Message do
             offset: 0,
             partition: 1,
             partition_key: "",
-            partitioner: Bauer.Partitioner.Random,
+            partitioner: Kafee.Partitioner.Random,
             timestamp: nil,
             headers: []
 

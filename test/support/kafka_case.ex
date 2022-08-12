@@ -1,6 +1,6 @@
-defmodule Bauer.KafkaCase do
+defmodule Kafee.KafkaCase do
   @moduledoc """
-  Helper functions when testing Bauer and real Kafka instances.
+  Helper functions when testing Kafee and real Kafka instances.
   """
 
   require Logger

@@ -1,26 +1,26 @@
-defmodule Bauer.ProducerTestModule do
-  use Bauer.Producer,
+defmodule Kafee.ProducerTestModule do
+  use Kafee.Producer,
     topic: "testing",
-    producer_backend: Bauer.TestingProducerBackend
+    producer_backend: Kafee.TestingProducerBackend
 
   def prepare(_topic, text, _opts) do
-    %Bauer.Message{key: "test", value: text}
+    %Kafee.Message{key: "test", value: text}
   end
 end
 
-defmodule Bauer.ProducerTest do
+defmodule Kafee.ProducerTest do
   use ExUnit.Case, async: true
 
   setup do
-    start_supervised!(Bauer.ProducerTestModule)
+    start_supervised!(Kafee.ProducerTestModule)
     :ok
   end
 
   describe "produce/2" do
     test "sends a message to the producer" do
-      assert :ok = Bauer.ProducerTestModule.produce("one")
+      assert :ok = Kafee.ProducerTestModule.produce("one")
 
-      assert_received {:bauer_message, "testing",
+      assert_received {:kafee_message, "testing",
                        %{
                          key: "test",
                          value: "one"
@@ -28,15 +28,15 @@ defmodule Bauer.ProducerTest do
     end
 
     test "sends multiple messages to the producer" do
-      assert :ok = Bauer.ProducerTestModule.produce(["one", "two"])
+      assert :ok = Kafee.ProducerTestModule.produce(["one", "two"])
 
-      assert_received {:bauer_message, "testing",
+      assert_received {:kafee_message, "testing",
                        %{
                          key: "test",
                          value: "one"
                        }}
 
-      assert_received {:bauer_message, "testing",
+      assert_received {:kafee_message, "testing",
                        %{
                          key: "test",
                          value: "two"

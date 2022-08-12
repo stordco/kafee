@@ -1,10 +1,10 @@
 # Contributing
 
-First off, thank you for contributing to Bauer! This documentation will help explain how to report issues, create pull requests, and even how to create a new release of the project.
+First off, thank you for contributing to Kafee! This documentation will help explain how to report issues, create pull requests, and even how to create a new release of the project.
 
 ## Code Changes
 
-Making code changes for Bauer should be pretty straight forward. All you need is a [working Elixir install](https://elixir-lang.org/install.html). Once you are done making changes, ensure CI will pass by running these commands:
+Making code changes for Kafee should be pretty straight forward. All you need is a [working Elixir install](https://elixir-lang.org/install.html). Once you are done making changes, ensure CI will pass by running these commands:
 
 - `mix format`
 - `mix test`
@@ -16,7 +16,7 @@ Once you are ready to commit your code, you can run `git add` and `git commit`. 
 
 ## Releasing
 
-Releasing Bauer is done in a mostly automated process with GitHub actions. Once you have changes merged into the `main` branch, simply trigger the ["Release" workflow](https://github.com/doomspork/bauer/actions/workflows/release.yml) on the `main` branch. This workflow will:
+Releasing Kafee is done in a mostly automated process with GitHub actions. Once you have changes merged into the `main` branch, simply trigger the ["Release" workflow](https://github.com/doomspork/kafee/actions/workflows/release.yml) on the `main` branch. This workflow will:
 
 - Clone the repository
 - Install the Node.js packages needed to release

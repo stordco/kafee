@@ -1,9 +1,9 @@
-defmodule Bauer.Partitioner.Random do
+defmodule Kafee.Partitioner.Random do
   @moduledoc """
   Picks a random partition.
   """
 
-  @behaviour Bauer.Partitioner
+  @behaviour Kafee.Partitioner
 
   def partition(count, _key) do
     :rand.uniform(count) - 1
