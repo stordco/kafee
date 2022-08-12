@@ -86,8 +86,6 @@ jobs:
       fail-fast: false
       matrix:
         versions:
-          - elixir: "1.10"
-            otp: 22
           - elixir: 1.11
             otp: 23
           - elixir: 1.12
@@ -101,6 +99,9 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      - name: Start Services
+        run: docker-compose up -d && sleep 10
 
       - name: Install (Elixir)
         id: beam
