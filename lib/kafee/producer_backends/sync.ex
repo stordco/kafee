@@ -46,7 +46,7 @@ defmodule Kafee.SyncProducerBackend do
 
   @doc false
   def init(opts) do
-    brod_client = Keyword.fetch!(opts, :brod_client)
+    brod_client = opts |> Keyword.fetch!(:producer_module) |> Module.safe_concat(:brod)
     topic = Keyword.fetch!(opts, :topic)
 
     host = Keyword.get(opts, :host, "localhost")
