@@ -166,7 +166,7 @@ defmodule Kafee.Producer do
         module_opts =
           @opts
           |> Keyword.merge(connection_opts)
-          |> Keyword.put(:brod_client, __MODULE__)
+          |> Keyword.put(:producer_module, __MODULE__)
           |> Keyword.drop([:producer_backend])
 
         children = [

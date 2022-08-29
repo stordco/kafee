@@ -9,7 +9,7 @@ defmodule Kafee.SyncProducerBackendTest do
         {Kafee.SyncProducerBackend,
          Kafee.KafkaCase.kafka_credentials() ++
            [
-             brod_client: __MODULE__,
+             producer_module: __MODULE__,
              topic: @topic
            ]}
       )
