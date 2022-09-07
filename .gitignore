@@ -63,6 +63,3 @@ tags
 [._]*.un~
 
 # End of https://www.toptal.com/developers/gitignore/api/elixir,phoenix,vim,macosx
-
-# Auto-generated changelog file
-CHANGELOG.md

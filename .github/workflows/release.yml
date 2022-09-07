@@ -1,51 +1,20 @@
 ---
-
 name: Release
 
-on: workflow_dispatch
-
-concurrency:
-  group: Release
-  cancel-in-progress: true
+on:
+  push:
+    branches:
+      - main
 
 jobs:
-  release:
-    name: Release
+  please:
+    name: Please
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+      - uses: google-github-actions/release-please-action@v3
         with:
-          ref: main
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Setup (Elixir)
-        uses: erlef/setup-beam@v1
-        with:
-          elixir-version: 1.13
-          otp-version: 25
-
-      - name: Setup (Node)
-        uses: actions/setup-node@v3
-        with:
-          node-version: '16'
-
-      - name: Install (Elixir)
-        run: mix deps.get
-
-      - name: Install (Node)
-        run: >
-          npm install --no-save --global \
-            semantic-release@19.0.3 \
-            @google/semantic-release-replace-plugin@1.1.0 \
-            @semantic-release/changelog@6.0.1 \
-            @semantic-release/exec@6.0.3 \
-            @semantic-release/git@10.0.1
-
-      - name: Release
-        run: semantic-release
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_GITHUB_KEY }}
-          HEX_API_KEY: ${{ secrets.RELEASE_HEX_KEY }}
+          release-type: elixir
+          package-name: activity_client
+          token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          elixir-files: README.md
