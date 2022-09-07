@@ -14,7 +14,7 @@ Let's get energized with Kafka!
 
 ## Installation
 
-Just add [`kafee`](https://hex.pm/stordco/kafee) to your `mix.exs` file like so:
+Just add [`kafee`](https://hex.pm/packages/stord/kafee) to your `mix.exs` file like so:
 
 <!-- {x-release-please-start-version} -->
 ```elixir
@@ -28,4 +28,4 @@ end
 
 ## Documentation
 
-Documentation is automatically generated and published to [HexDocs](https://hexdocs.pm/stordco/kafee) on new releases.
+Documentation is automatically generated and published to [HexDocs](https://stord.hexdocs.pm/kafee/readme.html) on new releases.
