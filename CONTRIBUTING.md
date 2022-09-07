@@ -16,15 +16,4 @@ Once you are ready to commit your code, you can run `git add` and `git commit`. 
 
 ## Releasing
 
-Releasing Kafee is done in a mostly automated process with GitHub actions. Once you have changes merged into the `main` branch, simply trigger the ["Release" workflow](https://github.com/doomspork/kafee/actions/workflows/release.yml) on the `main` branch. This workflow will:
-
-- Clone the repository
-- Install the Node.js packages needed to release
-- Analyze all of the git commits between the last release and now
-- Generate a list of changes from the git commits according to [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
-- Determine the next SemVer release version
-- Update `mix.exs` and `README.md` with the new version
-- Update `CHANGELOG.md`
-- Create a new git tag for the release
-- Create a GitHub release
-- Run `mix hex.publish`
+Releasing Kafee is done in a mostly automated process with GitHub actions. Once you have changes merged into the `main` branch, a [PR will be created or updated](https://github.com/stordco/kafee/pulls?q=is%3Apr+sort%3Aupdated-desc+label%3A%22autorelease%3A+tagged%22) that includes the latest version bump, updated changelog, and everything else needed for a new release. A maintainer will double check everything looks good on that PR and merge it in. Once that PR is merged, a new GitHub release will be created automatically as well as the release being built and published on Hex.pm.

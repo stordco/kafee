@@ -55,7 +55,7 @@ defmodule Kafee.MixProject do
   defp docs do
     [
       main: "readme",
-      extras: ["README.md", "CHANGELOG.md"]
+      extras: ["README.md", "CHANGELOG.md", "CONTRIBUTING.md"]
     ]
   end
 end
