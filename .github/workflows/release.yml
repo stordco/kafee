@@ -17,4 +17,4 @@ jobs:
           release-type: elixir
           package-name: activity_client
           token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
-          elixir-files: README.md
+          extra-files: README.md

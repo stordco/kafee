@@ -40,10 +40,6 @@ jobs:
             _build
             deps
 
-      - name: Setup (Mix)
-        run: |
-          git config --global url."https://${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}:@github.com".insteadOf "https://github.com"
-
       - if: steps.cache.outputs.cache-hit != 'true'
         name: Install (Mix)
         run: mix deps.get
@@ -53,5 +49,5 @@ jobs:
 
       - name: Publish
         run: mix hex.publish --yes
-        with:
+        env:
           HEX_API_KEY: ${{ secrets.HEX_API_KEY }}
