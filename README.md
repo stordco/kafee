@@ -20,7 +20,7 @@ Just add [`kafee`](https://hex.pm/stordco/kafee) to your `mix.exs` file like so:
 ```elixir
 def deps do
   [
-    {:kafee, "~> 0.1.0", organization: "stord"}
+    {:kafee, "~> 1.0.1", organization: "stord"}
   ]
 end
 ```
