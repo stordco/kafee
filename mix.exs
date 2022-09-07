@@ -42,7 +42,7 @@ defmodule Kafee.MixProject do
 
   defp package do
     [
-      files: ~w(lib mix.exs README.md CHANGELOG.md),
+      files: ~w(lib mix.exs .formatter.exs README.md CHANGELOG.md),
       licenses: ["UNLICENSED"],
       links: %{
         Changelog: "https://github.com/stordco/kafee/releases",
