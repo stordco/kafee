@@ -1,16 +1,19 @@
 defmodule Kafee.MixProject do
   use Mix.Project
 
-  @version "0.1.0"
-
   def project do
     [
       app: :kafee,
-      version: @version,
+      name: "Kafee",
+      description: "Let's get energized with Kafka!",
+      version: "0.1.0",
       elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      docs: docs(),
+      package: package(),
+      source_url: "https://github.com/stordco/kafee"
     ]
   end
 
@@ -32,7 +35,26 @@ defmodule Kafee.MixProject do
       {:elsa, "~> 1.0.0-rc.3"},
 
       # Dev & Test dependencies
-      {:credo, "~> 1.6", only: [:dev, :test], runtime: false}
+      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.27", only: [:dev, :test], runtime: false}
+    ]
+  end
+
+  defp package do
+    [
+      files: ~w(lib mix.exs README.md CHANGELOG.md),
+      licenses: ["UNLICENSED"],
+      links: %{
+        Changelog: "https://github.com/stordco/kafee/releases",
+        GitHub: "https://github.com/stordco/kafee"
+      }
+    ]
+  end
+
+  defp docs do
+    [
+      main: "readme",
+      extras: ["README.md", "CHANGELOG.md"]
     ]
   end
 end
