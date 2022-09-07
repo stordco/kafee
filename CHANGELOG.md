@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.3](https://github.com/stordco/kafee/compare/v1.0.2...v1.0.3) (2022-09-07)
+
+
+### Bug Fixes
+
+* publish formatter file ([05de560](https://github.com/stordco/kafee/commit/05de56017c18ce359fe09322eebe82f153201aab))
+* update urls with real hex.pm and hexdocs.pm urls ([618383e](https://github.com/stordco/kafee/commit/618383eb99be359fcf09893f32fc858b9f0d9e3e))
+
 ## [1.0.2](https://github.com/stordco/kafee/compare/v1.0.1...v1.0.2) (2022-09-07)
 
 
