@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1](https://github.com/stordco/kafee/compare/v1.0.0...v1.0.1) (2022-09-07)
+
+
+### Bug Fixes
+
+* update gha workflows for automated releases ([e2b12b3](https://github.com/stordco/kafee/commit/e2b12b38f31928f131f347868cb6b6da08f6f53d))
+* update README to always show current version in code blocks ([f59f4d6](https://github.com/stordco/kafee/commit/f59f4d6bf541e79e7683941f24bf55ab3eb57d5c))
+
 ## 1.0.0 (2022-09-07)
 
 
