@@ -47,7 +47,8 @@ defmodule Kafee.MixProject do
       links: %{
         Changelog: "https://github.com/stordco/kafee/releases",
         GitHub: "https://github.com/stordco/kafee"
-      }
+      },
+      organization: "stord"
     ]
   end
 
