@@ -16,7 +16,7 @@ Let's get energized with Kafka!
 
 Just add [`kafee`](https://hex.pm/stordco/kafee) to your `mix.exs` file like so:
 
-<!-- x-release-please-start-minor -->
+<!-- {x-release-please-start-version} -->
 ```elixir
 def deps do
   [
@@ -24,7 +24,7 @@ def deps do
   ]
 end
 ```
-<!-- x-release-please-end -->
+<!-- {x-release-please-end} -->
 
 ## Documentation
 
