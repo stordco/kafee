@@ -1,5 +1,4 @@
 ---
-
 name: CI
 
 on:
@@ -20,29 +19,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Install (Elixir)
-        id: beam
-        uses: erlef/setup-beam@v1
+      - name: Setup Elixir
+        uses: stordco/actions-elixir/setup@v1
         with:
-          otp-version: 25
-          elixir-version: 1.13
-
-      - name: Cache
-        uses: actions/cache@v3
-        id: cache
-        with:
-          key: elixir-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-credo-${{ hashFiles('mix.lock') }}-${{ github.ref }}
-          restore-keys: |
-            elixir-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-credo-${{ hashFiles('mix.lock') }}-
-            elixir-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-credo-
-            elixir-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-
-          path: |
-            _build
-            deps
-
-      - name: Install (Mix)
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: mix deps.get
+          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          hex-token: ${{ secrets.HEX_API_KEY }}
 
       - name: Credo
         run: mix credo
@@ -54,14 +35,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Install (Elixir)
-        uses: erlef/setup-beam@v1
+      - name: Setup Elixir
+        uses: stordco/actions-elixir/setup@v1
         with:
-          otp-version: 25
-          elixir-version: 1.13
-
-      - name: Install (Mix)
-        run: mix deps.get
+          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          hex-token: ${{ secrets.HEX_API_KEY }}
 
       - name: Format
         run: mix format --check-formatted
@@ -91,29 +69,13 @@ jobs:
       - name: Start Services
         run: docker-compose up -d && sleep 10
 
-      - name: Install (Elixir)
-        id: beam
-        uses: erlef/setup-beam@v1
+      - name: Setup Elixir
+        uses: stordco/actions-elixir/setup@v1
         with:
           elixir-version: ${{ matrix.versions.elixir }}
+          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          hex-token: ${{ secrets.HEX_API_KEY }}
           otp-version: ${{ matrix.versions.otp }}
-
-      - name: Cache
-        uses: actions/cache@v3
-        id: cache
-        with:
-          key: elixir-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-test-${{ hashFiles('mix.lock') }}-${{ github.ref }}
-          restore-keys: |
-            elixir-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-test-${{ hashFiles('mix.lock') }}-
-            elixir-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-test-
-            elixir-${{ steps.beam.outputs.elixir-version }}-${{ steps.beam.outputs.otp-version }}-
-          path: |
-            _build
-            deps
-
-      - name: Install (Mix)
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: mix deps.get
 
       - name: Compile
         run: mix compile --warnings-as-errors
