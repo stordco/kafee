@@ -6,11 +6,6 @@ on:
     types:
       - published
 
-env:
-  CACHE_VERSION: v1
-  ELIXIR_VERSION: "1.13"
-  OTP_VERSION: "25"
-
 jobs:
   Hex:
     runs-on: ubuntu-latest
@@ -22,10 +17,8 @@ jobs:
       - name: Setup Elixir
         uses: stordco/actions-elixir/setup@v1
         with:
-          elixir-version: ${{ env.ELIXIR_VERSION }}
           github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
           hex-token: ${{ secrets.HEX_API_KEY }}
-          otp-version: ${{ env.OTP_VERSION }}
 
       - name: Compile
         run: mix compile --docs
