@@ -36,6 +36,7 @@ defmodule Kafee.MixProject do
       # Dev & Test dependencies
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false},
+      {:doctor, "~> 0.19.0", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.27", only: [:dev, :test], runtime: false},
       {:mox, "~> 1.0", only: [:dev, :test]}
     ]
