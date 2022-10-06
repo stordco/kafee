@@ -20,8 +20,7 @@ defmodule Kafee.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger],
-      mod: {Kafee.Application, []}
+      extra_applications: [:logger]
     ]
   end
 
@@ -32,11 +31,13 @@ defmodule Kafee.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:elsa, "~> 1.0.0-rc.3"},
+      {:brod, "~> 3.16.2"},
 
       # Dev & Test dependencies
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.27", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.27", only: [:dev, :test], runtime: false},
+      {:mox, "~> 1.0", only: [:dev, :test]}
     ]
   end
 
