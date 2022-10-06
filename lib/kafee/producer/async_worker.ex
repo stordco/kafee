@@ -11,7 +11,7 @@ defmodule Kafee.Producer.AsyncWorker do
   require Logger
 
   defstruct [
-    :brod_client_name,
+    :brod_client_id,
     :partition,
     :send_count,
     :send_interval_ref,
@@ -21,7 +21,7 @@ defmodule Kafee.Producer.AsyncWorker do
   ]
 
   @type t :: %__MODULE__{
-          brod_client_name: :brod.client(),
+          brod_client_id: :brod.client(),
           partition: :brod.partition(),
           send_count: non_neg_integer(),
           send_interval_ref: :timer.tref(),
@@ -30,17 +30,28 @@ defmodule Kafee.Producer.AsyncWorker do
           queue: :queue.queue()
         }
 
+  @type opts :: [
+          brod_client_id: :brod.client(),
+          topic: :brod.topic(),
+          partition: :brod.partition(),
+          send_interval: pos_integer() | nil
+        ]
+
   @doc false
-  @spec init({:brod.client(), :brod.topic(), :brod.partition(), Keyword.t()}) :: {:ok, t()}
-  def init({brod_client_name, topic, partition, opts}) do
+  @spec init(opts()) :: {:ok, t()}
+  def init(opts) do
     Process.flag(:trap_exit, true)
 
+    brod_client_id = Keyword.fetch!(opts, :brod_client_id)
+    topic = Keyword.fetch!(opts, :topic)
+    partition = Keyword.fetch!(opts, :partition)
     send_interval = Keyword.get(opts, :send_interval, :timer.seconds(10))
+
     {:ok, send_interval_ref} = :timer.send_interval(send_interval, :send)
 
     {:ok,
      %__MODULE__{
-       brod_client_name: brod_client_name,
+       brod_client_id: brod_client_id,
        partition: partition,
        send_count: 0,
        send_interval_ref: send_interval_ref,
@@ -64,12 +75,37 @@ defmodule Kafee.Producer.AsyncWorker do
     messages_count = :queue.len(state.queue)
     messages = :queue.to_list(state.queue)
 
-    {:ok, send_ref} = :brod.produce(state.brod_client_name, state.topic, state.partition, :undefined, messages)
+    {:ok, send_ref} = :brod.produce(state.brod_client_id, state.topic, state.partition, :undefined, messages)
 
     {:noreply, %{state | send_count: messages_count, send_ref: send_ref}}
   rescue
+    err in MatchError ->
+      Logger.warn(
+        """
+          Unable to send message to Kafka because the `:brod_producer` is not found.
+          This usually indicates that you are using the `Kafee.Producer.AsyncWorker`
+          directly without setting `auto_state_producers` to `true` in when creating
+          your `:brod_client` instance.
+
+          #{inspect(err)}
+        """,
+        topic: state.topic,
+        partition: state.partition
+      )
+
+      {:noreply, state}
+
     err ->
-      Logger.error("Unable to send messages to Kafka: #{inspect(err)}", topic: state.topic, partition: state.partition)
+      Logger.error(
+        """
+          Kafee received an unknown error when trying to send messages to Kafka.
+
+          #{inspect(err)}
+        """,
+        topic: state.topic,
+        partition: state.partition
+      )
+
       {:noreply, state}
   end
 
@@ -131,7 +167,7 @@ defmodule Kafee.Producer.AsyncWorker do
   @doc false
   def terminate(_reason, state) do
     messages = :queue.to_list(state.queue)
-    :ok = :brod.produce_sync(state.brod_client_name, state.topic, state.partition, :undefined, messages)
+    :ok = :brod.produce_sync(state.brod_client_id, state.topic, state.partition, :undefined, messages)
   rescue
     err ->
       Logger.error("Unable to send messages to Kafka: #{inspect(err)}", topic: state.topic, partition: state.partition)
@@ -148,24 +184,26 @@ defmodule Kafee.Producer.AsyncWorker do
 
   ## Examples
 
-      iex> init(:brod_client_name, "test-topic", 0)
-      {:ok, _pid}
-
-      iex> init(:brod_client_name, "test-topic", 1, opts)
+      iex> init([brod_client_id: :brod_client_id, topic: "test-topic", partition: 1])
       {:ok, _pid}
 
   ## Options
 
-  This function takes an optional 4th argument for additional options listed
-  below.
+  This GenSever requires the following fields to be given on creation.
+
+    - `brod_client_id` The id given when you created a `:brod_client`.
+    - `topic` The Kafka topic to publish to.
+    - `partition` The Kafka partition of the topic to publish to.
+
+  This function also takes additional optional fields.
 
     - `send_interval` (10_000) The amount of time we should wait before
       attempting to send messages to Kafka.
 
   """
-  @spec start_link(:brod.client(), :brod.topic(), :brod.partition(), Keyword.t()) :: GenServer.on_start()
-  def start_link(brod_client_name, topic, partition, opts \\ []) do
-    GenServer.start_link(__MODULE__, {brod_client_name, topic, partition, opts})
+  @spec start_link(opts()) :: GenServer.on_start()
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts)
   end
 
   @doc """

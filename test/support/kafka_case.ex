@@ -36,11 +36,14 @@ defmodule Kafee.KafkaCase do
   Creates new Kafka topic.
   """
   @spec create_kafka_topic(binary(), non_neg_integer()) :: :ok
-  def create_kafka_topic(name, partitions \\ 1) do
+  def create_kafka_topic(topic, partitions \\ 1) do
     configs = [
       %{
+        assignments: [],
+        configs: [],
+        name: topic,
         num_partitions: partitions,
-        name: name
+        replication_factor: 1
       }
     ]
 
@@ -51,8 +54,8 @@ defmodule Kafee.KafkaCase do
   Deletes a Kafka topic.
   """
   @spec delete_kafka_topic(binary()) :: :ok
-  def delete_kafka_topic(name) do
-    :brod.delete_topics(brod_endpoints(), [name], 100_000)
+  def delete_kafka_topic(topic) do
+    :brod.delete_topics(brod_endpoints(), [topic], 100_000)
   end
 
   @doc """
@@ -97,6 +100,9 @@ defmodule Kafee.KafkaCase do
   """
   @spec brod_client_config() :: Keyword.t()
   def brod_client_config do
-    [query_api_version: false]
+    [
+      auto_start_producers: true,
+      query_api_version: false
+    ]
   end
 end
