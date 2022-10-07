@@ -21,7 +21,7 @@ defmodule Kafee.Producer.AsyncWorker do
   ]
 
   @type t :: %__MODULE__{
-          brod_client_id: :brod.client(),
+          brod_client_id: :brod.client_id(),
           partition: :brod.partition(),
           send_count: non_neg_integer(),
           send_interval_ref: :timer.tref(),
