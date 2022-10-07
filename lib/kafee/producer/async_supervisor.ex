@@ -36,7 +36,7 @@ defmodule Kafee.Producer.AsyncSupervisor do
   """
   @spec create_worker(:brod.client(), :brod.topic(), :brod.partition(), Keyword.t()) :: {:ok, pid()} | {:error, term()}
   def create_worker(brod_client_id, topic, partition, opts \\ []) do
-    full_opts = Keyword.merge(opts, [brod_client_id: brod_client_id, topic: topic, partition: partition])
+    full_opts = Keyword.merge(opts, brod_client_id: brod_client_id, topic: topic, partition: partition)
     DynamicSupervisor.start_child(__MODULE__, {AsyncWorker, full_opts})
   end
 
@@ -56,7 +56,8 @@ defmodule Kafee.Producer.AsyncSupervisor do
   Retrieves the pid of a currently running `Kafee.Producer.AsyncWorker` or
   creates a new one if it is not currently running.
   """
-  @spec get_or_create_worker(:brod.client(), :brod.topic(), :brod.partition(), Keyword.t()) :: {:ok, pid()} | {:error, term()}
+  @spec get_or_create_worker(:brod.client(), :brod.topic(), :brod.partition(), Keyword.t()) ::
+          {:ok, pid()} | {:error, term()}
   def get_or_create_worker(brod_client_id, topic, partition, opts \\ []) do
     with {:error, :not_found} <- get_worker(brod_client_id, topic, partition) do
       create_worker(brod_client_id, topic, partition, opts)
@@ -66,7 +67,8 @@ defmodule Kafee.Producer.AsyncSupervisor do
   @doc """
   Queues messages to a queue given the brod client, topic, and partition.
   """
-  @spec queue(:brod.client(), :brod.topic(), :brod.partition(), :brod.message() | :brod.message_set()) :: :ok | {:error, term()}
+  @spec queue(:brod.client(), :brod.topic(), :brod.partition(), :brod.message() | :brod.message_set()) ::
+          :ok | {:error, term()}
   def queue(brod_client_id, topic, partition, message_or_messages) do
     with {:ok, pid} <- get_or_create_worker(brod_client_id, topic, partition) do
       AsyncWorker.queue(pid, message_or_messages)
