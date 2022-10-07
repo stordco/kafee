@@ -35,7 +35,7 @@ defmodule Kafee.Producer.AsyncBackend do
     P->>+B: get_partition/4
     B-->>-P: 2
 
-    P->>+B: produce/4
+    P->>+B: produce/2
     B->>+S: queue/4
     Note over S,W: Creates AsyncWorker if it doesn't exist
     S->>+W: queue/2

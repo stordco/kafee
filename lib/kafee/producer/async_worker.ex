@@ -211,24 +211,17 @@ defmodule Kafee.Producer.AsyncWorker do
   end
 
   @doc """
-  Adds a message to the send queue.
+  Adds messages to the send queue.
 
   ## Examples
-
-      iex> queue(async_worker_pid, message)
-      :ok
 
       iex> queue(async_worker_pid, [message_one, message_two])
       :ok
 
   """
-  @spec queue(pid(), :brod.message() | :brod.message_set()) :: :ok
-  def queue(pid, messages) when is_list(messages) do
+  @spec queue(pid(), :brod.message_set()) :: :ok
+  def queue(pid, messages) do
     GenServer.cast(pid, {:queue, messages})
-  end
-
-  def queue(pid, message) do
-    GenServer.cast(pid, {:queue, [message]})
   end
 
   @doc """

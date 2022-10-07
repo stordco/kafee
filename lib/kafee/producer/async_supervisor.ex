@@ -64,11 +64,11 @@ defmodule Kafee.Producer.AsyncSupervisor do
   @doc """
   Queues messages to a queue given the brod client, topic, and partition.
   """
-  @spec queue(Config.t(), :brod.topic(), :brod.partition(), :brod.message() | :brod.message_set()) ::
+  @spec queue(Config.t(), :brod.topic(), :brod.partition(), :brod.message_set()) ::
           :ok | {:error, term()}
-  def queue(%Config{} = config, topic, partition, message_or_messages) do
+  def queue(%Config{} = config, topic, partition, messages) do
     with {:ok, pid} <- get_or_create_worker(config, topic, partition) do
-      AsyncWorker.queue(pid, message_or_messages)
+      AsyncWorker.queue(pid, messages)
     end
   end
 

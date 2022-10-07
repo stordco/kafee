@@ -11,12 +11,11 @@ defmodule Kafee.Producer.Config do
   See the `brod_endpoints/1` function for more details.
   """
 
-  @enforce_keys [:producer]
-
   defstruct [
     # Reference data. I wish I knew a better way to do this because it seems
     # messy, but I guess it works.
     producer: nil,
+    producer_backend: nil,
 
     # Brod client connection details
     hostname: "localhost",
@@ -24,7 +23,9 @@ defmodule Kafee.Producer.Config do
     endpoints: [],
 
     # Authentication options
+    username: nil,
     password: nil,
+    ssl: false,
 
     # Extra brod options
     brod_client_opts: [],
@@ -39,10 +40,13 @@ defmodule Kafee.Producer.Config do
   """
   @type t :: %__MODULE__{
           producer: atom(),
+          producer_backend: atom(),
           hostname: :brod.hostname(),
           port: :brod.portnum(),
           endpoints: list(:brod.endpoint()),
+          username: binary() | nil,
           password: binary() | nil,
+          ssl: boolean(),
           brod_client_opts: :brod.client_config(),
           brod_producer_opts: :brod.producer_config(),
           kafee_async_worker_opts: Keyword.t()
@@ -59,27 +63,86 @@ defmodule Kafee.Producer.Config do
 
   """
   @spec new(Keyword.t()) :: t()
-  def new(list) do
-    struct(__MODULE__, list)
+  def new(opts) do
+    struct(__MODULE__, opts)
   end
 
   @doc """
-  Creates a new `Kafee.Producer.Config` struct from the two given
-  `Keyword` lists, overwriting any keys given in `left` with
-  the keys given in `right`.
+  Merges new given configuration values with the existing configuration
+  given.
 
   ## Examples
 
-      iex> new([producer: MyProducer], [port: 1234])
+      iex> merge(%Config{product: MyProducer}, port: 1234)
       %Config{producer: MyProducer, port: 1234}
 
-      iex> new([producer: MyProducer], [producer: MyNewProducer])
+      iex> new(%Config{producer: MyProducer}, producer: MyNewProducer)
       %Config{producer: MyNewProducer}
 
   """
-  @spec new(Keyword.t(), Keyword.t()) :: t()
-  def new(left, right) do
-    struct(__MODULE__, Keyword.merge(left, right))
+  @spec merge(t(), Keyword.t()) :: t()
+  def merge(%__MODULE__{} = config, opts \\ []) do
+    new_values =
+      config
+      |> Map.delete(:__struct__)
+      |> Map.to_list()
+      |> Keyword.merge(opts)
+
+    struct(__MODULE__, new_values)
+  end
+
+  @doc """
+  Runs validation on the given configuration. This catches some basic
+  errors before even passing it to a lower level library.
+  """
+  @spec validate!(t()) :: t()
+  def validate!(%__MODULE__{} = config) do
+    with {:error, _} <- Code.ensure_compiled(config.producer) do
+      raise ArgumentError,
+        message: """
+        Kafee Producer configuration does not specify a valid producer module.
+        Usually this indicates some broken library code.
+
+        Received:
+        #{inspect(config.producer)}
+        """
+    end
+
+    with {:error, _} <- Code.ensure_compiled(config.producer_backend) do
+      raise ArgumentError,
+        message: """
+        The Kafee Producer backend is unavailable or not loaded. Usually this
+        means a simple misspelling. Aside from custom backends, these are the
+        backends currently available:
+
+        - `Kafee.Producer.AsyncBackend`
+
+        Received:
+        #{inspect(config.producer_backend)}
+        """
+    end
+
+    if is_nil(config.hostname) do
+      raise ArgumentError,
+        message: """
+        The Kafee Producer received a hostname of nil. By default Kafee will
+        use "localhost", so you are most likely overriding this with a nil
+        configuration value. Please ensure that the `hostname` is set to a valid
+        hostname, or unset it.
+        """
+    end
+
+    if not Keyword.get(config.brod_client_opts, :auto_start_producers, true) do
+      raise ArgumentError,
+        message: """
+        It looks like you are specificity setting the `auto_start_producers`
+        option for your `Kafee.Producer`. This is unsupported and will break
+        how `Kafee.Producer.AsyncBackend` sends message. Please remove this
+        option.
+        """
+    end
+
+    config
   end
 
   @doc """

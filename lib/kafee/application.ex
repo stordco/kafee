@@ -5,6 +5,8 @@ defmodule Kafee.Application do
 
   use Application
 
+  @doc false
+  @spec start(Application.start_type(), term()) :: {:ok, pid} | {:error, term()}
   def start(_type, _args) do
     children = [
       {Registry, keys: :unique, name: Kafee.Producer.AsyncRegistry}
