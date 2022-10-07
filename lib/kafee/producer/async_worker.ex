@@ -203,7 +203,11 @@ defmodule Kafee.Producer.AsyncWorker do
   """
   @spec start_link(opts()) :: GenServer.on_start()
   def start_link(opts) do
-    GenServer.start_link(__MODULE__, opts)
+    brod_client_id = Keyword.fetch!(opts, :brod_client_id)
+    topic = Keyword.fetch!(opts, :topic)
+    partition = Keyword.fetch!(opts, :partition)
+
+    GenServer.start_link(__MODULE__, opts, name: process_name(brod_client_id, topic, partition))
   end
 
   @doc """
@@ -218,12 +222,26 @@ defmodule Kafee.Producer.AsyncWorker do
       :ok
 
   """
-  @spec queue(pid(), map() | [map()]) :: :ok
+  @spec queue(pid(), :brod.message() | :brod.message_set()) :: :ok
   def queue(pid, messages) when is_list(messages) do
     GenServer.cast(pid, {:queue, messages})
   end
 
   def queue(pid, message) do
     GenServer.cast(pid, {:queue, [message]})
+  end
+
+  @doc """
+  Creates a process name via `Kafee.Producer.AsyncRegistry`.
+
+  ## Examples
+
+      iex> process_name(:test, :topic, 1)
+      {:via, Registry, {Kafee.Producer.AsyncRegistry, _}}
+
+  """
+  @spec process_name(:brod.client(), :brod.topic(), :brod.partition()) :: GenServer.name()
+  def process_name(brod_client_id, topic, partition) do
+    {:via, Registry, {Kafee.Producer.AsyncRegistry, {brod_client_id, :worker, topic, partition}}}
   end
 end
