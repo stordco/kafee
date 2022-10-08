@@ -14,6 +14,8 @@ defmodule Kafee.Testing do
 
   ### Assertions
 
+  For the most part, you can use the super flexible
+  `assert_message_produced/2` macro to test if a message was sent.
   """
 
   @doc """
@@ -76,6 +78,7 @@ defmodule Kafee.Testing do
       [%Kafee.Producer.Message{}]
 
   """
+  @spec producer_messages(atom()) :: [Kafee.Producer.Message.t()]
   def producer_messages(producer) do
     backend = Kafee.Producer.Backend.process_name(producer)
     GenServer.call(backend, :get)
