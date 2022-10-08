@@ -44,6 +44,48 @@ defmodule Kafee.Producer do
   - `kafee_async_worker_opts` Extra options to send to the
     `Kafee.Producer.AsyncWorker` module. This only has effect if you are
     using the `Kafee.Producer.AsyncBackend`.
+
+  ## Using
+
+  To get started simply make a module like so:
+
+      defmodule MyProducer do
+        use Kafee.Producer
+      end
+
+  At which point you will be able to do this:
+
+      iex> :ok = MyProducer.produce([%Kafee.Producer.Message{
+        key: "key",
+        value: "value",
+        topic: "my-topic"
+      }])
+
+  Though we don't recommend calling `produce/1` directly in your code.
+  Instead, you should add some function heads to your module to handle
+  transformation and partitioning.
+
+      defmodule MyProducer do
+        use Kafee.Producer
+
+        def publish(:order_created, %Order{} = order)
+          produce([%Kafee.Producer.Message{
+            key: order.tenant_id,
+            value: Jason.encode!(order),
+            topic: "order-created"
+          }])
+        end
+      end
+
+  Then just safely call the `publish/2` function in your application.
+
+      iex> :ok = MyProducer.publish(:order_created, order)
+
+  ## Testing
+
+  Kafee includes a `Kafee.Producer.TestBackend` to help test if messages
+  were sent in your code. See `Kafee.Producer.TestBackend` and
+  `Kafee.Testing` for more information.
   """
 
   alias Kafee.Producer.{Config, Message}
