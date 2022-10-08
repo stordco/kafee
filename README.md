@@ -2,6 +2,16 @@
 
 Let's get energized with Kafka!
 
+## Goals
+
+- [ ] Encapsulate message publishing
+- [ ] Open telemetry support
+- [ ] Retries
+- [ ] Adaptable message encoding
+  - [ ] JSON
+  - [ ] Avro
+  - [ ] Protobuf
+
 ## Installation
 
 Just add [`kafee`](https://hex.pm/packages/stord/kafee) to your `mix.exs` file like so:

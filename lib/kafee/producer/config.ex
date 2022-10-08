@@ -29,6 +29,7 @@ defmodule Kafee.Producer.Config do
     username: nil,
     password: nil,
     ssl: false,
+    sasl: false,
 
     # Useful extras to clean up your code
     topic: nil,
@@ -55,6 +56,7 @@ defmodule Kafee.Producer.Config do
           username: binary() | nil,
           password: binary() | nil,
           ssl: boolean(),
+          sasl: atom() | false,
           topic: :brod.topic() | nil,
           partition_fun: :brod.partitioner(),
           brod_client_opts: :brod.client_config(),
@@ -152,6 +154,8 @@ defmodule Kafee.Producer.Config do
         backends currently available:
 
         - `Kafee.Producer.AsyncBackend`
+        - `Kafee.Producer.SyncBackend`
+        - `Kafee.Producer.TestBackend`
 
         Received:
         #{inspect(config.producer_backend)}
@@ -191,10 +195,10 @@ defmodule Kafee.Producer.Config do
 
   ## Examples
 
-      iex> brod_endpoints(%Config{producer: MyProducer, hostname: "kafka", port: 1234})
+      iex> brod_endpoints(%Config{hostname: "kafka", port: 1234})
       [{"kafka", 1234}]
 
-      iex> brod_endpoints(%Config{producer: MyProducer, endpoints: [{"host1", 1234}, {"host2", 1234}]})
+      iex> brod_endpoints(%Config{endpoints: [{"host1", 1234}, {"host2", 1234}]})
       [{"host1", 1234}, {"host2", 1234}]
 
   """
@@ -213,17 +217,28 @@ defmodule Kafee.Producer.Config do
 
   ## Examples
 
-      iex> brod_client_config(%Config{producer: MyProducer})
-      [auto_start_producers: true]
+      iex> brod_client_config(%Config{ssl: false})
+      [auto_start_producers: true, ssl: false]
 
-      iex> brod_client_config(%Config{producer: MyProducer, brod_client_opts: [query_api_version: false]})
-      [auto_start_producers: true, query_api_version: false]
+      iex> brod_client_config(%Config{ssl: false, brod_client_opts: [query_api_version: false]})
+      [auto_start_producers: true, ssl: false, query_api_version: false]
+
+      iex> brod_client_config(%Config{username: "username", password: "password", ssl: true, sasl: :plain})
+      [sasl: {:plain, "username", "password"}, auto_start_producers: true, ssl: true]
 
   """
   @spec brod_client_config(t()) :: :brod.client_config()
   def brod_client_config(%__MODULE__{} = config) do
-    Keyword.put(config.brod_client_opts, :auto_start_producers, true)
+    config.brod_client_opts
+    |> Keyword.put(:ssl, config.ssl)
+    |> Keyword.put(:auto_start_producers, true)
+    |> maybe_put_sasl(config)
   end
+
+  defp maybe_put_sasl(opts, %{sasl: false}), do: opts
+
+  defp maybe_put_sasl(opts, %{username: username, password: password, sasl: sasl}),
+    do: Keyword.put(opts, :sasl, {sasl, username, password})
 
   @doc """
   Creates a `Kafee.Producer.Config` process atom name.

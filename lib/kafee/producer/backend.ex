@@ -8,6 +8,11 @@ defmodule Kafee.Producer.Backend do
   the current partition count. The last callback does the actual sending
   of the message.
 
+  Currently, Kafee has three built in modules:
+  - `Kafee.Producer.AsyncBackend`
+  - `Kafee.Producer.SyncBackend`
+  - `Kafee.Producer.TestBackend`
+
   ```mermaid
   sequenceDiagram
     participant P as MyProducer

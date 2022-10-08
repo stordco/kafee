@@ -11,6 +11,39 @@ defmodule Kafee.Producer do
   - The application configuration with `config :kafee, producer: []`
   - The module options with `use Kafee.Producer`
   - The init options with `{MyProducer, []}`
+
+  ## Configuration Options
+
+  All configurations specified will be put into the `Kafee.Producer.Config`
+  struct. You can view that module for more specific information.
+
+  - `producer_backend` The type backend module responsible for sending
+    messages to Kafka. See `Kafee.Producer.Backend` for more details.
+
+  - `hostname` (default: `localhost`)
+  - `port` (default: `9092`)
+  - `endpoints` Override the single hostname and port with a list of
+    endpoints. See `:brod` for more information.
+
+  - `username`
+  - `password`
+  - `ssl` (default: `false`)
+
+  - `topic` An optional topic to automatically add to all messages sent
+    via this module. Note, any topic set on the message itself will take
+    priority.
+  - `partition_fun` (default: `:hash`) The default partition function for
+    all messages sent via this module. See `:brod` for more details on
+    partitioning and the partition function.
+
+  - `brod_client_opts` Any extra client options to be used when creating a
+    `:brod_client`.
+  - `brod_producer_opts` Any extra options to be used when creating a
+    `:brod_producer`.
+
+  - `kafee_async_worker_opts` Extra options to send to the
+    `Kafee.Producer.AsyncWorker` module. This only has effect if you are
+    using the `Kafee.Producer.AsyncBackend`.
   """
 
   alias Kafee.Producer.{Config, Message}
