@@ -65,7 +65,7 @@ defmodule Kafee.Producer.SyncBackend do
   def partition(%Config{brod_client_id: brod_client_id}, message) do
     with {:ok, partition_count} <- :brod.get_partitions_count(brod_client_id, message.topic) do
       partition_fun = :brod_utils.make_part_fun(message.partition_fun)
-      partition_fun.(message.topic, partition_count, message.key, message.value)
+      partition_fun.(message.topic, partition_count, message.key, message)
     end
   end
 

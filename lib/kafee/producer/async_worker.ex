@@ -7,7 +7,7 @@ defmodule Kafee.Producer.AsyncWorker do
   """
 
   use GenServer,
-    shutdown: :timer.seconds(60)
+    shutdown: :timer.seconds(10)
 
   require Logger
 

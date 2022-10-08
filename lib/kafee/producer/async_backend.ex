@@ -150,6 +150,6 @@ defmodule Kafee.Producer.AsyncBackend do
   defp message_partition_key(%Message{topic: topic, partition: partition}),
     do: {topic, partition}
 
-  defp strip_message(%Message{key: key, value: value}),
-    do: %{key: key, value: value}
+  defp strip_message(%Message{} = message),
+    do: Map.take(message, [:key, :value, :headers])
 end

@@ -30,7 +30,7 @@ defmodule Kafee.Producer.AsyncBackendTest do
   describe "produce/2" do
     test "sends messages" do
       messages =
-        for num <- 1..1_000 do
+        for num <- 1..10 do
           %Kafee.Producer.Message{
             key: to_string(num),
             value: to_string(num)
