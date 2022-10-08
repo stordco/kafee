@@ -27,9 +27,5 @@ defmodule Kafee.Producer.AsyncWorkerTest do
     test "queue a list of messages will send them", %{pid: pid} do
       assert :ok = AsyncWorker.queue(pid, [%{key: "1", value: "1"}, %{key: "2", value: "2"}])
     end
-
-    test "queue a single message will send it", %{pid: pid} do
-      assert :ok = AsyncWorker.queue(pid, %{key: "test", value: "test"})
-    end
   end
 end

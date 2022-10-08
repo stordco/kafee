@@ -32,7 +32,7 @@ defmodule Kafee.Producer.AsyncBackend do
     participant S as Kafee.Producer.AsyncSupervisor
     participant W as Kafee.Producer.AsyncWorker
 
-    P->>+B: get_partition/4
+    P->>+B: get_partition/2
     B-->>-P: 2
 
     P->>+B: produce/2
@@ -66,9 +66,11 @@ defmodule Kafee.Producer.AsyncBackend do
   > you may lose data.
   """
 
+  @behaviour Kafee.Producer.Backend
+
   use Supervisor
 
-  alias Kafee.Producer.{AsyncSupervisor, Config}
+  alias Kafee.Producer.{AsyncSupervisor, Config, Message}
 
   @doc false
   @impl true
@@ -77,7 +79,10 @@ defmodule Kafee.Producer.AsyncBackend do
     brod_client_opts = Config.brod_client_config(config)
 
     children = [
-      {:brod_client, [brod_endpoints, config.producer, brod_client_opts]},
+      %{
+        id: config.brod_client_id,
+        start: {:brod_client, :start_link, [brod_endpoints, config.brod_client_id, brod_client_opts]}
+      },
       {Kafee.Producer.AsyncSupervisor, config}
     ]
 
@@ -98,9 +103,9 @@ defmodule Kafee.Producer.AsyncBackend do
   @doc """
   Starts a new `Kafee.Producer.AsyncBackend` process and associated children.
   """
-  @spec start_link(Config.t()) :: Supervisor.on_start()
+  @impl true
   def start_link(%Config{} = config) do
-    Supervisor.start_link(__MODULE__, config)
+    Supervisor.start_link(__MODULE__, config, name: Kafee.Producer.Backend.process_name(config.producer))
   end
 
   @doc """
@@ -115,9 +120,9 @@ defmodule Kafee.Producer.AsyncBackend do
       {:ok, 1}
 
   """
-  @spec partition(Config.t(), map()) :: {:ok, :brod.partition()} | {:error, term()}
-  def partition(%Config{producer: producer}, message) do
-    with {:ok, partition_count} <- :brod.get_partitions_count(producer, message.topic) do
+  @impl true
+  def partition(%Config{brod_client_id: brod_client_id}, message) do
+    with {:ok, partition_count} <- :brod.get_partitions_count(brod_client_id, message.topic) do
       partition_fun = :brod_utils.make_part_fun(message.partition_fun)
       partition_fun.(message.topic, partition_count, message.key, message.value)
     end
@@ -127,6 +132,7 @@ defmodule Kafee.Producer.AsyncBackend do
   Sends all of the given messages to an `Kafee.Producer.AsyncWorker` queue
   to be sent to Kafka in the future.
   """
+  @impl true
   def produce(%Config{} = config, messages) do
     # Here we partition the message, but we also strip the message down to just
     # a key value map, which is what's required by `:brod`. This saves us a
@@ -137,10 +143,13 @@ defmodule Kafee.Producer.AsyncBackend do
     for {{topic, partition}, messages} <- message_partitions do
       :ok = AsyncSupervisor.queue(config, topic, partition, messages)
     end
+
+    :ok
   end
 
-  defp message_partition_key(%{topic: topic, partition: partition}),
+  defp message_partition_key(%Message{topic: topic, partition: partition}),
     do: {topic, partition}
 
-  defp strip_message(%{key: key, value: value}), do: %{key: key, value: value}
+  defp strip_message(%Message{key: key, value: value}),
+    do: %{key: key, value: value}
 end

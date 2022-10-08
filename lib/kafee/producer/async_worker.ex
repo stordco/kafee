@@ -6,7 +6,8 @@ defmodule Kafee.Producer.AsyncWorker do
   we write all messages to the logs.
   """
 
-  use GenServer
+  use GenServer,
+    shutdown: :timer.seconds(60)
 
   require Logger
 

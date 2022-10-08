@@ -30,7 +30,7 @@ defmodule Kafee.Producer.AsyncSupervisor do
   def create_worker(%Config{} = config, topic, partition) do
     full_opts =
       Keyword.merge(config.kafee_async_worker_opts,
-        brod_client_id: config.producer,
+        brod_client_id: config.brod_client_id,
         topic: topic,
         partition: partition
       )

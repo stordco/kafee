@@ -11,11 +11,14 @@ defmodule Kafee.Producer.Config do
   See the `brod_endpoints/1` function for more details.
   """
 
+  use Agent
+
   defstruct [
     # Reference data. I wish I knew a better way to do this because it seems
     # messy, but I guess it works.
     producer: nil,
     producer_backend: nil,
+    brod_client_id: nil,
 
     # Brod client connection details
     hostname: "localhost",
@@ -26,6 +29,10 @@ defmodule Kafee.Producer.Config do
     username: nil,
     password: nil,
     ssl: false,
+
+    # Useful extras to clean up your code
+    topic: nil,
+    partition_fun: :hash,
 
     # Extra brod options
     brod_client_opts: [],
@@ -41,16 +48,45 @@ defmodule Kafee.Producer.Config do
   @type t :: %__MODULE__{
           producer: atom(),
           producer_backend: atom(),
+          brod_client_id: atom() | nil,
           hostname: :brod.hostname(),
           port: :brod.portnum(),
           endpoints: list(:brod.endpoint()),
           username: binary() | nil,
           password: binary() | nil,
           ssl: boolean(),
+          topic: :brod.topic() | nil,
+          partition_fun: :brod.partitioner(),
           brod_client_opts: :brod.client_config(),
           brod_producer_opts: :brod.producer_config(),
           kafee_async_worker_opts: Keyword.t()
         }
+
+  @doc """
+  Starts a new `Kafee.Producer.Config` process.
+  """
+  @spec start_link(t()) :: {:ok, pid()}
+  def start_link(%__MODULE__{} = config) do
+    Agent.start_link(fn -> config end, name: process_name(config.producer))
+  end
+
+  @doc """
+  Returns the `Kafee.Producer.Config` for a given `Kafee.Producer`.
+
+  ## Examples
+
+      iex> config = %Config{producer: MyProducer}
+      ...> {:ok, _pid} = Config.start_link(config)
+      ...> Config.get(MyProducer)
+      %Config{producer: MyProducer}
+
+  """
+  @spec get(atom()) :: t()
+  def get(producer) do
+    producer
+    |> process_name()
+    |> Agent.get(& &1)
+  end
 
   @doc """
   Creates a new `Kafee.Producer.Config` struct from the given
@@ -73,10 +109,10 @@ defmodule Kafee.Producer.Config do
 
   ## Examples
 
-      iex> merge(%Config{product: MyProducer}, port: 1234)
+      iex> merge(%Config{producer: MyProducer}, port: 1234)
       %Config{producer: MyProducer, port: 1234}
 
-      iex> new(%Config{producer: MyProducer}, producer: MyNewProducer)
+      iex> merge(%Config{producer: MyProducer}, producer: MyNewProducer)
       %Config{producer: MyNewProducer}
 
   """
@@ -187,5 +223,20 @@ defmodule Kafee.Producer.Config do
   @spec brod_client_config(t()) :: :brod.client_config()
   def brod_client_config(%__MODULE__{} = config) do
     Keyword.put(config.brod_client_opts, :auto_start_producers, true)
+  end
+
+  @doc """
+  Creates a `Kafee.Producer.Config` process atom name.
+
+  ## Examples
+
+      iex> process_name(MyProducer)
+      MyProducer.Config
+
+  """
+  @spec process_name(atom()) :: Supervisor.name()
+  def process_name(producer) do
+    # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
+    Module.concat(producer, Config)
   end
 end
