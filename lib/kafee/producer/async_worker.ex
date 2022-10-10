@@ -49,7 +49,7 @@ defmodule Kafee.Producer.AsyncWorker do
     topic = Keyword.fetch!(opts, :topic)
     partition = Keyword.fetch!(opts, :partition)
     send_count_max = Keyword.get(opts, :send_count_max, 100)
-    send_interval = Keyword.get(opts, :send_interval, :timer.seconds(10))
+    send_interval = Keyword.get(opts, :send_interval, :timer.seconds(2))
 
     send_interval_ref = Process.send_after(self(), :send, send_interval)
 
