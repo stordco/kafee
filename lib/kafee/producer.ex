@@ -125,23 +125,33 @@ defmodule Kafee.Producer do
       end
 
       @doc """
+      Sends a single message to the configured backend to be
+      sent to Kafka. See `Kafee.Produce.normalize/1` and
+      `Kafee.Producer.produce/2` functions for more information.
+      """
+      @spec produce(Kafee.Producer.Message.partial()) :: :ok | {:error, term()}
+      def produce(%Kafee.Producer.Message{} = message) do
+        produce([message])
+      end
+
+      @doc """
       Sends a list of messages to the configured backend to be
       sent to Kafka. See `Kafee.Producer.normalize/2` and
       `Kafee.Producer.produce/2` functions for more information.
       """
-      @spec produce([Kafka.Producer.Message.t()]) :: :ok | {:error, term()}
+      @spec produce([Kafee.Producer.Message.partial()]) :: :ok | {:error, term()}
       def produce(messages) do
         messages
         |> Kafee.Producer.normalize(__MODULE__)
-        |> Kafee.Producer.validate!()
+        |> Kafee.Producer.validate_batch!()
         |> Kafee.Producer.produce(__MODULE__)
       end
     end
   end
 
   @doc """
-  Normalizes a list of messages by partitioning them and
-  validating them. This is the last step before sending them
+  Normalizes a list of messages by partitioning them and setting
+  producer default values. This is the last step before sending them
   the backend and eventually Kafka.
 
   ## Examples
@@ -150,7 +160,7 @@ defmodule Kafee.Producer do
       [%Message{}]
 
   """
-  @spec normalize([Message.t()], atom()) :: [Message.t()]
+  @spec normalize([Message.partial()], atom()) :: [Message.t()]
   def normalize(messages, producer) do
     config = Config.get(producer)
 
@@ -182,18 +192,27 @@ defmodule Kafee.Producer do
   defp maybe_put_topic(message, _config), do: message
 
   @doc """
+  Validates a list of messages. See `validate!/1` for more information.
+
+  ## Examples
+
+      iex> validate!([%Message{topic: "test", partition: 1}])
+      [%Message{topic: "test", partition: 1}]
+
+  """
+  @spec validate_batch!(list(Message.partial())) :: list(Message.t())
+  def validate_batch!(messages) do
+    Enum.map(messages, fn message -> validate!(message) end)
+  end
+
+  @doc """
   Validates messages to ensure they have a topic and partition before
   sending them into a queue. This is designed to error early and
   in-line before it gets to a queue, where the problem would be much,
   _much_ bigger.
 
-  ## Examples
-
-      iex> validate!(%Message{topic: "test", partition: 1})
-      %Message{topic: "test", partition: 1}
-
   """
-  @spec validate!(list(Message.t()) | Message.t()) :: Message.t()
+  @spec validate!(Message.partial()) :: Message.t()
   def validate!(%Message{topic: nil} = message),
     do:
       raise(RuntimeError,
@@ -217,12 +236,6 @@ defmodule Kafee.Producer do
       )
 
   def validate!(%Message{} = message), do: message
-
-  def validate!(messages) do
-    for message <- messages do
-      validate!(message)
-    end
-  end
 
   @doc """
   Produces a list of messages depending on the configuration set
