@@ -129,8 +129,8 @@ defmodule Kafee.Producer do
       sent to Kafka. See `Kafee.Produce.normalize/1` and
       `Kafee.Producer.produce/2` functions for more information.
       """
-      @spec produce(Kafee.Producer.Message.partial() | [Kafee.Producer.Message.partial()]) :: :ok | {:error, term()}
-      def produce(%Kafee.Producer.Message{} = message) do
+      @spec produce(Kafee.Producer.Message.t() | [Kafee.Producer.Message.t()]) :: :ok | {:error, term()}
+      def produce(message) when is_map(message) do
         produce([message])
       end
 
@@ -159,7 +159,7 @@ defmodule Kafee.Producer do
       [%Message{}]
 
   """
-  @spec normalize([Message.partial()], atom()) :: [Message.t()]
+  @spec normalize([Message.t()], atom()) :: [Message.t()]
   def normalize(messages, producer) do
     config = Config.get(producer)
 
@@ -199,7 +199,7 @@ defmodule Kafee.Producer do
       [%Message{topic: "test", partition: 1}]
 
   """
-  @spec validate_batch!(list(Message.partial())) :: list(Message.t())
+  @spec validate_batch!([Message.t()]) :: [Message.t()]
   def validate_batch!(messages) do
     Enum.map(messages, fn message -> validate!(message) end)
   end
@@ -211,7 +211,7 @@ defmodule Kafee.Producer do
   _much_ bigger.
 
   """
-  @spec validate!(Message.partial()) :: Message.t()
+  @spec validate!(Message.t()) :: Message.t()
   def validate!(%Message{topic: nil} = message),
     do:
       raise(RuntimeError,

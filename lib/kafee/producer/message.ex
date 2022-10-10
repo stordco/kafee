@@ -8,18 +8,9 @@ defmodule Kafee.Producer.Message do
   @type t :: %__MODULE__{
           key: binary(),
           value: binary(),
-          topic: :brod.topic(),
-          partition: :brod.partition(),
-          partition_fun: :brod.partition_fun(),
-          headers: :kpro.headers()
-        }
-
-  @type partial :: %__MODULE__{
-          key: binary(),
-          value: binary(),
           topic: :brod.topic() | nil,
           partition: :brod.partition() | nil,
-          partition_fun: :brod.partition_fun() | nil,
-          headers: :kpro.headers()
+          partition_fun: :brod.partitioner() | nil,
+          headers: :kpro.headers() | nil
         }
 end
