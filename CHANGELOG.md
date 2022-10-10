@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.0.0](https://github.com/stordco/kafee/compare/v1.0.3...v2.0.0) (2022-10-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* add async producer (#10)
+
+### Features
+
+* [SRE-84] use stordco/actions-elixir/setup ([#8](https://github.com/stordco/kafee/issues/8)) ([33153a2](https://github.com/stordco/kafee/commit/33153a2324ecd25e5bdfd94b3b4cb181e68c8d3f))
+* add async producer ([#10](https://github.com/stordco/kafee/issues/10)) ([cab0aee](https://github.com/stordco/kafee/commit/cab0aee3d440be8389167af6031ec40ae32463f8))
+* simplify publishing ([d7f4533](https://github.com/stordco/kafee/commit/d7f4533e8bbcc5cb6dc9d50f2efc1af90b39f641))
+
 ## [1.0.3](https://github.com/stordco/kafee/compare/v1.0.2...v1.0.3) (2022-09-07)
 
 
