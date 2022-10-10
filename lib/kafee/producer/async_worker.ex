@@ -26,7 +26,7 @@ defmodule Kafee.Producer.AsyncWorker do
           brod_client_id: :brod.client_id(),
           partition: :brod.partition(),
           send_count: non_neg_integer(),
-          send_interval_ref: :timer.tref(),
+          send_interval_ref: reference(),
           send_ref: :brod.call_ref() | nil,
           topic: :brod.topic(),
           queue: :queue.queue()
@@ -51,7 +51,7 @@ defmodule Kafee.Producer.AsyncWorker do
     send_count_max = Keyword.get(opts, :send_count_max, 100)
     send_interval = Keyword.get(opts, :send_interval, :timer.seconds(10))
 
-    {:ok, send_interval_ref} = :timer.send_interval(send_interval, :send)
+    send_interval_ref = Process.send_after(self(), :send, send_interval)
 
     {:ok,
      %__MODULE__{
@@ -70,7 +70,8 @@ defmodule Kafee.Producer.AsyncWorker do
   # processing work.
   @doc false
   def handle_info(:send, %{queue: {[], []}} = state) do
-    {:noreply, state}
+    send_interval_ref = Process.send_after(self(), :send, state.send_interval)
+    {:noreply, %{state | send_interval_ref: send_interval_ref}}
   end
 
   # If the `send_ref` state is nil, that means we don't currently have a
@@ -82,8 +83,9 @@ defmodule Kafee.Producer.AsyncWorker do
     messages_count = length(messages)
 
     {:ok, send_ref} = :brod.produce(state.brod_client_id, state.topic, state.partition, :undefined, messages)
+    send_interval_ref = Process.send_after(self(), :send, state.send_interval)
 
-    {:noreply, %{state | send_count: messages_count, send_ref: send_ref}}
+    {:noreply, %{state | send_count: messages_count, send_interval_ref: send_interval_ref, send_ref: send_ref}}
   rescue
     err in MatchError ->
       Logger.warn(
@@ -113,13 +115,17 @@ defmodule Kafee.Producer.AsyncWorker do
       )
 
       {:noreply, state}
+  after
+    send_interval_ref = Process.send_after(self(), :send, state.send_interval)
+    {:noreply, %{state | send_interval_ref: send_interval_ref}}
   end
 
   # If we get here, we already have something in flight to Kafka, so we
   # do nothing and just keep on waiting.
   @doc false
   def handle_info(:send, state) do
-    {:noreply, state}
+    send_interval_ref = Process.send_after(self(), :send, state.send_interval)
+    {:noreply, %{state | send_interval_ref: send_interval_ref}}
   end
 
   # This is the message we get from `:brod` after Kafka has acknowledged
@@ -132,7 +138,8 @@ defmodule Kafee.Producer.AsyncWorker do
         %{send_ref: send_ref} = state
       ) do
     {_sent_messages, remaining_messages} = :queue.split(state.send_count, state.queue)
-    {:noreply, %{state | queue: remaining_messages, send_count: 0, send_ref: nil}}
+    send_interval_ref = Process.send_after(self(), :send, state.send_interval)
+    {:noreply, %{state | queue: remaining_messages, send_count: 0, send_interval_ref: send_interval_ref, send_ref: nil}}
   end
 
   # This handles the very rare (and dangerous) case where we get an
@@ -147,7 +154,8 @@ defmodule Kafee.Producer.AsyncWorker do
       partition: state.partition
     )
 
-    {:noreply, state}
+    send_interval_ref = Process.send_after(self(), :send, state.send_interval)
+    {:noreply, %{state | send_interval_ref: send_interval_ref}}
   end
 
   # This handles the case if Brod sends a non successful acknowledgement.
@@ -164,7 +172,8 @@ defmodule Kafee.Producer.AsyncWorker do
       partition: state.partition
     )
 
-    {:noreply, state}
+    send_interval_ref = Process.send_after(self(), :send, state.send_interval)
+    {:noreply, %{state | send_interval_ref: send_interval_ref}}
   end
 
   # A simple request to add more messages to the queue. Nothing fancy here.
