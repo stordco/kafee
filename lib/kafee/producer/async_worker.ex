@@ -15,6 +15,7 @@ defmodule Kafee.Producer.AsyncWorker do
     :brod_client_id,
     :partition,
     :send_count,
+    :send_count_max,
     :send_interval_ref,
     :send_ref,
     :topic,
@@ -35,6 +36,7 @@ defmodule Kafee.Producer.AsyncWorker do
           brod_client_id: :brod.client(),
           topic: :brod.topic(),
           partition: :brod.partition(),
+          send_count_max: pos_integer(),
           send_interval: pos_integer() | nil
         ]
 
@@ -46,6 +48,7 @@ defmodule Kafee.Producer.AsyncWorker do
     brod_client_id = Keyword.fetch!(opts, :brod_client_id)
     topic = Keyword.fetch!(opts, :topic)
     partition = Keyword.fetch!(opts, :partition)
+    send_count_max = Keyword.get(opts, :send_count_max, 100)
     send_interval = Keyword.get(opts, :send_interval, :timer.seconds(10))
 
     {:ok, send_interval_ref} = :timer.send_interval(send_interval, :send)
@@ -55,6 +58,7 @@ defmodule Kafee.Producer.AsyncWorker do
        brod_client_id: brod_client_id,
        partition: partition,
        send_count: 0,
+       send_count_max: send_count_max,
        send_interval_ref: send_interval_ref,
        send_ref: nil,
        topic: topic,
@@ -73,8 +77,9 @@ defmodule Kafee.Producer.AsyncWorker do
   # Kafka request in progress, so we are safe to send more messages.
   @doc false
   def handle_info(:send, %{send_ref: nil} = state) do
-    messages_count = :queue.len(state.queue)
-    messages = :queue.to_list(state.queue)
+    {send_messages, _remaining_messages} = :queue.split(state.send_count_max, state.queue)
+    messages = :queue.to_list(send_messages)
+    messages_count = length(messages)
 
     {:ok, send_ref} = :brod.produce(state.brod_client_id, state.topic, state.partition, :undefined, messages)
 
