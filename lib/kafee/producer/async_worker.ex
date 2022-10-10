@@ -7,29 +7,36 @@ defmodule Kafee.Producer.AsyncWorker do
   """
 
   use GenServer,
-    shutdown: :timer.seconds(10)
+    shutdown: :timer.seconds(25)
 
   require Logger
 
   defstruct [
     :brod_client_id,
     :partition,
+    :queue,
     :send_count,
     :send_count_max,
+    :send_interval,
     :send_interval_ref,
     :send_ref,
-    :topic,
-    :queue
+    :send_timeout,
+    :send_timeout_ref,
+    :topic
   ]
 
   @type t :: %__MODULE__{
           brod_client_id: :brod.client_id(),
           partition: :brod.partition(),
+          queue: :queue.queue(),
           send_count: non_neg_integer(),
-          send_interval_ref: reference(),
+          send_count_max: pos_integer(),
+          send_interval: pos_integer(),
+          send_interval_ref: reference() | nil,
           send_ref: :brod.call_ref() | nil,
-          topic: :brod.topic(),
-          queue: :queue.queue()
+          send_timeout: pos_integer(),
+          send_timeout_ref: reference() | nil,
+          topic: :brod.topic()
         }
 
   @type opts :: [
@@ -37,7 +44,8 @@ defmodule Kafee.Producer.AsyncWorker do
           topic: :brod.topic(),
           partition: :brod.partition(),
           send_count_max: pos_integer(),
-          send_interval: pos_integer() | nil
+          send_interval: pos_integer() | nil,
+          send_timeout: pos_integer() | nil
         ]
 
   @doc false
@@ -50,6 +58,7 @@ defmodule Kafee.Producer.AsyncWorker do
     partition = Keyword.fetch!(opts, :partition)
     send_count_max = Keyword.get(opts, :send_count_max, 100)
     send_interval = Keyword.get(opts, :send_interval, :timer.seconds(2))
+    send_timeout = Keyword.get(opts, :send_timeout, :timer.seconds(10))
 
     send_interval_ref = Process.send_after(self(), :send, send_interval)
 
@@ -57,12 +66,15 @@ defmodule Kafee.Producer.AsyncWorker do
      %__MODULE__{
        brod_client_id: brod_client_id,
        partition: partition,
+       queue: :queue.new(),
        send_count: 0,
        send_count_max: send_count_max,
+       send_interval: send_interval,
        send_interval_ref: send_interval_ref,
        send_ref: nil,
-       topic: topic,
-       queue: :queue.new()
+       send_timeout: send_timeout,
+       send_timeout_ref: nil,
+       topic: topic
      }}
   end
 
@@ -83,9 +95,9 @@ defmodule Kafee.Producer.AsyncWorker do
     messages_count = length(messages)
 
     {:ok, send_ref} = :brod.produce(state.brod_client_id, state.topic, state.partition, :undefined, messages)
-    send_interval_ref = Process.send_after(self(), :send, state.send_interval)
+    send_timeout_ref = Process.send_after(self(), :send_timeout, state.send_timeout)
 
-    {:noreply, %{state | send_count: messages_count, send_interval_ref: send_interval_ref, send_ref: send_ref}}
+    {:noreply, %{state | send_count: messages_count, send_timeout_ref: send_timeout_ref, send_ref: send_ref}}
   rescue
     err in MatchError ->
       Logger.warn(
@@ -101,7 +113,8 @@ defmodule Kafee.Producer.AsyncWorker do
         partition: state.partition
       )
 
-      {:noreply, state}
+      send_interval_ref = Process.send_after(self(), :send, state.send_interval)
+      {:noreply, %{state | send_interval_ref: send_interval_ref}}
 
     err ->
       Logger.error(
@@ -114,18 +127,34 @@ defmodule Kafee.Producer.AsyncWorker do
         partition: state.partition
       )
 
-      {:noreply, state}
-  after
-    send_interval_ref = Process.send_after(self(), :send, state.send_interval)
-    {:noreply, %{state | send_interval_ref: send_interval_ref}}
+      send_interval_ref = Process.send_after(self(), :send, state.send_interval)
+      {:noreply, %{state | send_interval_ref: send_interval_ref}}
   end
 
   # If we get here, we already have something in flight to Kafka, so we
   # do nothing and just keep on waiting.
   @doc false
   def handle_info(:send, state) do
+    {:noreply, state}
+  end
+
+  # If this message is received, it means our last brod send has taken
+  # too long to respond. This might mean the brod process crashed trying
+  # to send the message, or some other part of the system is broken.
+  # In this case, we want to retry sending the message.
+  def handle_info(:send_timeout, state) do
+    Logger.info("Sending messages to Kafka timed out", partition: state.partition, topic: state.topic)
+
     send_interval_ref = Process.send_after(self(), :send, state.send_interval)
-    {:noreply, %{state | send_interval_ref: send_interval_ref}}
+
+    {:noreply,
+     %{
+       state
+       | send_count: 0,
+         send_interval_ref: send_interval_ref,
+         send_timeout_ref: nil,
+         send_ref: nil
+     }}
   end
 
   # This is the message we get from `:brod` after Kafka has acknowledged
@@ -137,9 +166,21 @@ defmodule Kafee.Producer.AsyncWorker do
         {:brod_produce_reply, send_ref, _offset, :brod_produce_req_acked},
         %{send_ref: send_ref} = state
       ) do
+    Process.cancel_timer(state.send_timeout_ref)
+
     {_sent_messages, remaining_messages} = :queue.split(state.send_count, state.queue)
+
     send_interval_ref = Process.send_after(self(), :send, state.send_interval)
-    {:noreply, %{state | queue: remaining_messages, send_count: 0, send_interval_ref: send_interval_ref, send_ref: nil}}
+
+    {:noreply,
+     %{
+       state
+       | queue: remaining_messages,
+         send_count: 0,
+         send_interval_ref: send_interval_ref,
+         send_timeout_ref: nil,
+         send_ref: nil
+     }}
   end
 
   # This handles the very rare (and dangerous) case where we get an
@@ -172,8 +213,9 @@ defmodule Kafee.Producer.AsyncWorker do
       partition: state.partition
     )
 
+    Process.cancel_timer(state.send_timeout_ref)
     send_interval_ref = Process.send_after(self(), :send, state.send_interval)
-    {:noreply, %{state | send_interval_ref: send_interval_ref}}
+    {:noreply, %{state | send_interval_ref: send_interval_ref, send_timeout_ref: nil}}
   end
 
   # A simple request to add more messages to the queue. Nothing fancy here.
@@ -194,9 +236,10 @@ defmodule Kafee.Producer.AsyncWorker do
   # synchronously, and if we fail at that we output them to the logs for
   # developers to handle.
   @doc false
-  def terminate(_reason, state) do
-    messages = :queue.to_list(state.queue)
-    :ok = :brod.produce_sync(state.brod_client_id, state.topic, state.partition, :undefined, messages)
+  def terminate(_reason, %{send_ref: nil} = state) do
+    for messages <- Enum.chunk_every(:queue.to_list(state.queue), state.send_count_max) do
+      :ok = :brod.produce_sync(state.brod_client_id, state.topic, state.partition, :undefined, messages)
+    end
   rescue
     err ->
       Logger.error("Unable to send messages to Kafka: #{inspect(err)}", topic: state.topic, partition: state.partition)
@@ -204,6 +247,46 @@ defmodule Kafee.Producer.AsyncWorker do
       for message <- :queue.to_list(state.queue) do
         Logger.error("Unsent Kafka message", message: message, topic: state.topic, partition: state.partition)
       end
+  end
+
+  # In this case, we already have a request in flight, but we need to
+  # make sure we get an ack back from it and send all remaining messages.
+  def terminate(reason, %{send_ref: send_ref} = state) do
+    Process.cancel_timer(state.send_timeout_ref)
+
+    case :brod.sync_produce_request_offset(send_ref, state.send_timeout) do
+      {:ok, _} ->
+        {_sent_messages, remaining_messages} = :queue.split(state.send_count, state.queue)
+
+        terminate(reason, %{
+          state
+          | queue: remaining_messages,
+            send_count: 0,
+            send_interval_ref: nil,
+            send_timeout_ref: nil,
+            send_ref: nil
+        })
+
+      err ->
+        Logger.warn(
+          """
+          Error while trying to acknowledge last send messages. Retrying before exit.
+
+          Error:
+          #{inspect(err)}
+          """,
+          partition: state.partition,
+          topic: state.topic
+        )
+
+        terminate(reason, %{
+          state
+          | send_count: 0,
+            send_interval_ref: nil,
+            send_timeout_ref: nil,
+            send_ref: nil
+        })
+    end
   end
 
   ## Client API
