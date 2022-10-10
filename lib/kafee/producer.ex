@@ -157,8 +157,8 @@ defmodule Kafee.Producer do
     Enum.map(messages, fn message ->
       message =
         message
-        |> map_put_new_if_nil(:topic, config.topic)
-        |> map_put_new_if_nil(:partition_fun, config.partition_fun)
+        |> maybe_put_topic(config)
+        |> maybe_put_partition_fun(config)
 
       case Map.get(message, :partition, nil) do
         int when is_integer(int) ->
@@ -171,15 +171,15 @@ defmodule Kafee.Producer do
     end)
   end
 
-  # Fun fact, the `Map.put_new` only works if the key is missing.
-  # Since we are doing this on a struct, the key will always exist,
-  # so we have this fun function to help us.
-  defp map_put_new_if_nil(map, key, value) do
-    case Map.get(map, key, nil) do
-      nil -> Map.put(map, key, value)
-      _ -> map
-    end
-  end
+  defp maybe_put_partition_fun(%{partition_fun: nil} = message, %{partition_fun: partition_fun}),
+    do: Map.put(message, :partition_fun, partition_fun)
+
+  defp maybe_put_partition_fun(message, _config), do: message
+
+  defp maybe_put_topic(%{topic: nil} = message, %{topic: topic}),
+    do: Map.put(message, :topic, topic)
+
+  defp maybe_put_topic(message, _config), do: message
 
   @doc """
   Validates messages to ensure they have a topic and partition before

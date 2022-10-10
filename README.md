@@ -70,12 +70,10 @@ defmodule MyApplication do
 end
 ```
 
-Once that is done, simply run:
+Once that is done, to publish a message simply run:
 
 ```elixir
 MyProducer.publish(:order_created, %Order{})
 ```
-
-to publish a message.
 
 See the `Kafee.Producer` module for more options and information.

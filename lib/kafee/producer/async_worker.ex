@@ -218,7 +218,7 @@ defmodule Kafee.Producer.AsyncWorker do
 
   ## Options
 
-  This GenSever requires the following fields to be given on creation.
+  This GenServer requires the following fields to be given on creation.
 
     - `brod_client_id` The id given when you created a `:brod_client`.
     - `topic` The Kafka topic to publish to.

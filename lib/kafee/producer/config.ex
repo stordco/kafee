@@ -14,8 +14,7 @@ defmodule Kafee.Producer.Config do
   use Agent
 
   defstruct [
-    # Reference data. I wish I knew a better way to do this because it seems
-    # messy, but I guess it works.
+    # Reference data
     producer: nil,
     producer_backend: nil,
     brod_client_id: nil,

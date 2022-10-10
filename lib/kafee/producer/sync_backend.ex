@@ -3,7 +3,7 @@ defmodule Kafee.Producer.SyncBackend do
   This is an synchronous backend for sending messages to Kafka. We
   don't recommend it for use in production unless you have a specific
   use case because this function blocks on network requests. This can
-  add multiple 200ms plus delays in your processing. Non the less, it's
+  add multiple 200ms plus delays in your processing. Nonetheless, it's
   very useful to debug situations. For production use cases, we
   recommend using the `Kafee.Producer.AsyncBackend` module.
   """

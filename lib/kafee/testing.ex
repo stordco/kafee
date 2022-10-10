@@ -15,7 +15,7 @@ defmodule Kafee.Testing do
   ### Assertions
 
   For the most part, you can use the super flexible
-  `assert_message_produced/2` macro to test if a message was sent.
+  `assert_producer_message/2` macro to test if a message was sent.
   """
 
   @doc """
@@ -24,7 +24,7 @@ defmodule Kafee.Testing do
 
   ## Examples
 
-      iex> assert_message_produced(MyProducer, %{
+      iex> assert_producer_message(MyProducer, %{
       ...>   key: "test-key",
       ...>   topic: "test-topic"
       ...> })
