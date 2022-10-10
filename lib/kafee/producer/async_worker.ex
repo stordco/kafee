@@ -123,10 +123,7 @@ defmodule Kafee.Producer.AsyncWorker do
   # from erlang, the pattern matching is a little weird.
   @doc false
   def handle_info(
-        %{
-          __struct__: :brod_produce_reply,
-          call_ref: send_ref
-        },
+        {:brod_produce_reply, send_ref, _offset, :brod_produce_req_acked},
         %{send_ref: send_ref} = state
       ) do
     {_sent_messages, remaining_messages} = :queue.split(state.send_count, state.queue)
@@ -139,8 +136,25 @@ defmodule Kafee.Producer.AsyncWorker do
   # inconsistency in the form of duplicated messages in Kafka or missing
   # messages in Kafka.
   @doc false
-  def handle_info(%{__struct__: :brod_produce_reply}, state) do
+  def handle_info({:brod_produce_reply, _send_ref, _offset, :brod_produce_req_acked}, state) do
     Logger.warn("Brod acknowledgement received that doesn't match internal records",
+      topic: state.topic,
+      partition: state.partition
+    )
+
+    {:noreply, state}
+  end
+
+  # This handles the case if Brod sends a non successful acknowledgement.
+  @doc false
+  def handle_info({:brod_produce_reply, _send_ref, _offset, resp}, state) do
+    Logger.warn(
+      """
+      Brod acknowledgement received, but it wasn't successful.
+
+      Response:
+      #{inspect(resp)}
+      """,
       topic: state.topic,
       partition: state.partition
     )

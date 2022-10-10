@@ -44,7 +44,7 @@ defmodule Kafee.Producer.AsyncSupervisor do
   """
   @spec get_worker(Config.t(), :brod.topic(), :brod.partition()) :: {:ok, pid()} | {:error, term()}
   def get_worker(%Config{} = config, topic, partition) do
-    case Registry.lookup(AsyncRegistry, AsyncWorker.process_name(config.producer, topic, partition)) do
+    case Registry.lookup(AsyncRegistry, AsyncWorker.process_name(config.brod_client_id, topic, partition)) do
       [{pid, _value}] -> {:ok, pid}
       [] -> {:error, :not_found}
     end
