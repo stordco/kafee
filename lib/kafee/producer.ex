@@ -129,7 +129,7 @@ defmodule Kafee.Producer do
       sent to Kafka. See `Kafee.Produce.normalize/1` and
       `Kafee.Producer.produce/2` functions for more information.
       """
-      @spec produce(Kafee.Producer.Message.partial()) :: :ok | {:error, term()}
+      @spec produce(Kafee.Producer.Message.partial() | [Kafee.Producer.Message.partial()]) :: :ok | {:error, term()}
       def produce(%Kafee.Producer.Message{} = message) do
         produce([message])
       end
@@ -139,7 +139,6 @@ defmodule Kafee.Producer do
       sent to Kafka. See `Kafee.Producer.normalize/2` and
       `Kafee.Producer.produce/2` functions for more information.
       """
-      @spec produce([Kafee.Producer.Message.partial()]) :: :ok | {:error, term()}
       def produce(messages) do
         messages
         |> Kafee.Producer.normalize(__MODULE__)
