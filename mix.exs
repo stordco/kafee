@@ -32,11 +32,15 @@ defmodule Kafee.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:elsa, "~> 1.0.0-rc.3"},
+      {:brod, "~> 3.16.2"},
 
       # Dev & Test dependencies
+      {:benchee, "~> 1.0", only: [:dev, :test]},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.27", only: [:dev, :test], runtime: false}
+      {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false},
+      {:doctor, "~> 0.19.0", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.28", only: [:dev, :test], runtime: false},
+      {:mox, "~> 1.0", only: [:dev, :test]}
     ]
   end
 
@@ -54,8 +58,35 @@ defmodule Kafee.MixProject do
 
   defp docs do
     [
-      main: "readme",
-      extras: ["README.md", "CHANGELOG.md", "CONTRIBUTING.md"]
+      before_closing_body_tag: &before_closing_body_tag/1,
+      extras: ["README.md", "CHANGELOG.md", "CONTRIBUTING.md"],
+      main: "readme"
     ]
   end
+
+  defp before_closing_body_tag(:html) do
+    """
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@8.13.3/dist/mermaid.min.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        mermaid.initialize({ startOnLoad: false });
+        let id = 0;
+        for (const codeEl of document.querySelectorAll("pre code.mermaid")) {
+          const preEl = codeEl.parentElement;
+          const graphDefinition = codeEl.textContent;
+          const graphEl = document.createElement("div");
+          const graphId = "mermaid-graph-" + id++;
+          mermaid.render(graphId, graphDefinition, function (svgSource, bindListeners) {
+            graphEl.innerHTML = svgSource;
+            bindListeners && bindListeners(graphEl);
+            preEl.insertAdjacentElement("afterend", graphEl);
+            preEl.remove();
+          });
+        }
+      });
+    </script>
+    """
+  end
+
+  defp before_closing_body_tag(_), do: ""
 end

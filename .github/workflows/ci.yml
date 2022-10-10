@@ -28,6 +28,38 @@ jobs:
       - name: Credo
         run: mix credo
 
+  Dialyzer:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Elixir
+        uses: stordco/actions-elixir/setup@v1
+        with:
+          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          hex-token: ${{ secrets.HEX_API_KEY }}
+
+      - name: Dialyzer
+        run: mix dialyzer
+
+  Doctor:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Elixir
+        uses: stordco/actions-elixir/setup@v1
+        with:
+          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          hex-token: ${{ secrets.HEX_API_KEY }}
+
+      - name: Doctor
+        run: mix doctor
+
   Format:
     runs-on: ubuntu-latest
 
@@ -66,9 +98,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Start Services
-        run: docker-compose up -d && sleep 10
-
       - name: Setup Elixir
         uses: stordco/actions-elixir/setup@v1
         with:
@@ -79,6 +108,9 @@ jobs:
 
       - name: Compile
         run: mix compile --warnings-as-errors
+
+      - name: Start Services
+        run: docker-compose up -d && sleep 10
 
       - name: Test
         run: mix test

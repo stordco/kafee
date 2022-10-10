@@ -1,12 +1,17 @@
 defmodule Kafee.Application do
-  @moduledoc false
+  @moduledoc """
+  Starts up application global processes, like the `Kafee.Producer.AsyncRegistry`.
+  """
 
   use Application
 
+  @doc false
+  @spec start(Application.start_type(), term()) :: {:ok, pid} | {:error, term()}
   def start(_type, _args) do
-    children = []
+    children = [
+      {Registry, keys: :unique, name: Kafee.Producer.AsyncRegistry}
+    ]
 
-    opts = [strategy: :one_for_one, name: Kafee.Supervisor]
-    Supervisor.start_link(children, opts)
+    Supervisor.start_link(children, strategy: :one_for_one)
   end
 end
