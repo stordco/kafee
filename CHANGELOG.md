@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/stordco/kafee/compare/v2.0.0...v2.0.1) (2022-10-11)
+
+
+### Bug Fixes
+
+* run brod config init function to fix sasl auth ([#11](https://github.com/stordco/kafee/issues/11)) ([f35e791](https://github.com/stordco/kafee/commit/f35e791c614afae37848d714fc04ad1f04e52b9f))
+
 ## [2.0.0](https://github.com/stordco/kafee/compare/v1.0.3...v2.0.0) (2022-10-10)
 
 
