@@ -228,6 +228,8 @@ defmodule Kafee.Producer.Config do
     config.brod_client_opts
     |> Keyword.put(:ssl, config.ssl)
     |> Keyword.put(:auto_start_producers, true)
+    |> Keyword.put_new(:connect_timeout, :timer.seconds(5))
+    |> Keyword.put_new(:request_timeout, :timer.seconds(5))
     |> maybe_put_sasl(config)
     |> :brod_utils.init_sasl_opt()
   end
