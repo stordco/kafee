@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.2](https://github.com/stordco/kafee/compare/v2.0.1...v2.0.2) (2022-10-11)
+
+
+### Bug Fixes
+
+* increase default connection timeout ([#13](https://github.com/stordco/kafee/issues/13)) ([a1a18ec](https://github.com/stordco/kafee/commit/a1a18ecded32194c737fc9a60b4148f3b1858a0e))
+
 ## [2.0.1](https://github.com/stordco/kafee/compare/v2.0.0...v2.0.1) (2022-10-11)
 
 
