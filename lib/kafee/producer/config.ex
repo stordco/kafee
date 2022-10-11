@@ -217,10 +217,10 @@ defmodule Kafee.Producer.Config do
   ## Examples
 
       iex> brod_client_config(%Config{ssl: false})
-      [auto_start_producers: true, ssl: false]
+      [request_timeout: 5000, connect_timeout: 5000, auto_start_producers: true, ssl: false]
 
       iex> brod_client_config(%Config{ssl: false, brod_client_opts: [query_api_version: false]})
-      [auto_start_producers: true, ssl: false, query_api_version: false]
+      [request_timeout: 5000, connect_timeout: 5000, auto_start_producers: true, ssl: false, query_api_version: false]
 
   """
   @spec brod_client_config(t()) :: :brod.client_config()
