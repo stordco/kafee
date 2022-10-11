@@ -222,9 +222,6 @@ defmodule Kafee.Producer.Config do
       iex> brod_client_config(%Config{ssl: false, brod_client_opts: [query_api_version: false]})
       [auto_start_producers: true, ssl: false, query_api_version: false]
 
-      iex> brod_client_config(%Config{username: "username", password: "password", ssl: true, sasl: :plain})
-      [sasl: {:plain, "username", "password"}, auto_start_producers: true, ssl: true]
-
   """
   @spec brod_client_config(t()) :: :brod.client_config()
   def brod_client_config(%__MODULE__{} = config) do
@@ -232,6 +229,7 @@ defmodule Kafee.Producer.Config do
     |> Keyword.put(:ssl, config.ssl)
     |> Keyword.put(:auto_start_producers, true)
     |> maybe_put_sasl(config)
+    |> :brod_utils.init_sasl_opt()
   end
 
   defp maybe_put_sasl(opts, %{sasl: false}), do: opts
