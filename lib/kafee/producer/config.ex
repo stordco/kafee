@@ -228,7 +228,7 @@ defmodule Kafee.Producer.Config do
     config.brod_client_opts
     |> Keyword.put(:ssl, config.ssl)
     |> Keyword.put(:auto_start_producers, true)
-    # THis matches how Elsa connects and is required for our Confluence cloud connection.
+    # This matches how Elsa connects and is required for our Confluence cloud connection.
     |> Keyword.put_new(:connect_timeout, :timer.seconds(10))
     |> maybe_put_sasl(config)
     |> :brod_utils.init_sasl_opt()
