@@ -91,7 +91,7 @@ defmodule Kafee.Producer.AsyncWorker do
   @doc false
   def handle_info(:send, %{send_ref: nil} = state) do
     {send_messages, _remaining_messages} =
-      if :queue.length(state.queue) > state.send_count_max,
+      if :queue.len(state.queue) > state.send_count_max,
         do: :queue.split(state.queue, state.send_count_max),
         else: {state.queue, nil}
 
