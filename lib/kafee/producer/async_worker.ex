@@ -90,7 +90,11 @@ defmodule Kafee.Producer.AsyncWorker do
   # Kafka request in progress, so we are safe to send more messages.
   @doc false
   def handle_info(:send, %{send_ref: nil} = state) do
-    {send_messages, _remaining_messages} = :queue.split(state.send_count_max, state.queue)
+    {send_messages, _remaining_messages} =
+      if :queue.len(state.queue) > state.send_count_max,
+        do: :queue.split(state.queue, state.send_count_max),
+        else: {state.queue, nil}
+
     messages = :queue.to_list(send_messages)
     messages_count = length(messages)
 
