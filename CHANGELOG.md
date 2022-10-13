@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.4](https://github.com/stordco/kafee/compare/v2.0.3...v2.0.4) (2022-10-13)
+
+
+### Bug Fixes
+
+* dont split the queue larger than the length ([#17](https://github.com/stordco/kafee/issues/17)) ([5b96b6a](https://github.com/stordco/kafee/commit/5b96b6abb99603f0578e15d4f8b0519e17b83828))
+
 ## [2.0.3](https://github.com/stordco/kafee/compare/v2.0.2...v2.0.3) (2022-10-12)
 
 
