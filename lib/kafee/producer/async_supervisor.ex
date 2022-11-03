@@ -35,7 +35,11 @@ defmodule Kafee.Producer.AsyncSupervisor do
         partition: partition
       )
 
-    DynamicSupervisor.start_child(process_name(config), {AsyncWorker, full_opts})
+    name = AsyncWorker.process_name(config)
+
+    with {:error, {:already_started, pid}} <- DynamicSupervisor.start_child(name, {AsyncWorker, full_opts}) do
+      {:ok, pid}
+    end
   end
 
   @doc """
