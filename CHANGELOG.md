@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.5](https://github.com/stordco/kafee/compare/v2.0.4...v2.0.5) (2022-11-04)
+
+
+### Bug Fixes
+
+* [SIGNAL-2969] handle already started error ([#19](https://github.com/stordco/kafee/issues/19)) ([c541aea](https://github.com/stordco/kafee/commit/c541aea24df827338803f307eee2cdd37cdbd711))
+
 ## [2.0.4](https://github.com/stordco/kafee/compare/v2.0.3...v2.0.4) (2022-10-13)
 
 
