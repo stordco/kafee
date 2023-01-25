@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.1.0](https://github.com/stordco/kafee/compare/v2.0.5...v2.1.0) (2023-01-25)
+
+
+### Features
+
+* add more error handling around brod ([d5c1032](https://github.com/stordco/kafee/commit/d5c103284de4f187f8fda3958e07ba056812d4aa))
+* set retry metrics for sync producer ([#21](https://github.com/stordco/kafee/issues/21)) ([c2933c2](https://github.com/stordco/kafee/commit/c2933c2eb4fbeb05667997c4901156bfacbb1886))
+
+
+### Bug Fixes
+
+* update CI tests to run on ubuntu 20.04 for old OTP releases ([#25](https://github.com/stordco/kafee/issues/25)) ([48c78f7](https://github.com/stordco/kafee/commit/48c78f77b4ae0ded1a4b7ece868e8bf76cc0bb19))
+
 ## [2.0.5](https://github.com/stordco/kafee/compare/v2.0.4...v2.0.5) (2022-11-04)
 
 
