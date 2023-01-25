@@ -111,7 +111,7 @@ defmodule Kafee.Producer.AsyncWorker do
           directly without setting `auto_state_producers` to `true` in when creating
           your `:brod_client` instance.
 
-          #{inspect(err)}
+          #{Exception.format(:error, err)}
         """,
         topic: state.topic,
         partition: state.partition
@@ -119,6 +119,21 @@ defmodule Kafee.Producer.AsyncWorker do
 
       send_interval_ref = Process.send_after(self(), :send, state.send_interval)
       {:noreply, %{state | send_interval_ref: send_interval_ref}}
+
+    err in ArgumentError ->
+      Logger.warn(
+        """
+          A runtime ArgumentError occurred while trying to send messages via `:brod`.
+          This usually results in an infinite unrecoverable loop of errors, so we are
+          going to terminate.
+
+          #{Exception.format(:error, err)}
+        """,
+        topic: state.topic,
+        partition: state.partition
+      )
+
+      {:stop, err, state}
 
     err ->
       Logger.error(
