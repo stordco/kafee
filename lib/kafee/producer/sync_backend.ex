@@ -72,7 +72,10 @@ defmodule Kafee.Producer.SyncBackend do
   @impl true
   def produce(%Config{} = config, messages) do
     for message <- messages do
-      :brod.produce_sync(config.brod_client_id, message.topic, message.partition, message.key, message.value)
+      :telemetry.span([:kafee, :produce], %{topic: message.topic, partition: message.partition}, fn ->
+        :ok = :brod.produce_sync(config.brod_client_id, message.topic, message.partition, message.key, message.value)
+        {:ok, %{}}
+      end)
     end
 
     :ok

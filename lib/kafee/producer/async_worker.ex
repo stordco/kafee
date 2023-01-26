@@ -4,6 +4,21 @@ defmodule Kafee.Producer.AsyncWorker do
   erlang `:queue` and sends messages every so often. On process close, we
   attempt to send all messages to Kafka, and in the unlikely event we can't
   we write all messages to the logs.
+
+  ## Telemetry Events
+
+  - `kafee.queue.count` - The amount of messages in queue
+    waiting to be sent to Kafka. This includes the number of messages currently
+    in flight awaiting to be acknowledged from Kafka.
+
+    We recommend capturing this with `last_value/2` like so:
+
+      last_value(
+        "kafee.queue.count",
+        description: "The amount of messages in queue waiting to be sent to Kafka",
+        tags: [:topic, :partition]
+      )
+
   """
 
   use GenServer,
@@ -22,6 +37,8 @@ defmodule Kafee.Producer.AsyncWorker do
     :send_ref,
     :send_timeout,
     :send_timeout_ref,
+    :telemetry_produce_start_time,
+    :telemetry_produce_ref,
     :topic
   ]
 
@@ -36,6 +53,8 @@ defmodule Kafee.Producer.AsyncWorker do
           send_ref: :brod.call_ref() | nil,
           send_timeout: pos_integer(),
           send_timeout_ref: reference() | nil,
+          telemetry_produce_start_time: integer() | nil,
+          telemetry_produce_ref: reference() | nil,
           topic: :brod.topic()
         }
 
@@ -74,6 +93,8 @@ defmodule Kafee.Producer.AsyncWorker do
        send_ref: nil,
        send_timeout: send_timeout,
        send_timeout_ref: nil,
+       telemetry_produce_start_time: nil,
+       telemetry_produce_ref: nil,
        topic: topic
      }}
   end
@@ -90,64 +111,133 @@ defmodule Kafee.Producer.AsyncWorker do
   # Kafka request in progress, so we are safe to send more messages.
   @doc false
   def handle_info(:send, %{send_ref: nil} = state) do
+    telemetry_produce_start_time = :erlang.monotonic_time()
+    telemetry_produce_ref = :erlang.make_ref()
+
     {send_messages, _remaining_messages} =
       if :queue.len(state.queue) > state.send_count_max,
         do: :queue.split(state.queue, state.send_count_max),
-        else: {state.queue, nil}
+        else: {state.queue, :queue.new()}
 
     messages = :queue.to_list(send_messages)
     messages_count = length(messages)
 
-    {:ok, send_ref} = :brod.produce(state.brod_client_id, state.topic, state.partition, :undefined, messages)
-    send_timeout_ref = Process.send_after(self(), :send_timeout, state.send_timeout)
+    state = %{
+      state
+      | send_count: messages_count,
+        telemetry_produce_start_time: telemetry_produce_start_time,
+        telemetry_produce_ref: telemetry_produce_ref
+    }
 
-    {:noreply, %{state | send_count: messages_count, send_timeout_ref: send_timeout_ref, send_ref: send_ref}}
-  rescue
-    err in MatchError ->
-      Logger.warn(
-        """
-          Unable to send message to Kafka because the `:brod_producer` is not found.
-          This usually indicates that you are using the `Kafee.Producer.AsyncWorker`
-          directly without setting `auto_state_producers` to `true` in when creating
-          your `:brod_client` instance.
+    try do
+      {:ok, send_ref} = :brod.produce(state.brod_client_id, state.topic, state.partition, :undefined, messages)
 
-          #{Exception.format(:error, err)}
-        """,
-        topic: state.topic,
-        partition: state.partition
+      :telemetry.execute(
+        [:kafee, :produce, :start],
+        %{monotonic_time: telemetry_produce_start_time, system_time: :erlang.system_time()},
+        %{
+          count: messages_count,
+          telemetry_span_context: telemetry_produce_ref,
+          topic: state.topic,
+          partition: state.partition
+        }
       )
 
-      send_interval_ref = Process.send_after(self(), :send, state.send_interval)
-      {:noreply, %{state | send_interval_ref: send_interval_ref}}
+      send_timeout_ref = Process.send_after(self(), :send_timeout, state.send_timeout)
 
-    err in ArgumentError ->
-      Logger.warn(
-        """
-          A runtime ArgumentError occurred while trying to send messages via `:brod`.
-          This usually results in an infinite unrecoverable loop of errors, so we are
-          going to terminate.
+      {:noreply,
+       %{
+         state
+         | send_ref: send_ref,
+           send_timeout_ref: send_timeout_ref
+       }}
+    rescue
+      err in MatchError ->
+        emit_produce_end_telemetry(state, :exception, %{
+          kind: err.kind,
+          reason: :exception,
+          stacktrace: __STACKTRACE__
+        })
 
-          #{Exception.format(:error, err)}
-        """,
-        topic: state.topic,
-        partition: state.partition
-      )
+        Logger.warn(
+          """
+            Unable to send message to Kafka because the `:brod_producer` is not found.
+            This usually indicates that you are using the `Kafee.Producer.AsyncWorker`
+            directly without setting `auto_state_producers` to `true` in when creating
+            your `:brod_client` instance.
 
-      {:stop, err, state}
+            #{Exception.format(:error, err)}
+          """,
+          topic: state.topic,
+          partition: state.partition
+        )
 
-    err ->
-      Logger.error(
-        """
-          Kafee received an unknown error when trying to send messages to Kafka.
+        send_interval_ref = Process.send_after(self(), :send, state.send_interval)
 
-          #{inspect(err)}
-        """,
-        topic: state.topic,
-        partition: state.partition
-      )
+        {:noreply,
+         %{
+           state
+           | send_count: 0,
+             send_interval_ref: send_interval_ref,
+             telemetry_produce_start_time: nil,
+             telemetry_produce_ref: nil
+         }}
 
-      send_interval_ref = Process.send_after(self(), :send, state.send_interval)
-      {:noreply, %{state | send_interval_ref: send_interval_ref}}
+      err in ArgumentError ->
+        emit_produce_end_telemetry(state, :exception, %{
+          kind: err.kind,
+          reason: :exception,
+          stacktrace: __STACKTRACE__
+        })
+
+        Logger.warn(
+          """
+            A runtime ArgumentError occurred while trying to send messages via `:brod`.
+            This usually results in an infinite unrecoverable loop of errors, so we are
+            going to terminate.
+
+            #{Exception.format(:error, err)}
+          """,
+          topic: state.topic,
+          partition: state.partition
+        )
+
+        {:stop, err,
+         %{
+           state
+           | send_count: 0,
+             telemetry_produce_start_time: nil,
+             telemetry_produce_ref: nil
+         }}
+
+      err ->
+        emit_produce_end_telemetry(state, :exception, %{
+          kind: err.kind,
+          reason: :exception,
+          stacktrace: __STACKTRACE__
+        })
+
+        Logger.error(
+          """
+            Kafee received an unknown error when trying to send messages to Kafka.
+
+            #{Exception.format(:error, err)}
+          """,
+          topic: state.topic,
+          partition: state.partition
+        )
+
+        send_interval_ref = Process.send_after(self(), :send, state.send_interval)
+
+        {:noreply,
+         %{
+           state
+           | send_count: 0,
+             send_interval_ref: send_interval_ref,
+             telemetry_produce_start_time: nil,
+             telemetry_produce_ref: nil
+         }}
+    end
   end
 
   # If we get here, we already have something in flight to Kafka, so we
@@ -162,6 +252,11 @@ defmodule Kafee.Producer.AsyncWorker do
   # to send the message, or some other part of the system is broken.
   # In this case, we want to retry sending the message.
   def handle_info(:send_timeout, state) do
+    emit_produce_end_telemetry(state, :exception, %{
+      kind: :error,
+      reason: :timeout
+    })
+
     Logger.info("Sending messages to Kafka timed out", partition: state.partition, topic: state.topic)
 
     send_interval_ref = Process.send_after(self(), :send, state.send_interval)
@@ -172,7 +267,9 @@ defmodule Kafee.Producer.AsyncWorker do
        | send_count: 0,
          send_interval_ref: send_interval_ref,
          send_timeout_ref: nil,
-         send_ref: nil
+         send_ref: nil,
+         telemetry_produce_start_time: nil,
+         telemetry_produce_ref: nil
      }}
   end
 
@@ -187,7 +284,10 @@ defmodule Kafee.Producer.AsyncWorker do
       ) do
     Process.cancel_timer(state.send_timeout_ref)
 
+    emit_produce_end_telemetry(state, :stop)
+
     {_sent_messages, remaining_messages} = :queue.split(state.send_count, state.queue)
+    emit_queue_telemetry(state, :queue.len(remaining_messages))
 
     send_interval_ref = Process.send_after(self(), :send, state.send_interval)
 
@@ -198,7 +298,9 @@ defmodule Kafee.Producer.AsyncWorker do
          send_count: 0,
          send_interval_ref: send_interval_ref,
          send_timeout_ref: nil,
-         send_ref: nil
+         send_ref: nil,
+         telemetry_produce_start_time: nil,
+         telemetry_produce_ref: nil
      }}
   end
 
@@ -223,9 +325,8 @@ defmodule Kafee.Producer.AsyncWorker do
   def handle_info({:brod_produce_reply, _send_ref, _offset, resp}, state) do
     Logger.warn(
       """
-      Brod acknowledgement received, but it wasn't successful.
+      Brod acknowledgement received, but it wasn't successful. Response:
 
-      Response:
       #{inspect(resp)}
       """,
       topic: state.topic,
@@ -241,13 +342,15 @@ defmodule Kafee.Producer.AsyncWorker do
   @doc false
   def handle_cast({:queue, messages}, state) do
     new_queue = :queue.join(state.queue, :queue.from_list(messages))
+    emit_queue_telemetry(state, :queue.len(new_queue))
     {:noreply, %{state | queue: new_queue}}
   end
 
   # This callback is called when the GenServer is being closed. In this case
   # the queue is already empty so we have nothing to do.
   @doc false
-  def terminate(_reason, %{queue: {[], []}}) do
+  def terminate(_reason, %{queue: {[], []}} = state) do
+    emit_queue_telemetry(state, 0)
     Logger.debug("Stopping Kafee async worker with empty queue")
   end
 
@@ -257,11 +360,28 @@ defmodule Kafee.Producer.AsyncWorker do
   @doc false
   def terminate(_reason, %{send_ref: nil} = state) do
     for messages <- Enum.chunk_every(:queue.to_list(state.queue), state.send_count_max) do
-      :ok = :brod.produce_sync(state.brod_client_id, state.topic, state.partition, :undefined, messages)
+      :telemetry.span(
+        [:kafee, :produce],
+        %{count: length(messages), topic: state.topic, partition: state.partition},
+        fn ->
+          :ok = :brod.produce_sync(state.brod_client_id, state.topic, state.partition, :undefined, messages)
+          {:ok, %{}}
+        end
+      )
     end
+
+    emit_queue_telemetry(state, 0)
   rescue
     err ->
-      Logger.error("Unable to send messages to Kafka: #{inspect(err)}", topic: state.topic, partition: state.partition)
+      Logger.error(
+        """
+        Unable to send messages to Kafka:
+
+        #{Exception.format(:error, err)}
+        """,
+        topic: state.topic,
+        partition: state.partition
+      )
 
       for message <- :queue.to_list(state.queue) do
         Logger.error("Unsent Kafka message", message: message, topic: state.topic, partition: state.partition)
@@ -275,7 +395,10 @@ defmodule Kafee.Producer.AsyncWorker do
 
     case :brod.sync_produce_request_offset(send_ref, state.send_timeout) do
       {:ok, _} ->
+        emit_produce_end_telemetry(state, :stop)
+
         {_sent_messages, remaining_messages} = :queue.split(state.send_count, state.queue)
+        emit_queue_telemetry(state, :queue.len(remaining_messages))
 
         terminate(reason, %{
           state
@@ -287,6 +410,11 @@ defmodule Kafee.Producer.AsyncWorker do
         })
 
       err ->
+        emit_produce_end_telemetry(state, :exception, %{
+          kind: :error,
+          reason: :timeout
+        })
+
         Logger.warn(
           """
           Error while trying to acknowledge last send messages. Retrying before exit.
@@ -367,5 +495,37 @@ defmodule Kafee.Producer.AsyncWorker do
   @spec process_name(:brod.client(), :brod.topic(), :brod.partition()) :: GenServer.name()
   def process_name(brod_client_id, topic, partition) do
     {:via, Registry, {Kafee.Producer.AsyncRegistry, {brod_client_id, :worker, topic, partition}}}
+  end
+
+  @spec emit_queue_telemetry(t(), non_neg_integer()) :: :ok
+  defp emit_queue_telemetry(state, count) do
+    :telemetry.execute([:kafee, :queue], %{count: count}, %{
+      topic: state.topic,
+      partition: state.partition
+    })
+  end
+
+  @spec emit_produce_end_telemetry(t(), atom(), map()) :: :ok
+  defp emit_produce_end_telemetry(state, event, metadata \\ %{})
+  defp emit_produce_end_telemetry(%{telemetry_produce_start_time: nil}, _event, _metadata), do: :ok
+  defp emit_produce_end_telemetry(%{telemetry_produce_ref: nil}, _event, _metadata), do: :ok
+
+  defp emit_produce_end_telemetry(
+         %{telemetry_produce_start_time: start_time, telemetry_produce_ref: ref} = state,
+         event,
+         metadata
+       ) do
+    stop_time = :erlang.monotonic_time()
+
+    :telemetry.execute(
+      [:kafee, :produce, event],
+      %{duration: stop_time - start_time, monotonic_time: stop_time},
+      Map.merge(metadata, %{
+        count: state.send_count,
+        telemetry_span_context: ref,
+        topic: state.topic,
+        partition: state.partition
+      })
+    )
   end
 end

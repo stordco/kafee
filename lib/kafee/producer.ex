@@ -86,6 +86,31 @@ defmodule Kafee.Producer do
   Kafee includes a `Kafee.Producer.TestBackend` to help test if messages
   were sent in your code. See `Kafee.Producer.TestBackend` and
   `Kafee.Testing` for more information.
+
+  ## Telemetry Events
+
+  - `[:kafee, :produce, :start]` - Starting to send a message to Kafka.
+  - `[:kafee, :produce, :stop]` - Kafka acknowledged the message.
+  - `[:kafee, :produce, :exception]` - An exception occurred sending a message to Kafka.
+
+  These events will be emitted for the async backend, and sync backend, but
+  _not_ the test backend. Each will include the topic and partition of the
+  message being sent, as well as the count if you are using the async backend.
+
+  The recommended collection of these metrics can be done via:
+
+      summary("kafee.produce.stop.count",
+        tags: [:topic, :partition]
+      ),
+      summary("kafee.produce.stop.duration",
+        tags: [:topic, :partition],
+        unit: {:native, :millisecond}
+      ),
+      summary("kafee.produce.exception.duration",
+        tags: [:topic, :partition],
+        unit: {:native, :millisecond}
+      )
+
   """
 
   alias Kafee.Producer.{Config, Message}
