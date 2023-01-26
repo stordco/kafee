@@ -62,6 +62,8 @@ defmodule Kafee.Producer.AsyncWorker do
 
     send_interval_ref = Process.send_after(self(), :send, send_interval)
 
+    Logger.metadata(topic: topic, partition: partition)
+
     {:ok,
      %__MODULE__{
        brod_client_id: brod_client_id,
@@ -104,47 +106,35 @@ defmodule Kafee.Producer.AsyncWorker do
     {:noreply, %{state | send_count: messages_count, send_timeout_ref: send_timeout_ref, send_ref: send_ref}}
   rescue
     err in MatchError ->
-      Logger.warn(
-        """
-          Unable to send message to Kafka because the `:brod_producer` is not found.
-          This usually indicates that you are using the `Kafee.Producer.AsyncWorker`
-          directly without setting `auto_state_producers` to `true` in when creating
-          your `:brod_client` instance.
+      Logger.warn("""
+        Unable to send message to Kafka because the `:brod_producer` is not found.
+        This usually indicates that you are using the `Kafee.Producer.AsyncWorker`
+        directly without setting `auto_state_producers` to `true` in when creating
+        your `:brod_client` instance.
 
-          #{Exception.format(:error, err)}
-        """,
-        topic: state.topic,
-        partition: state.partition
-      )
+        #{Exception.format(:error, err)}
+      """)
 
       send_interval_ref = Process.send_after(self(), :send, state.send_interval)
       {:noreply, %{state | send_interval_ref: send_interval_ref}}
 
     err in ArgumentError ->
-      Logger.warn(
-        """
-          A runtime ArgumentError occurred while trying to send messages via `:brod`.
-          This usually results in an infinite unrecoverable loop of errors, so we are
-          going to terminate.
+      Logger.warn("""
+        A runtime ArgumentError occurred while trying to send messages via `:brod`.
+        This usually results in an infinite unrecoverable loop of errors, so we are
+        going to terminate.
 
-          #{Exception.format(:error, err)}
-        """,
-        topic: state.topic,
-        partition: state.partition
-      )
+        #{Exception.format(:error, err)}
+      """)
 
       {:stop, err, state}
 
     err ->
-      Logger.error(
-        """
-          Kafee received an unknown error when trying to send messages to Kafka.
+      Logger.error("""
+        Kafee received an unknown error when trying to send messages to Kafka.
 
-          #{inspect(err)}
-        """,
-        topic: state.topic,
-        partition: state.partition
-      )
+        #{inspect(err)}
+      """)
 
       send_interval_ref = Process.send_after(self(), :send, state.send_interval)
       {:noreply, %{state | send_interval_ref: send_interval_ref}}
@@ -162,7 +152,7 @@ defmodule Kafee.Producer.AsyncWorker do
   # to send the message, or some other part of the system is broken.
   # In this case, we want to retry sending the message.
   def handle_info(:send_timeout, state) do
-    Logger.info("Sending messages to Kafka timed out", partition: state.partition, topic: state.topic)
+    Logger.info("Sending messages to Kafka timed out")
 
     send_interval_ref = Process.send_after(self(), :send, state.send_interval)
 
@@ -209,11 +199,7 @@ defmodule Kafee.Producer.AsyncWorker do
   # messages in Kafka.
   @doc false
   def handle_info({:brod_produce_reply, _send_ref, _offset, :brod_produce_req_acked}, state) do
-    Logger.warn("Brod acknowledgement received that doesn't match internal records",
-      topic: state.topic,
-      partition: state.partition
-    )
-
+    Logger.warn("Brod acknowledgement received that doesn't match internal records")
     send_interval_ref = Process.send_after(self(), :send, state.send_interval)
     {:noreply, %{state | send_interval_ref: send_interval_ref}}
   end
@@ -221,16 +207,11 @@ defmodule Kafee.Producer.AsyncWorker do
   # This handles the case if Brod sends a non successful acknowledgement.
   @doc false
   def handle_info({:brod_produce_reply, _send_ref, _offset, resp}, state) do
-    Logger.warn(
-      """
-      Brod acknowledgement received, but it wasn't successful.
+    Logger.warn("""
+    Brod acknowledgement received, but it wasn't successful. Response:
 
-      Response:
-      #{inspect(resp)}
-      """,
-      topic: state.topic,
-      partition: state.partition
-    )
+    #{inspect(resp)}
+    """)
 
     Process.cancel_timer(state.send_timeout_ref)
     send_interval_ref = Process.send_after(self(), :send, state.send_interval)
@@ -248,7 +229,7 @@ defmodule Kafee.Producer.AsyncWorker do
   # the queue is already empty so we have nothing to do.
   @doc false
   def terminate(_reason, %{queue: {[], []}}) do
-    Logger.debug("Stopping Kafee async worker with empty queue")
+    Logger.info("Stopping Kafee async worker with empty queue")
   end
 
   # In this case, we still have messages to send. We attempt to send them
@@ -256,15 +237,20 @@ defmodule Kafee.Producer.AsyncWorker do
   # developers to handle.
   @doc false
   def terminate(_reason, %{send_ref: nil} = state) do
+    count = :queue.len(state.queue)
+    Logger.info("Attempting to send #{count} messages to Kafka before terminate")
+
     for messages <- Enum.chunk_every(:queue.to_list(state.queue), state.send_count_max) do
       :ok = :brod.produce_sync(state.brod_client_id, state.topic, state.partition, :undefined, messages)
     end
+
+    Logger.info("Sent #{count} messages to Kafka before terminate")
   rescue
     err ->
-      Logger.error("Unable to send messages to Kafka: #{inspect(err)}", topic: state.topic, partition: state.partition)
+      Logger.error("Unable to send messages to Kafka: #{inspect(err)}")
 
       for message <- :queue.to_list(state.queue) do
-        Logger.error("Unsent Kafka message", message: message, topic: state.topic, partition: state.partition)
+        Logger.error("Unsent Kafka message", message: message)
       end
   end
 
@@ -287,16 +273,11 @@ defmodule Kafee.Producer.AsyncWorker do
         })
 
       err ->
-        Logger.warn(
-          """
-          Error while trying to acknowledge last send messages. Retrying before exit.
+        Logger.warn("""
+        Error while trying to acknowledge last send messages. Retrying before exit. Error:
 
-          Error:
-          #{inspect(err)}
-          """,
-          partition: state.partition,
-          topic: state.topic
-        )
+        #{inspect(err)}
+        """)
 
         terminate(reason, %{
           state
