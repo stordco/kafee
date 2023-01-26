@@ -62,6 +62,8 @@ defmodule Kafee.Producer.AsyncWorker do
 
     send_interval_ref = Process.send_after(self(), :send, send_interval)
 
+    Logger.metadata(topic: topic, partition: partition)
+
     {:ok,
      %__MODULE__{
        brod_client_id: brod_client_id,
@@ -112,9 +114,7 @@ defmodule Kafee.Producer.AsyncWorker do
           your `:brod_client` instance.
 
           #{Exception.format(:error, err)}
-        """,
-        topic: state.topic,
-        partition: state.partition
+        """
       )
 
       send_interval_ref = Process.send_after(self(), :send, state.send_interval)
@@ -128,9 +128,7 @@ defmodule Kafee.Producer.AsyncWorker do
           going to terminate.
 
           #{Exception.format(:error, err)}
-        """,
-        topic: state.topic,
-        partition: state.partition
+        """
       )
 
       {:stop, err, state}
@@ -141,9 +139,7 @@ defmodule Kafee.Producer.AsyncWorker do
           Kafee received an unknown error when trying to send messages to Kafka.
 
           #{inspect(err)}
-        """,
-        topic: state.topic,
-        partition: state.partition
+        """
       )
 
       send_interval_ref = Process.send_after(self(), :send, state.send_interval)
@@ -162,7 +158,7 @@ defmodule Kafee.Producer.AsyncWorker do
   # to send the message, or some other part of the system is broken.
   # In this case, we want to retry sending the message.
   def handle_info(:send_timeout, state) do
-    Logger.info("Sending messages to Kafka timed out", partition: state.partition, topic: state.topic)
+    Logger.info("Sending messages to Kafka timed out")
 
     send_interval_ref = Process.send_after(self(), :send, state.send_interval)
 
@@ -209,11 +205,7 @@ defmodule Kafee.Producer.AsyncWorker do
   # messages in Kafka.
   @doc false
   def handle_info({:brod_produce_reply, _send_ref, _offset, :brod_produce_req_acked}, state) do
-    Logger.warn("Brod acknowledgement received that doesn't match internal records",
-      topic: state.topic,
-      partition: state.partition
-    )
-
+    Logger.warn("Brod acknowledgement received that doesn't match internal records")
     send_interval_ref = Process.send_after(self(), :send, state.send_interval)
     {:noreply, %{state | send_interval_ref: send_interval_ref}}
   end
@@ -227,9 +219,7 @@ defmodule Kafee.Producer.AsyncWorker do
 
       Response:
       #{inspect(resp)}
-      """,
-      topic: state.topic,
-      partition: state.partition
+      """
     )
 
     Process.cancel_timer(state.send_timeout_ref)
@@ -247,8 +237,8 @@ defmodule Kafee.Producer.AsyncWorker do
   # This callback is called when the GenServer is being closed. In this case
   # the queue is already empty so we have nothing to do.
   @doc false
-  def terminate(_reason, %{queue: {[], []}}) do
-    Logger.debug("Stopping Kafee async worker with empty queue")
+  def terminate(_reason, %{queue: {[], []}} = state) do
+    Logger.info("Stopping Kafee async worker with empty queue")
   end
 
   # In this case, we still have messages to send. We attempt to send them
@@ -256,15 +246,20 @@ defmodule Kafee.Producer.AsyncWorker do
   # developers to handle.
   @doc false
   def terminate(_reason, %{send_ref: nil} = state) do
+    count = :queue.len(state.queue)
+    Logger.info("Attempting to send #{count} messages to Kafka before terminate")
+
     for messages <- Enum.chunk_every(:queue.to_list(state.queue), state.send_count_max) do
       :ok = :brod.produce_sync(state.brod_client_id, state.topic, state.partition, :undefined, messages)
     end
+    
+    Logger.info("Sent #{count} messages to Kafka before terminate")
   rescue
     err ->
-      Logger.error("Unable to send messages to Kafka: #{inspect(err)}", topic: state.topic, partition: state.partition)
+      Logger.error("Unable to send messages to Kafka: #{inspect(err)}")
 
       for message <- :queue.to_list(state.queue) do
-        Logger.error("Unsent Kafka message", message: message, topic: state.topic, partition: state.partition)
+        Logger.error("Unsent Kafka message", message: message)
       end
   end
 
@@ -293,9 +288,7 @@ defmodule Kafee.Producer.AsyncWorker do
 
           Error:
           #{inspect(err)}
-          """,
-          partition: state.partition,
-          topic: state.topic
+          """
         )
 
         terminate(reason, %{
