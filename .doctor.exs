@@ -1,5 +1,7 @@
 %Doctor.Config{
-  ignore_modules: [],
+  ignore_modules: [
+    Jason.Encoder.Kafee.Producer.Message
+  ],
   ignore_paths: [],
   min_module_doc_coverage: 80,
   min_module_spec_coverage: 50,
