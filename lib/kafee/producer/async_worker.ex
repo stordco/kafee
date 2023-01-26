@@ -237,7 +237,7 @@ defmodule Kafee.Producer.AsyncWorker do
   # This callback is called when the GenServer is being closed. In this case
   # the queue is already empty so we have nothing to do.
   @doc false
-  def terminate(_reason, %{queue: {[], []}} = state) do
+  def terminate(_reason, %{queue: {[], []}}) do
     Logger.info("Stopping Kafee async worker with empty queue")
   end
 
