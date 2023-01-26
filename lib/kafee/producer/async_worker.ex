@@ -208,9 +208,8 @@ defmodule Kafee.Producer.AsyncWorker do
   @doc false
   def handle_info({:brod_produce_reply, _send_ref, _offset, resp}, state) do
     Logger.warn("""
-    Brod acknowledgement received, but it wasn't successful.
+    Brod acknowledgement received, but it wasn't successful. Response:
 
-    Response:
     #{inspect(resp)}
     """)
 
@@ -275,9 +274,8 @@ defmodule Kafee.Producer.AsyncWorker do
 
       err ->
         Logger.warn("""
-        Error while trying to acknowledge last send messages. Retrying before exit.
+        Error while trying to acknowledge last send messages. Retrying before exit. Error:
 
-        Error:
         #{inspect(err)}
         """)
 
