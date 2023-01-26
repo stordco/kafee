@@ -35,6 +35,7 @@ defmodule Kafee.MixProject do
     [
       {:brod, "~> 3.16.2"},
       {:jason, ">= 1.0.0"},
+      {:telemetry, ">= 1.0.0"},
 
       # Dev & Test dependencies
       {:benchee, "~> 1.0", only: [:dev, :test]},
