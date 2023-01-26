@@ -13,7 +13,8 @@ defmodule Kafee.MixProject do
       deps: deps(),
       docs: docs(),
       package: package(),
-      source_url: "https://github.com/stordco/kafee"
+      source_url: "https://github.com/stordco/kafee",
+      dialyzer: [plt_add_apps: [:jason]]
     ]
   end
 
@@ -33,6 +34,7 @@ defmodule Kafee.MixProject do
   defp deps do
     [
       {:brod, "~> 3.16.2"},
+      {:jason, ">= 1.0.0"},
 
       # Dev & Test dependencies
       {:benchee, "~> 1.0", only: [:dev, :test]},
