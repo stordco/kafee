@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.2.0](https://github.com/stordco/kafee/compare/v2.1.0...v2.2.0) (2023-01-26)
+
+
+### Features
+
+* add telemetry events ([#29](https://github.com/stordco/kafee/issues/29)) ([d6aa690](https://github.com/stordco/kafee/commit/d6aa6904cd08b05ad23e00b4bdc7fe9e270da521))
+* allow messages to be json encoded ([cdbb269](https://github.com/stordco/kafee/commit/cdbb269d255fa9a777eeffd2dbaf6f229233adaf))
+
+
+### Bug Fixes
+
+* more debugging around async worker ([#27](https://github.com/stordco/kafee/issues/27)) ([62c10d7](https://github.com/stordco/kafee/commit/62c10d76f3ef9ace39e5f526dc28a62c0fddd12f))
+* update dialyzer to pass jason encoding ([80265dd](https://github.com/stordco/kafee/commit/80265ddd09706fbbf23597e79601e2cab62a73dc))
+
 ## [2.1.0](https://github.com/stordco/kafee/compare/v2.0.5...v2.1.0) (2023-01-25)
 
 
