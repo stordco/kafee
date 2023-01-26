@@ -3,6 +3,8 @@ defmodule Kafee.Producer.Message do
   A message struct for sending to Kafka.
   """
 
+  @derive {Jason.Encoder, except: []}
+
   defstruct [:key, :value, :topic, :partition, :partition_fun, headers: []]
 
   @type t :: %__MODULE__{
