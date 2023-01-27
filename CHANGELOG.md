@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1](https://github.com/stordco/kafee/compare/v2.2.0...v2.2.1) (2023-01-27)
+
+
+### Bug Fixes
+
+* ArgumentError from Kafee.Producer.AsyncWorker ([3e405ba](https://github.com/stordco/kafee/commit/3e405ba89fa91c306d9897a31e8fbff3bee7279a))
+
 ## [2.2.0](https://github.com/stordco/kafee/compare/v2.1.0...v2.2.0) (2023-01-26)
 
 
