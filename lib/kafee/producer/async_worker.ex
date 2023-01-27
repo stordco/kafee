@@ -118,7 +118,7 @@ defmodule Kafee.Producer.AsyncWorker do
 
     {send_messages, _remaining_messages} =
       if :queue.len(state.queue) > state.send_count_max,
-        do: :queue.split(state.queue, state.send_count_max),
+        do: :queue.split(state.send_count_max, state.queue),
         else: {state.queue, :queue.new()}
 
     messages = :queue.to_list(send_messages)
@@ -154,56 +154,6 @@ defmodule Kafee.Producer.AsyncWorker do
            send_timeout_ref: send_timeout_ref
        }}
     rescue
-      err in MatchError ->
-        emit_produce_end_telemetry(state, :exception, %{
-          kind: err.kind,
-          reason: :exception,
-          stacktrace: __STACKTRACE__
-        })
-
-        Logger.warn("""
-          Unable to send message to Kafka because the `:brod_producer` is not found.
-          This usually indicates that you are using the `Kafee.Producer.AsyncWorker`
-          directly without setting `auto_state_producers` to `true` in when creating
-          your `:brod_client` instance.
-
-          #{Exception.format(:error, err)}
-        """)
-
-        send_interval_ref = Process.send_after(self(), :send, state.send_interval)
-
-        {:noreply,
-         %{
-           state
-           | send_count: 0,
-             send_interval_ref: send_interval_ref,
-             telemetry_produce_start_time: nil,
-             telemetry_produce_ref: nil
-         }}
-
-      err in ArgumentError ->
-        emit_produce_end_telemetry(state, :exception, %{
-          kind: err.kind,
-          reason: :exception,
-          stacktrace: __STACKTRACE__
-        })
-
-        Logger.warn("""
-          A runtime ArgumentError occurred while trying to send messages via `:brod`.
-          This usually results in an infinite unrecoverable loop of errors, so we are
-          going to terminate.
-
-          #{Exception.format(:error, err)}
-        """)
-
-        {:stop, err,
-         %{
-           state
-           | send_count: 0,
-             telemetry_produce_start_time: nil,
-             telemetry_produce_ref: nil
-         }}
-
       err ->
         emit_produce_end_telemetry(state, :exception, %{
           kind: err.kind,
@@ -211,11 +161,22 @@ defmodule Kafee.Producer.AsyncWorker do
           stacktrace: __STACKTRACE__
         })
 
-        Logger.error("""
-          Kafee received an unknown error when trying to send messages to Kafka.
+        if err in MatchError do
+          Logger.warn("""
+            Unable to send message to Kafka because the `:brod_producer` is not found.
+            This usually indicates that you are using the `Kafee.Producer.AsyncWorker`
+            directly without setting `auto_state_producers` to `true` in when creating
+            your `:brod_client` instance.
 
-          #{Exception.format(:error, err)}
-        """)
+            #{Exception.format(:error, err)}
+          """)
+        else
+          Logger.error("""
+            Kafee received an unknown error when trying to send messages to Kafka.
+
+            #{Exception.format(:error, err)}
+          """)
+        end
 
         send_interval_ref = Process.send_after(self(), :send, state.send_interval)
 
