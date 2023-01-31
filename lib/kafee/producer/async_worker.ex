@@ -156,7 +156,7 @@ defmodule Kafee.Producer.AsyncWorker do
     rescue
       err ->
         emit_produce_end_telemetry(state, :exception, %{
-          kind: err.kind,
+          kind: err.__struct__,
           reason: :exception,
           stacktrace: __STACKTRACE__
         })
