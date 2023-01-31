@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.2](https://github.com/stordco/kafee/compare/v2.2.1...v2.2.2) (2023-01-31)
+
+
+### Bug Fixes
+
+* update telemetry error kind to struct name ([#31](https://github.com/stordco/kafee/issues/31)) ([4ee2cb2](https://github.com/stordco/kafee/commit/4ee2cb2004c339d2565ba4c6f98ba373caacc15d))
+
 ## [2.2.1](https://github.com/stordco/kafee/compare/v2.2.0...v2.2.1) (2023-01-27)
 
 
