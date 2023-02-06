@@ -161,22 +161,11 @@ defmodule Kafee.Producer.AsyncWorker do
           stacktrace: __STACKTRACE__
         })
 
-        if err in MatchError do
-          Logger.warn("""
-            Unable to send message to Kafka because the `:brod_producer` is not found.
-            This usually indicates that you are using the `Kafee.Producer.AsyncWorker`
-            directly without setting `auto_state_producers` to `true` in when creating
-            your `:brod_client` instance.
+        Logger.error("""
+          Kafee received an unknown error when trying to send messages to Kafka.
 
-            #{Exception.format(:error, err)}
-          """)
-        else
-          Logger.error("""
-            Kafee received an unknown error when trying to send messages to Kafka.
-
-            #{Exception.format(:error, err)}
-          """)
-        end
+          #{Exception.format(:error, err)}
+        """)
 
         send_interval_ref = Process.send_after(self(), :send, state.send_interval)
 
