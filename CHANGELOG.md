@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.3](https://github.com/stordco/kafee/compare/v2.2.2...v2.2.3) (2023-02-06)
+
+
+### Bug Fixes
+
+* remove extra error log statement ([e4dab28](https://github.com/stordco/kafee/commit/e4dab28f520eb4eb9a9e18a0e03702810ce72f69))
+
 ## [2.2.2](https://github.com/stordco/kafee/compare/v2.2.1...v2.2.2) (2023-01-31)
 
 
