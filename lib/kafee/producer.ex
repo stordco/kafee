@@ -56,10 +56,10 @@ defmodule Kafee.Producer do
   At which point you will be able to do this:
 
       iex> :ok = MyProducer.produce([%Kafee.Producer.Message{
-        key: "key",
-        value: "value",
-        topic: "my-topic"
-      }])
+      iex>   key: "key",
+      iex>   value: "value",
+      iex>   topic: "my-topic"
+      iex> }])
 
   Though we don't recommend calling `produce/1` directly in your code.
   Instead, you should add some function heads to your module to handle
@@ -79,7 +79,7 @@ defmodule Kafee.Producer do
 
   Then just safely call the `publish/2` function in your application.
 
-      iex> :ok = MyProducer.publish(:order_created, order)
+      iex> :ok = MyProducer.publish(:order_created, %Order{})
 
   ## Testing
 
@@ -113,7 +113,7 @@ defmodule Kafee.Producer do
 
   """
 
-  alias Kafee.Producer.{Config, Message}
+  alias Kafee.Producer.{Config, Message, ValidationError}
 
   @doc false
   defmacro __using__(module_opts \\ []) do
@@ -180,8 +180,8 @@ defmodule Kafee.Producer do
 
   ## Examples
 
-      iex> normalize([%Message{}], MyProducer)
-      [%Message{}]
+      iex> normalize([%Kafee.Producer.Message{key: "test", partition: nil}], MyProducer)
+      [%Kafee.Producer.Message{key: "test", partition: 0}]
 
   """
   @spec normalize([Message.t()], atom()) :: [Message.t()]
@@ -220,8 +220,8 @@ defmodule Kafee.Producer do
 
   ## Examples
 
-      iex> validate!([%Message{topic: "test", partition: 1}])
-      [%Message{topic: "test", partition: 1}]
+      iex> validate_batch!([%Kafee.Producer.Message{topic: "test", partition: 1}])
+      [%Kafee.Producer.Message{topic: "test", partition: 1}]
 
   """
   @spec validate_batch!([Message.t()]) :: [Message.t()]
@@ -235,31 +235,35 @@ defmodule Kafee.Producer do
   in-line before it gets to a queue, where the problem would be much,
   _much_ bigger.
 
+      iex> validate!(%Kafee.Producer.Message{topic: nil, partition: 0})
+      ** (Kafee.Producer.ValidationError) Message is missing a topic to send to.
+
+      iex> validate!(%Kafee.Producer.Message{topic: "", partition: nil})
+      ** (Kafee.Producer.ValidationError) Message is missing a partition to send to.
+
+      iex> validate!(%Kafee.Producer.Message{topic: "", partition: 0, headers: [{"test", nil}]})
+      ** (Kafee.Producer.ValidationError) Message header keys and values must be a binary value.
+
+      iex> validate!(%Kafee.Producer.Message{topic: "", partition: 0, headers: []})
+      %Kafee.Producer.Message{topic: "", partition: 0, headers: []}
+
   """
   @spec validate!(Message.t()) :: Message.t()
   def validate!(%Message{topic: nil} = message),
-    do:
-      raise(RuntimeError,
-        message: """
-        `Kafee.Producer.Message` is missing a topic to send to.
-
-        Message:
-        #{inspect(message)}
-        """
-      )
+    do: raise(ValidationError, kafee_message: message, validation_error: :topic)
 
   def validate!(%Message{partition: nil} = message),
-    do:
-      raise(RuntimeError,
-        message: """
-        `Kafee.Producer.Message` is missing a partition to send to.
+    do: raise(ValidationError, kafee_message: message, validation_error: :partition)
 
-        Message:
-        #{inspect(message)}
-        """
-      )
+  def validate!(%Message{} = message) do
+    for {key, value} <- message.headers do
+      if not (is_binary(key) and is_binary(value)) do
+        raise(ValidationError, kafee_message: message, validation_error: :headers)
+      end
+    end
 
-  def validate!(%Message{} = message), do: message
+    message
+  end
 
   @doc """
   Produces a list of messages depending on the configuration set
@@ -267,7 +271,7 @@ defmodule Kafee.Producer do
 
   ## Examples
 
-      iex> produce([message], MyProducer)
+      iex> produce([%Kafee.Producer.Message{}], MyProducer)
       :ok
 
   """
