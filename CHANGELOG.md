@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/stordco/kafee/compare/v2.2.3...v2.3.0) (2023-02-08)
+
+
+### Features
+
+* add header binary validation before producing message ([#34](https://github.com/stordco/kafee/issues/34)) ([5d217a7](https://github.com/stordco/kafee/commit/5d217a744d050e70178ea5f040f77d5a73b4e200))
+
 ## [2.2.3](https://github.com/stordco/kafee/compare/v2.2.2...v2.2.3) (2023-02-06)
 
 
