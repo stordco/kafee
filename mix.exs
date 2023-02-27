@@ -34,8 +34,13 @@ defmodule Kafee.MixProject do
   defp deps do
     [
       {:brod, "~> 3.16.2"},
+      {:dog_sketch, "~> 0.1.0"},
       {:jason, ">= 1.0.0"},
+      {:message_pack, "~> 0.2.0", override: true},
+      {:opentelemetry_api, ">= 1.0.0"},
+      {:protobuf, "~> 0.10.0"},
       {:telemetry, ">= 1.0.0"},
+      {:tesla, ">= 1.5.1"},
 
       # Dev & Test dependencies
       {:benchee, "~> 1.0", only: [:dev, :test]},
