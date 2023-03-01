@@ -25,6 +25,23 @@ defmodule Kafee.Telemetry.DataStreams.StatsPayload do
         }
 
   @doc """
+  Creates a new payload.
+  """
+  @spec new() :: t()
+  def new do
+    config = Application.get_env(:kafee, :telemetry, [])
+    service = Keyword.get(config, :service, "unnamed-elixir-service")
+    env = Keyword.get(config, :env, "")
+    primary_tag = Keyword.get(config, :primary_tag, "")
+
+    %__MODULE__{
+      env: env,
+      service: service,
+      primary_tag: primary_tag
+    }
+  end
+
+  @doc """
   Changes the struct to a string keyed map that DataDog
   expects.
   """

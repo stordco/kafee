@@ -20,13 +20,18 @@ defmodule Kafee.Telemetry.DataStreams.StatsPoint do
             edge_latency: DogSketch.SimpleDog.new(@sketch_opts),
             timestamp_type: "current"
 
+  @typedoc """
+  Aggregated data from multiple single Kafka message points. This
+  is unique to the hash and parent hash (making a single pathway),
+  but aggregates the pathway and edge latency.
+  """
   @type t :: %__MODULE__{
           service: String.t(),
           edge_tags: [String.t()],
           hash: non_neg_integer(),
           parent_hash: non_neg_integer(),
-          pathway_latency: DogSketch.SimpleDog.t(),
-          edge_latency: DogSketch.SimpleDog.t(),
+          pathway_latency: map(),
+          edge_latency: map(),
           # "current" or "origin"
           timestamp_type: String.t()
         }
@@ -58,9 +63,9 @@ defmodule Kafee.Telemetry.DataStreams.StatsPoint do
         interpolation: :NONE
       },
       positiveValues: %{
-        binCounts: dog |> SimpleDog.to_list() |> Enum.map(fn {k, v} -> %Store.BinCountsEntry{key: v, value: k} end),
-        #contiguousBinCounts: [1, 2, 3, 4],
-        #contiguousBinIndexOffset: 2_147_483_647
+        binCounts: dog |> SimpleDog.to_list() |> Enum.map(fn {k, v} -> %Store.BinCountsEntry{key: v, value: k} end)
+        # contiguousBinCounts: [1, 2, 3, 4],
+        # contiguousBinIndexOffset: 2_147_483_647
       },
       negativeValues: %{
         contiguousBinCounts: nil

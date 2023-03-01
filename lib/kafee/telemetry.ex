@@ -40,6 +40,13 @@ defmodule Kafee.Telemetry do
       summary("kafee.produce.exception.duration",
         tags: [:topic, :partition],
         unit: {:native, :millisecond}
-      )
+      ),
+
+      count("datadog.datastreams.aggregator.payloads_in"),
+      count("datadog.datastreams.aggregator.flushed_payloads"),
+      count("datadog.datastreams.aggregator.flushed_buckets"),
+      count("datadog.datastreams.aggregator.flush_errors"),
+      count("datadog.datastreams.dropped_payloads"),
+
   """
 end

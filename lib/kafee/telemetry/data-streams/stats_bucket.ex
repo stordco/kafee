@@ -8,7 +8,8 @@ defmodule Kafee.Telemetry.DataStreams.StatsBucket do
 
   alias Kafee.Telemetry.DataStreams.{Backlog, StatsPoint}
 
-  @duration 10 * 1_000_000_000 # 10 seconds
+  # 10 seconds
+  @duration 10 * 1_000_000_000
 
   defstruct start: 0,
             duration: @duration,

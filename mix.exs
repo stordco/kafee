@@ -35,6 +35,7 @@ defmodule Kafee.MixProject do
     [
       {:brod, "~> 3.16.2"},
       {:dog_sketch, "~> 0.1.0"},
+      {:fnv, "~> 0.3.2"},
       {:jason, ">= 1.0.0"},
       {:message_pack, "~> 0.2.0", override: true},
       {:opentelemetry_api, ">= 1.0.0"},
