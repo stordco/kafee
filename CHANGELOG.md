@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.1](https://github.com/stordco/kafee/compare/v2.3.0...v2.3.1) (2023-03-10)
+
+
+### Bug Fixes
+
+* send whole message with sync_backend ([#37](https://github.com/stordco/kafee/issues/37)) ([1dde3fb](https://github.com/stordco/kafee/commit/1dde3fbd801bda4b4ce45babff6331c999df68d6))
+
 ## [2.3.0](https://github.com/stordco/kafee/compare/v2.2.3...v2.3.0) (2023-02-08)
 
 
