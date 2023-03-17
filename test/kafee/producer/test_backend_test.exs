@@ -1,5 +1,6 @@
 defmodule Kafee.Producer.TestBackendTest do
   use Kafee.KafkaCase
+  import Kafee.Testing
 
   defmodule TestProducer do
     use Kafee.Producer, producer_backend: Kafee.Producer.TestBackend
@@ -27,8 +28,6 @@ defmodule Kafee.Producer.TestBackendTest do
   end
 
   describe "assert_message_produced/2" do
-    import Kafee.Testing
-
     test "it asserts all keys on a message" do
       message = %Kafee.Producer.Message{
         key: "test-key",
@@ -71,8 +70,6 @@ defmodule Kafee.Producer.TestBackendTest do
   end
 
   describe "refute_producer_message/2" do
-    import Kafee.Testing
-
     test "refutes that a message was produced when we don't call produce" do
       refute_producer_message(TestProducer, %{key: "test-key-go-weeee"})
     end
