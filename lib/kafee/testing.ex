@@ -70,6 +70,57 @@ defmodule Kafee.Testing do
   end
 
   @doc """
+  Refutes that a `Kafee.Producer` sent a message that matches the
+  given.
+
+  ## Examples
+
+      iex> refute_producer_message(MyProducer, %{
+      ...>   key: "test-key",
+      ...>   topic: "test-topic"
+      ...> })
+      true
+
+  """
+  defmacro refute_producer_message(producer, map) do
+    assertion =
+      Macro.escape(
+        quote do
+          refute_message_produced(unquote(producer), unquote(map))
+        end,
+        prune_metadata: true
+      )
+
+    quote do
+      map = unquote(map)
+      messages = Kafee.Testing.producer_messages(unquote(producer))
+
+      keys =
+        map
+        |> Map.delete(:__struct__)
+        |> Map.keys()
+
+      in_list? =
+        Enum.any?(messages, fn message ->
+          Enum.all?(keys, fn key ->
+            Map.get(message, key) == Map.get(map, key)
+          end)
+        end)
+
+      if in_list? do
+        raise ExUnit.AssertionError,
+          args: [unquote(producer), unquote(map)],
+          left: map,
+          right: messages,
+          expr: unquote(assertion),
+          message: "Message matching the map given was found while it shouldn't"
+      else
+        true
+      end
+    end
+  end
+
+  @doc """
   Returns all of the messages that were sent via a producer.
 
   ## Examples
