@@ -69,4 +69,27 @@ defmodule Kafee.Producer.TestBackendTest do
       end
     end
   end
+
+  describe "refute_producer_message/2" do
+    import Kafee.Testing
+
+    test "refutes that a message was produced when we don't call produce" do
+      refute_producer_message(TestProducer, %{key: "test-key-go-weeee"})
+    end
+
+    test "raises an error when the message was actually produced" do
+      message = %Kafee.Producer.Message{
+        key: "test-key-no-go",
+        value: "test-value-mega-failure",
+        topic: "local-dev-machine",
+        partition: 0
+      }
+
+      assert :ok = TestProducer.produce([message])
+
+      assert_raise ExUnit.AssertionError, ~r/Message matching the map given was found while it shouldn't/, fn ->
+        refute_producer_message(TestProducer, %{key: "test-key-no-go"})
+      end
+    end
+  end
 end
