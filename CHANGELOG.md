@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.0](https://github.com/stordco/kafee/compare/v2.3.1...v2.4.0) (2023-03-17)
+
+
+### Features
+
+* refute_producer_message/2 ([#39](https://github.com/stordco/kafee/issues/39)) ([a322541](https://github.com/stordco/kafee/commit/a3225416c12bfe9e24edd5e1d3fe825cc54013b0))
+
 ## [2.3.1](https://github.com/stordco/kafee/compare/v2.3.0...v2.3.1) (2023-03-10)
 
 
