@@ -26,35 +26,40 @@ defmodule Kafee.Producer.AsyncWorker do
 
   require Logger
 
+  # The max request size Kafka can handle by default is 1mb.
+  # We shrink it by 8kb as an extra precaution for data.
+  @max_request_size 992_000
+
   defstruct [
     :brod_client_id,
     :partition,
     :queue,
-    :send_count,
-    :send_count_max,
-    :send_interval,
-    :send_interval_ref,
+    :send_throttle_time,
     :send_ref,
     :send_timeout,
-    :send_timeout_ref,
-    :telemetry_produce_start_time,
-    :telemetry_produce_ref,
     :topic
   ]
 
+  @typedoc """
+  Internal data for the worker. Fields are as follow:
+
+  - `brod_client_id` - The client id used for talking to `:brod`
+  - `partition` - The Kafka partition we are sending messages to
+  - `queue` - A `:queue` of messages waiting to be sent
+  - `send_throttle_time` - A throttle time for sending messages to Kafka
+  - `send_ref` - A reference to the task sending messages to Kafka
+  - `send_timeout` - The time we should wait for messages to be acked by Kafka
+    before assuming the worst and retrying
+  - `topic` - The Kafka topic we are sending messages to
+
+  """
   @type t :: %__MODULE__{
           brod_client_id: :brod.client_id(),
           partition: :brod.partition(),
           queue: :queue.queue(),
-          send_count: non_neg_integer(),
-          send_count_max: pos_integer(),
-          send_interval: pos_integer(),
-          send_interval_ref: reference() | nil,
-          send_ref: :brod.call_ref() | nil,
+          send_throttle_time: pos_integer(),
+          send_ref: reference() | nil,
           send_timeout: pos_integer(),
-          send_timeout_ref: reference() | nil,
-          telemetry_produce_start_time: integer() | nil,
-          telemetry_produce_ref: reference() | nil,
           topic: :brod.topic()
         }
 
@@ -62,8 +67,7 @@ defmodule Kafee.Producer.AsyncWorker do
           brod_client_id: :brod.client(),
           topic: :brod.topic(),
           partition: :brod.partition(),
-          send_count_max: pos_integer(),
-          send_interval: pos_integer() | nil,
+          send_throttle_time: pos_integer() | nil,
           send_timeout: pos_integer() | nil
         ]
 
@@ -75,11 +79,8 @@ defmodule Kafee.Producer.AsyncWorker do
     brod_client_id = Keyword.fetch!(opts, :brod_client_id)
     topic = Keyword.fetch!(opts, :topic)
     partition = Keyword.fetch!(opts, :partition)
-    send_count_max = Keyword.get(opts, :send_count_max, 100)
-    send_interval = Keyword.get(opts, :send_interval, :timer.seconds(2))
+    send_throttle_time = Keyword.get(opts, :send_throttle_time, 100)
     send_timeout = Keyword.get(opts, :send_timeout, :timer.seconds(10))
-
-    send_interval_ref = Process.send_after(self(), :send, send_interval)
 
     Logger.metadata(topic: topic, partition: partition)
 
@@ -88,15 +89,9 @@ defmodule Kafee.Producer.AsyncWorker do
        brod_client_id: brod_client_id,
        partition: partition,
        queue: :queue.new(),
-       send_count: 0,
-       send_count_max: send_count_max,
-       send_interval: send_interval,
-       send_interval_ref: send_interval_ref,
+       send_throttle_time: send_throttle_time,
        send_ref: nil,
        send_timeout: send_timeout,
-       send_timeout_ref: nil,
-       telemetry_produce_start_time: nil,
-       telemetry_produce_ref: nil,
        topic: topic
      }}
   end
@@ -105,79 +100,15 @@ defmodule Kafee.Producer.AsyncWorker do
   # processing work.
   @doc false
   def handle_info(:send, %{queue: {[], []}} = state) do
-    send_interval_ref = Process.send_after(self(), :send, state.send_interval)
-    {:noreply, %{state | send_interval_ref: send_interval_ref}}
+    {:noreply, state}
   end
 
   # If the `send_ref` state is nil, that means we don't currently have a
   # Kafka request in progress, so we are safe to send more messages.
   @doc false
   def handle_info(:send, %{send_ref: nil} = state) do
-    telemetry_produce_start_time = :erlang.monotonic_time()
-    telemetry_produce_ref = :erlang.make_ref()
-
-    {send_messages, _remaining_messages} =
-      if :queue.len(state.queue) > state.send_count_max,
-        do: :queue.split(state.send_count_max, state.queue),
-        else: {state.queue, :queue.new()}
-
-    messages = :queue.to_list(send_messages)
-    messages_count = length(messages)
-
-    state = %{
-      state
-      | send_count: messages_count,
-        telemetry_produce_start_time: telemetry_produce_start_time,
-        telemetry_produce_ref: telemetry_produce_ref
-    }
-
-    try do
-      {:ok, send_ref} = :brod.produce(state.brod_client_id, state.topic, state.partition, :undefined, messages)
-
-      :telemetry.execute(
-        [:kafee, :produce, :start],
-        %{monotonic_time: telemetry_produce_start_time, system_time: :erlang.system_time()},
-        %{
-          count: messages_count,
-          telemetry_span_context: telemetry_produce_ref,
-          topic: state.topic,
-          partition: state.partition
-        }
-      )
-
-      send_timeout_ref = Process.send_after(self(), :send_timeout, state.send_timeout)
-
-      {:noreply,
-       %{
-         state
-         | send_ref: send_ref,
-           send_timeout_ref: send_timeout_ref
-       }}
-    rescue
-      err ->
-        emit_produce_end_telemetry(state, :exception, %{
-          kind: :error,
-          reason: :exception,
-          stacktrace: __STACKTRACE__
-        })
-
-        Logger.error("""
-          Kafee received an unknown error when trying to send messages to Kafka.
-
-          #{Exception.format(:error, err)}
-        """)
-
-        send_interval_ref = Process.send_after(self(), :send, state.send_interval)
-
-        {:noreply,
-         %{
-           state
-           | send_count: 0,
-             send_interval_ref: send_interval_ref,
-             telemetry_produce_start_time: nil,
-             telemetry_produce_ref: nil
-         }}
-    end
+    send_ref = Task.async(fn -> send_messages(state) end)
+    {:noreply, %{state | send_ref: send_ref}}
   end
 
   # If we get here, we already have something in flight to Kafka, so we
@@ -187,94 +118,45 @@ defmodule Kafee.Producer.AsyncWorker do
     {:noreply, state}
   end
 
-  # If this message is received, it means our last brod send has taken
-  # too long to respond. This might mean the brod process crashed trying
-  # to send the message, or some other part of the system is broken.
-  # In this case, we want to retry sending the message.
-  def handle_info(:send_timeout, state) do
-    emit_produce_end_telemetry(state, :exception, %{
-      kind: :error,
-      reason: :timeout
-    })
-
-    Logger.info("Sending messages to Kafka timed out")
-
-    send_interval_ref = Process.send_after(self(), :send, state.send_interval)
-
-    {:noreply,
-     %{
-       state
-       | send_count: 0,
-         send_interval_ref: send_interval_ref,
-         send_timeout_ref: nil,
-         send_ref: nil,
-         telemetry_produce_start_time: nil,
-         telemetry_produce_ref: nil
-     }}
-  end
-
-  # This is the message we get from `:brod` after Kafka has acknowledged
-  # messages have been received. When this happens, we can safely remove
-  # those messages from the queue and send more messages. Because this is
-  # from erlang, the pattern matching is a little weird.
+  # We sent messages to Kafka successfully, so we pull them from the message queue
+  # and try sending more messages
   @doc false
-  def handle_info(
-        {:brod_produce_reply, send_ref, _offset, :brod_produce_req_acked},
-        %{send_ref: send_ref} = state
-      ) do
-    Process.cancel_timer(state.send_timeout_ref)
+  def handle_info({task_ref, {:ok, messages_sent}}, state) when is_reference(task_ref) do
+    Logger.debug("Successfully sent messages to Kafka")
 
-    emit_produce_end_telemetry(state, :stop)
-
-    {_sent_messages, remaining_messages} = :queue.split(state.send_count, state.queue)
+    {_sent_messages, remaining_messages} = :queue.split(messages_sent, state.queue)
     emit_queue_telemetry(state, :queue.len(remaining_messages))
 
-    send_interval_ref = Process.send_after(self(), :send, state.send_interval)
-
-    {:noreply,
-     %{
-       state
-       | queue: remaining_messages,
-         send_count: 0,
-         send_interval_ref: send_interval_ref,
-         send_timeout_ref: nil,
-         send_ref: nil,
-         telemetry_produce_start_time: nil,
-         telemetry_produce_ref: nil
-     }}
+    Process.send_after(self(), :send, state.send_throttle_time)
+    {:noreply, %{state | queue: remaining_messages, send_ref: nil}}
   end
 
-  # This handles the very rare (and dangerous) case where we get an
-  # acknowledgement from Kafka, that doesn't match the last group of messages
-  # we sent. This _shouldn't_ happen, but if it does, it means state
-  # inconsistency in the form of duplicated messages in Kafka or missing
-  # messages in Kafka.
+  # We ran into an error sending messages to Kafka. We don't clear the queue,
+  # and we try again.
   @doc false
-  def handle_info({:brod_produce_reply, _send_ref, _offset, :brod_produce_req_acked}, state) do
-    Logger.warn("Brod acknowledgement received that doesn't match internal records")
-    send_interval_ref = Process.send_after(self(), :send, state.send_interval)
-    {:noreply, %{state | send_interval_ref: send_interval_ref}}
+  def handle_info({task_ref, error}, state) when is_reference(task_ref) do
+    case error do
+      {:error, :timeout} ->
+        Logger.error("Hit timeout when sending messages to Kafka")
+
+      anything_else ->
+        Logger.error("Error when sending messages to Kafka", error: inspect(anything_else))
+    end
+
+    Process.send_after(self(), :send, state.send_throttle_time)
+    {:noreply, %{send_ref: nil}}
   end
 
-  # This handles the case if Brod sends a non successful acknowledgement.
   @doc false
-  def handle_info({:brod_produce_reply, _send_ref, _offset, resp}, state) do
-    Logger.warn("""
-    Brod acknowledgement received, but it wasn't successful. Response:
-
-    #{inspect(resp)}
-    """)
-
-    Process.cancel_timer(state.send_timeout_ref)
-    send_interval_ref = Process.send_after(self(), :send, state.send_interval)
-    {:noreply, %{state | send_interval_ref: send_interval_ref, send_timeout_ref: nil}}
-  end
+  def handle_info(_, state), do: {:noreply, state}
 
   # A simple request to add more messages to the queue. Nothing fancy here.
   @doc false
   def handle_cast({:queue, messages}, state) do
     new_queue = :queue.join(state.queue, :queue.from_list(messages))
     emit_queue_telemetry(state, :queue.len(new_queue))
+
+    Process.send_after(self(), :send, state.send_throttle_time)
     {:noreply, %{state | queue: new_queue}}
   end
 
@@ -293,24 +175,53 @@ defmodule Kafee.Producer.AsyncWorker do
   def terminate(_reason, %{send_ref: nil} = state) do
     count = :queue.len(state.queue)
     Logger.info("Attempting to send #{count} messages to Kafka before terminate")
+    terminate_send(state)
+  end
 
-    for messages <- Enum.chunk_every(:queue.to_list(state.queue), state.send_count_max) do
-      :telemetry.span(
-        [:kafee, :produce],
-        %{count: length(messages), topic: state.topic, partition: state.partition},
-        fn ->
-          :ok = :brod.produce_sync(state.brod_client_id, state.topic, state.partition, :undefined, messages)
-          {:ok, %{}}
-        end
-      )
+  # In this case, we already have a request in flight, but we need to
+  # make sure we get an ack back from it and send all remaining messages.
+  def terminate(reason, state) do
+    receive do
+      {:ok, sent_message_count} ->
+        {_sent_messages, remaining_messages} = :queue.split(sent_message_count, state.queue)
+        emit_queue_telemetry(state, :queue.len(remaining_messages))
+        terminate(reason, %{state | queue: remaining_messages, send_ref: nil})
+
+      _ ->
+        terminate(reason, %{state | send_ref: nil})
+    after
+      state.send_timeout ->
+        terminate(reason, %{state | send_ref: nil})
     end
+  end
 
-    emit_queue_telemetry(state, 0)
-    Logger.info("Sent #{count} messages to Kafka before terminate")
+  @spec terminate_send(t()) :: :ok
+  defp terminate_send(state) do
+    case send_messages(state) do
+      {:ok, 0} ->
+        Logger.info("Successfully sent all remaining messages to Kafka before termination")
+        emit_queue_telemetry(state, 0)
+        :ok
+
+      {:ok, sent_message_count} ->
+        Logger.debug("Successfully sent #{sent_message_count} messages to Kafka before termination")
+        {_sent_messages, remaining_messages} = :queue.split(sent_message_count, state.queue)
+        emit_queue_telemetry(state, :queue.len(remaining_messages))
+        terminate_send(%{state | queue: remaining_messages})
+
+      anything_else ->
+        Logger.error("Error when sending messages to Kafka before termination", error: inspect(anything_else))
+
+        for message <- :queue.to_list(state.queue) do
+          Logger.error("Unsent Kafka message", message: message)
+        end
+
+        :ok
+    end
   rescue
     err ->
       Logger.error("""
-      Unable to send messages to Kafka:
+      An exception was raised trying to send the remaining messages to Kafka before termination:
 
       #{Exception.format(:error, err)}
       """)
@@ -318,49 +229,6 @@ defmodule Kafee.Producer.AsyncWorker do
       for message <- :queue.to_list(state.queue) do
         Logger.error("Unsent Kafka message", message: message)
       end
-  end
-
-  # In this case, we already have a request in flight, but we need to
-  # make sure we get an ack back from it and send all remaining messages.
-  def terminate(reason, %{send_ref: send_ref} = state) do
-    Process.cancel_timer(state.send_timeout_ref)
-
-    case :brod.sync_produce_request_offset(send_ref, state.send_timeout) do
-      {:ok, _} ->
-        emit_produce_end_telemetry(state, :stop)
-
-        {_sent_messages, remaining_messages} = :queue.split(state.send_count, state.queue)
-        emit_queue_telemetry(state, :queue.len(remaining_messages))
-
-        terminate(reason, %{
-          state
-          | queue: remaining_messages,
-            send_count: 0,
-            send_interval_ref: nil,
-            send_timeout_ref: nil,
-            send_ref: nil
-        })
-
-      err ->
-        emit_produce_end_telemetry(state, :exception, %{
-          kind: :error,
-          reason: :timeout
-        })
-
-        Logger.warn("""
-        Error while trying to acknowledge last send messages. Retrying before exit.
-
-        #{inspect(err)}
-        """)
-
-        terminate(reason, %{
-          state
-          | send_count: 0,
-            send_interval_ref: nil,
-            send_timeout_ref: nil,
-            send_ref: nil
-        })
-    end
   end
 
   ## Client API
@@ -432,27 +300,56 @@ defmodule Kafee.Producer.AsyncWorker do
     })
   end
 
-  @spec emit_produce_end_telemetry(t(), atom(), map()) :: :ok
-  defp emit_produce_end_telemetry(state, event, metadata \\ %{})
-  defp emit_produce_end_telemetry(%{telemetry_produce_start_time: nil}, _event, _metadata), do: :ok
-  defp emit_produce_end_telemetry(%{telemetry_produce_ref: nil}, _event, _metadata), do: :ok
+  @spec send_messages(t()) :: {:ok, sent_count :: pos_integer()} | term()
+  defp send_messages(state) do
+    messages = build_message_batch(state.queue)
+    messages_length = length(messages)
 
-  defp emit_produce_end_telemetry(
-         %{telemetry_produce_start_time: start_time, telemetry_produce_ref: ref} = state,
-         event,
-         metadata
-       ) do
-    stop_time = :erlang.monotonic_time()
+    if messages_length == 0 do
+      {:ok, 0}
+    else
+      Logger.debug("Sending #{messages_length} messages to Kafka")
 
-    :telemetry.execute(
-      [:kafee, :produce, event],
-      %{duration: stop_time - start_time, monotonic_time: stop_time},
-      Map.merge(metadata, %{
-        count: state.send_count,
-        telemetry_span_context: ref,
-        topic: state.topic,
-        partition: state.partition
-      })
-    )
+      :telemetry.span(
+        [:kafee, :produce],
+        %{
+          count: messages_length,
+          topic: state.topic,
+          partition: state.partition
+        },
+        fn ->
+          with {:ok, call_ref} <-
+                 :brod.produce(state.brod_client_id, state.topic, state.partition, :undefined, messages),
+               :ok <- :brod.sync_produce_request(call_ref, state.send_timeout) do
+            {{:ok, messages_length}, %{}}
+          end
+        end
+      )
+    end
+  end
+
+  # We batch matches til we get close to the `max.request.size`
+  # limit in Kafka. This ensures we send the max amount of data per
+  # request without causing errors.
+  @spec build_message_batch(:queue.t()) :: [:brod.message_set()]
+  defp build_message_batch(queue) do
+    {batch_bytes, batch_messages} =
+      Enum.reduce_while(:queue.to_list(queue), {0, []}, fn message, {bytes, batch} ->
+        # I know that `:erlang.external_size` won't match what we actually
+        # send, but it should be under the limit that would cause Kafka errors
+        case bytes + :erlang.external_size(message) do
+          total_bytes when total_bytes <= @max_request_size ->
+            {:cont, {total_bytes, [message | batch]}}
+
+          _ ->
+            {:halt, {bytes, batch}}
+        end
+      end)
+
+    batch_messages = Enum.reverse(batch_messages)
+
+    Logger.debug("Creating batch of #{batch_bytes} bytes", messages: batch_messages)
+
+    batch_messages
   end
 end
