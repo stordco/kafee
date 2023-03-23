@@ -71,6 +71,69 @@ defmodule Kafee.Producer.AsyncWorker do
           send_timeout: pos_integer() | nil
         ]
 
+  ## Client API
+
+  @doc """
+  Starts the GenServer with information about our Kafka instance.
+
+  ## Examples
+
+      iex> init([brod_client_id: :brod_client_id, topic: "test-topic", partition: 1])
+      {:ok, _pid}
+
+  ## Options
+
+  This GenServer requires the following fields to be given on creation.
+
+    - `brod_client_id` The id given when you created a `:brod_client`.
+    - `topic` The Kafka topic to publish to.
+    - `partition` The Kafka partition of the topic to publish to.
+
+  This function also takes additional optional fields.
+
+    - `send_interval` (10_000) The amount of time we should wait before
+      attempting to send messages to Kafka.
+
+  """
+  @spec start_link(opts()) :: GenServer.on_start()
+  def start_link(opts) do
+    brod_client_id = Keyword.fetch!(opts, :brod_client_id)
+    topic = Keyword.fetch!(opts, :topic)
+    partition = Keyword.fetch!(opts, :partition)
+
+    GenServer.start_link(__MODULE__, opts, name: process_name(brod_client_id, topic, partition))
+  end
+
+  @doc """
+  Adds messages to the send queue.
+
+  ## Examples
+
+      iex> queue(async_worker_pid, [message_one, message_two])
+      :ok
+
+  """
+  @spec queue(pid(), :brod.message_set()) :: :ok
+  def queue(pid, messages) do
+    GenServer.cast(pid, {:queue, messages})
+  end
+
+  @doc """
+  Creates a process name via `Kafee.Producer.AsyncRegistry`.
+
+  ## Examples
+
+      iex> process_name(:test, :topic, 1)
+      {:via, Registry, {Kafee.Producer.AsyncRegistry, _}}
+
+  """
+  @spec process_name(:brod.client(), :brod.topic(), :brod.partition()) :: GenServer.name()
+  def process_name(brod_client_id, topic, partition) do
+    {:via, Registry, {Kafee.Producer.AsyncRegistry, {brod_client_id, :worker, topic, partition}}}
+  end
+
+  ## Server API
+
   @doc false
   @spec init(opts()) :: {:ok, t()}
   def init(opts) do
@@ -260,67 +323,6 @@ defmodule Kafee.Producer.AsyncWorker do
       for message <- :queue.to_list(state.queue) do
         Logger.error("Unsent Kafka message", message: message)
       end
-  end
-
-  ## Client API
-
-  @doc """
-  Starts the GenServer with information about our Kafka instance.
-
-  ## Examples
-
-      iex> init([brod_client_id: :brod_client_id, topic: "test-topic", partition: 1])
-      {:ok, _pid}
-
-  ## Options
-
-  This GenServer requires the following fields to be given on creation.
-
-    - `brod_client_id` The id given when you created a `:brod_client`.
-    - `topic` The Kafka topic to publish to.
-    - `partition` The Kafka partition of the topic to publish to.
-
-  This function also takes additional optional fields.
-
-    - `send_interval` (10_000) The amount of time we should wait before
-      attempting to send messages to Kafka.
-
-  """
-  @spec start_link(opts()) :: GenServer.on_start()
-  def start_link(opts) do
-    brod_client_id = Keyword.fetch!(opts, :brod_client_id)
-    topic = Keyword.fetch!(opts, :topic)
-    partition = Keyword.fetch!(opts, :partition)
-
-    GenServer.start_link(__MODULE__, opts, name: process_name(brod_client_id, topic, partition))
-  end
-
-  @doc """
-  Adds messages to the send queue.
-
-  ## Examples
-
-      iex> queue(async_worker_pid, [message_one, message_two])
-      :ok
-
-  """
-  @spec queue(pid(), :brod.message_set()) :: :ok
-  def queue(pid, messages) do
-    GenServer.cast(pid, {:queue, messages})
-  end
-
-  @doc """
-  Creates a process name via `Kafee.Producer.AsyncRegistry`.
-
-  ## Examples
-
-      iex> process_name(:test, :topic, 1)
-      {:via, Registry, {Kafee.Producer.AsyncRegistry, _}}
-
-  """
-  @spec process_name(:brod.client(), :brod.topic(), :brod.partition()) :: GenServer.name()
-  def process_name(brod_client_id, topic, partition) do
-    {:via, Registry, {Kafee.Producer.AsyncRegistry, {brod_client_id, :worker, topic, partition}}}
   end
 
   @spec emit_queue_telemetry(t(), non_neg_integer()) :: :ok
