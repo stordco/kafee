@@ -331,7 +331,7 @@ defmodule Kafee.Producer.AsyncWorker do
   # We batch matches til we get close to the `max.request.size`
   # limit in Kafka. This ensures we send the max amount of data per
   # request without causing errors.
-  @spec build_message_batch(:queue.t()) :: [:brod.message_set()]
+  @spec build_message_batch(:queue.queue()) :: [:brod.message_set()]
   defp build_message_batch(queue) do
     {batch_bytes, batch_messages} =
       Enum.reduce_while(:queue.to_list(queue), {0, []}, fn message, {bytes, batch} ->
