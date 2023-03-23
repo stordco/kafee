@@ -28,14 +28,14 @@ defmodule Kafee.Producer.AsyncWorker do
 
   # The max request size Kafka can handle by default is 1mb.
   # We shrink it by 8kb as an extra precaution for data.
-  @max_request_size 992_000
+  @max_request_size 1_040_384
 
   defstruct [
     :brod_client_id,
     :partition,
     :queue,
     :send_throttle_time,
-    :send_ref,
+    :send_task,
     :send_timeout,
     :topic
   ]
@@ -47,7 +47,7 @@ defmodule Kafee.Producer.AsyncWorker do
   - `partition` - The Kafka partition we are sending messages to
   - `queue` - A `:queue` of messages waiting to be sent
   - `send_throttle_time` - A throttle time for sending messages to Kafka
-  - `send_ref` - A reference to the task sending messages to Kafka
+  - `send_task` - A task currently sending messages to Kafka
   - `send_timeout` - The time we should wait for messages to be acked by Kafka
     before assuming the worst and retrying
   - `topic` - The Kafka topic we are sending messages to
@@ -58,7 +58,7 @@ defmodule Kafee.Producer.AsyncWorker do
           partition: :brod.partition(),
           queue: :queue.queue(),
           send_throttle_time: pos_integer(),
-          send_ref: reference() | nil,
+          send_task: Task.t() | nil,
           send_timeout: pos_integer(),
           topic: :brod.topic()
         }
@@ -90,7 +90,7 @@ defmodule Kafee.Producer.AsyncWorker do
        partition: partition,
        queue: :queue.new(),
        send_throttle_time: send_throttle_time,
-       send_ref: nil,
+       send_task: nil,
        send_timeout: send_timeout,
        topic: topic
      }}
@@ -106,9 +106,9 @@ defmodule Kafee.Producer.AsyncWorker do
   # If the `send_ref` state is nil, that means we don't currently have a
   # Kafka request in progress, so we are safe to send more messages.
   @doc false
-  def handle_info(:send, %{send_ref: nil} = state) do
-    send_ref = Task.async(fn -> send_messages(state) end)
-    {:noreply, %{state | send_ref: send_ref}}
+  def handle_info(:send, %{send_task: nil} = state) do
+    send_task = Task.async(fn -> send_messages(state) end)
+    {:noreply, %{state | send_task: send_task}}
   end
 
   # If we get here, we already have something in flight to Kafka, so we
@@ -121,20 +121,20 @@ defmodule Kafee.Producer.AsyncWorker do
   # We sent messages to Kafka successfully, so we pull them from the message queue
   # and try sending more messages
   @doc false
-  def handle_info({task_ref, {:ok, messages_sent}}, state) when is_reference(task_ref) do
+  def handle_info({task_ref, {:ok, messages_sent}}, %{send_task: %{ref: task_ref}} = state) do
     Logger.debug("Successfully sent messages to Kafka")
 
     {_sent_messages, remaining_messages} = :queue.split(messages_sent, state.queue)
     emit_queue_telemetry(state, :queue.len(remaining_messages))
 
     Process.send_after(self(), :send, state.send_throttle_time)
-    {:noreply, %{state | queue: remaining_messages, send_ref: nil}}
+    {:noreply, %{state | queue: remaining_messages}}
   end
 
   # We ran into an error sending messages to Kafka. We don't clear the queue,
   # and we try again.
   @doc false
-  def handle_info({task_ref, error}, state) when is_reference(task_ref) do
+  def handle_info({task_ref, error}, %{send_task: %{ref: task_ref}} = state) do
     case error do
       {:error, :timeout} ->
         Logger.error("Hit timeout when sending messages to Kafka")
@@ -144,7 +144,38 @@ defmodule Kafee.Producer.AsyncWorker do
     end
 
     Process.send_after(self(), :send, state.send_throttle_time)
-    {:noreply, %{send_ref: nil}}
+    {:noreply, state}
+  end
+
+  # The Task finished successfully. We also received a message above
+  # that does the actual processing. Now we just clear the send_task.
+  @doc false
+  def handle_info({:DOWN, task_ref, :process, _pid, :normal}, %{send_task: %{ref: task_ref}} = state) do
+    {:noreply, %{state | send_task: nil}}
+  end
+
+  # The Task crashed trying to send messages. Major failure.
+  # Requeue and try again.
+  @doc false
+  def handle_info({:DOWN, task_ref, :process, _pid, reason}, %{send_task: %{ref: task_ref}} = state) do
+    Logger.error("Crash when sending messages to Kafka", error: inspect(reason))
+    Process.send_after(self(), :send, state.send_throttle_time)
+    {:noreply, %{state | send_task: nil}}
+  end
+
+  # The next two function heads occur if we receive a message from a process
+  # that is not currently sending messages to Kafka. This is a major bug
+  # as it breaks our order guarantee.
+  @doc false
+  def handle_info({ref, data}, state) when is_reference(ref) do
+    Logger.critical("Data from an unknown process", ref: inspect(ref), data: inspect(data))
+    {:noreply, state}
+  end
+
+  @doc false
+  def handle_info({:DOWN, ref, _, _pid, reason}, state) when is_reference(ref) do
+    Logger.critical("Crash from an unknown process", ref: inspect(ref), error: inspect(reason))
+    {:noreply, state}
   end
 
   @doc false
@@ -172,7 +203,7 @@ defmodule Kafee.Producer.AsyncWorker do
   # synchronously, and if we fail at that we output them to the logs for
   # developers to handle.
   @doc false
-  def terminate(_reason, %{send_ref: nil} = state) do
+  def terminate(_reason, %{send_task: nil} = state) do
     count = :queue.len(state.queue)
     Logger.info("Attempting to send #{count} messages to Kafka before terminate")
     terminate_send(state)
@@ -185,13 +216,13 @@ defmodule Kafee.Producer.AsyncWorker do
       {:ok, sent_message_count} ->
         {_sent_messages, remaining_messages} = :queue.split(sent_message_count, state.queue)
         emit_queue_telemetry(state, :queue.len(remaining_messages))
-        terminate(reason, %{state | queue: remaining_messages, send_ref: nil})
+        terminate(reason, %{state | queue: remaining_messages, send_task: nil})
 
       _ ->
-        terminate(reason, %{state | send_ref: nil})
+        terminate(reason, %{state | send_task: nil})
     after
       state.send_timeout ->
-        terminate(reason, %{state | send_ref: nil})
+        terminate(reason, %{state | send_task: nil})
     end
   end
 
