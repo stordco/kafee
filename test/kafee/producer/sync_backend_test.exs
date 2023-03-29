@@ -28,7 +28,7 @@ defmodule Kafee.Producer.SyncBackendTest do
       message = %Message{topic: topic, partition_fun: :random}
 
       assert {:ok, _partition} = SyncBackend.partition(config, message)
-      assert_called :brod.get_partitions_count(brod_client_id, _topic)
+      assert_called(:brod.get_partitions_count(brod_client_id, _topic))
     end
 
     test "calls :brod_utils.make_part_fun/1", %{config: config, topic: topic} do
@@ -37,7 +37,7 @@ defmodule Kafee.Producer.SyncBackendTest do
       message = %Message{topic: topic, partition_fun: :random}
 
       assert {:ok, _partition} = SyncBackend.partition(config, message)
-      assert_called :brod_utils.make_part_fun(_partition_fun)
+      assert_called(:brod_utils.make_part_fun(_partition_fun))
     end
   end
 
@@ -45,13 +45,14 @@ defmodule Kafee.Producer.SyncBackendTest do
     test "sends messages via :brod.produce_sync/5", %{config: config, topic: topic} do
       spy(:brod)
       start_supervised!({SyncBackend, config})
+
       messages = [
         %Message{topic: topic, partition: 0, key: "key", value: "value"},
         %Message{topic: topic, partition: 0, key: "key", value: "value"}
       ]
 
       assert :ok = SyncBackend.produce(config, messages)
-      assert_called :brod.produce_sync(_brod_client_id, _topic, _partition, _key, _message), 2
+      assert_called(:brod.produce_sync(_brod_client_id, _topic, _partition, _key, _message), 2)
     end
 
     test "returns errors from brod", %{config: config} do
@@ -60,7 +61,7 @@ defmodule Kafee.Producer.SyncBackendTest do
       message = %Message{topic: nil, partition: 0, key: "key", value: "value"}
 
       assert {:error, :unknown_topic_or_partition} = SyncBackend.produce(config, [message])
-      assert_called :brod.produce_sync(_brod_client_id, _topic, _partition, _key, _message), 1
+      assert_called(:brod.produce_sync(_brod_client_id, _topic, _partition, _key, _message), 1)
     end
   end
 end

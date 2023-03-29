@@ -4,12 +4,16 @@ defmodule Kafee.Producer.AsyncWorkerTest do
   alias Kafee.Producer.AsyncWorker
 
   setup %{brod_client_id: brod_client_id, topic: topic} do
-    pid = start_supervised!({AsyncWorker, [
-      brod_client_id: brod_client_id,
-      topic: topic,
-      partition: 0,
-      send_interval: 1
-    ]})
+    pid =
+      start_supervised!(
+        {AsyncWorker,
+         [
+           brod_client_id: brod_client_id,
+           topic: topic,
+           partition: 0,
+           send_interval: 1
+         ]}
+      )
 
     {:ok, %{pid: pid}}
   end

@@ -22,7 +22,7 @@ defmodule Kafee.ProducerTest do
 
   describe "init/1" do
     test "allows setting config via application env", %{topic: topic} do
-      Application.put_env(:kafee, :producer, [topic: topic])
+      Application.put_env(:kafee, :producer, topic: topic)
       start_supervised!(MyProducer)
       assert topic == Config.get(MyProducer).topic
     end
@@ -51,7 +51,7 @@ defmodule Kafee.ProducerTest do
       spy(Kafee.Producer)
       start_supervised(MyProducer)
       assert :ok = MyProducer.produce(message)
-      assert_called_once Kafee.Producer.produce([message], _producer)
+      assert_called_once(Kafee.Producer.produce([message], _producer))
     end
 
     test "allows sending a list of messages", %{topic: topic} do
@@ -63,7 +63,7 @@ defmodule Kafee.ProducerTest do
       spy(Kafee.Producer)
       start_supervised(MyProducer)
       assert :ok = MyProducer.produce(messages)
-      assert_called_once Kafee.Producer.produce(messages, _producer)
+      assert_called_once(Kafee.Producer.produce(messages, _producer))
     end
 
     test "normalizes the data", %{topic: topic} do
@@ -72,7 +72,7 @@ defmodule Kafee.ProducerTest do
       spy(Kafee.Producer)
       start_supervised(MyProducer)
       assert :ok = MyProducer.produce(message)
-      assert_called_once Kafee.Producer.normalize([message], MyProducer)
+      assert_called_once(Kafee.Producer.normalize([message], MyProducer))
     end
   end
 
@@ -126,7 +126,7 @@ defmodule Kafee.ProducerTest do
       spy(Kafee.Producer)
       start_supervised(MyProducer)
       assert ^messages = Kafee.Producer.validate_batch!(messages)
-      assert_called Kafee.Producer.validate!(_message), 2
+      assert_called(Kafee.Producer.validate!(_message), 2)
     end
   end
 
@@ -165,7 +165,7 @@ defmodule Kafee.ProducerTest do
       spy(Kafee.Producer.TestBackend)
       start_supervised(MyProducer)
       assert :ok = Kafee.Producer.produce([message], MyProducer)
-      assert_called_once Kafee.Producer.TestBackend.produce(_config, [message])
+      assert_called_once(Kafee.Producer.TestBackend.produce(_config, [message]))
     end
   end
 end
