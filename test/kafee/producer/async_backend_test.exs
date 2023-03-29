@@ -1,30 +1,14 @@
 defmodule Kafee.Producer.AsyncBackendTest do
   use Kafee.KafkaCase
 
-  defmodule TestProducer do
-    use Kafee.Producer, producer_backend: Kafee.Producer.AsyncBackend
-  end
+  setup %{brod_client_id: brod_client_id, topic: topic} do
+    Application.put_env(:kafee, :producer, [
+      producer_backend: Kafee.Producer.AsyncBackend,
+      topic: topic
+    ])
 
-  setup %{brod_client_id: brod_client_id} do
-    topic = to_string(brod_client_id)
-    :ok = KafkaCase.create_kafka_topic(topic, 4)
-
-    pid =
-      start_supervised!(
-        {TestProducer,
-         [
-           endpoints: KafkaCase.brod_endpoints(),
-           topic: topic,
-           brod_client_opts: KafkaCase.brod_client_config(),
-           kafee_async_worker_opts: [send_interval: 1]
-         ]}
-      )
-
-    on_exit(fn ->
-      KafkaCase.delete_kafka_topic(topic)
-    end)
-
-    {:ok, %{pid: pid}}
+    start_supervised!(MyProducer)
+    :ok
   end
 
   describe "produce/2" do
@@ -37,7 +21,7 @@ defmodule Kafee.Producer.AsyncBackendTest do
           }
         end
 
-      assert :ok = TestProducer.produce(messages)
+      assert :ok = MyProducer.produce(messages)
     end
   end
 end

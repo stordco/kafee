@@ -3,24 +3,15 @@ defmodule Kafee.Producer.AsyncWorkerTest do
 
   alias Kafee.Producer.AsyncWorker
 
-  setup %{brod_client_id: brod_client_id} do
-    topic = to_string(brod_client_id)
-    :ok = KafkaCase.create_kafka_topic(topic, 1)
-
-    opts = [
+  setup %{brod_client_id: brod_client_id, topic: topic} do
+    pid = start_supervised!({AsyncWorker, [
       brod_client_id: brod_client_id,
       topic: topic,
       partition: 0,
       send_interval: 1
-    ]
+    ]})
 
-    pid = start_supervised!({AsyncWorker, opts})
-
-    on_exit(fn ->
-      KafkaCase.delete_kafka_topic(topic)
-    end)
-
-    {:ok, %{topic: topic, partition: 0, pid: pid}}
+    {:ok, %{pid: pid}}
   end
 
   describe "queue/2" do
