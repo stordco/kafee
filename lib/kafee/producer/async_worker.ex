@@ -307,7 +307,7 @@ defmodule Kafee.Producer.AsyncWorker do
         Logger.error("Error when sending messages to Kafka before termination", error: inspect(anything_else))
 
         for message <- :queue.to_list(state.queue) do
-          Logger.error("Unsent Kafka message", message: message)
+          Logger.error("Unsent Kafka message", data: message)
         end
 
         :ok
@@ -321,7 +321,7 @@ defmodule Kafee.Producer.AsyncWorker do
       """)
 
       for message <- :queue.to_list(state.queue) do
-        Logger.error("Unsent Kafka message", message: message)
+        Logger.error("Unsent Kafka message", data: message)
       end
   end
 
@@ -381,7 +381,7 @@ defmodule Kafee.Producer.AsyncWorker do
 
     batch_messages = Enum.reverse(batch_messages)
 
-    Logger.debug("Creating batch of #{batch_bytes} bytes", messages: batch_messages)
+    Logger.debug("Creating batch of #{batch_bytes} bytes", data: batch_messages)
 
     batch_messages
   end
