@@ -1,7 +1,7 @@
 defmodule Kafee.Producer.AsyncBackendTest do
   use Kafee.KafkaCase
 
-  setup %{brod_client_id: brod_client_id, topic: topic} do
+  setup %{topic: topic} do
     Application.put_env(:kafee, :producer,
       producer_backend: Kafee.Producer.AsyncBackend,
       topic: topic
