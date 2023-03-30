@@ -39,6 +39,27 @@ defmodule Kafee.BrodApi do
     ]
   end
 
+  @doc """
+  Generates a list of `Kafee.Producer.Message` for testing.
+  """
+  def generate_producer_message_list(context_or_topic, number \\ 1),
+    do: Enum.map(1..number, fn _ -> generate_producer_message(context_or_topic) end)
+
+  @doc """
+  Generates a `Kafee.Producer.Message` for testing.
+  """
+  def generate_producer_message(%{topic: topic}),
+    do: generate_producer_message(topic)
+
+  def generate_producer_message(topic) do
+    %Kafee.Producer.Message{
+      key: "test",
+      value: "test",
+      topic: topic,
+      partition: 0
+    }
+  end
+
   defdelegate host(), to: Kafee.KafkaApi
   defdelegate port(), to: Kafee.KafkaApi
   defdelegate endpoints(), to: Kafee.KafkaApi

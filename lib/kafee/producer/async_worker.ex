@@ -255,9 +255,10 @@ defmodule Kafee.Producer.AsyncWorker do
   end
 
   # This callback is called when the GenServer is being closed. In this case
-  # the queue is already empty so we have nothing to do.
+  # the queue is already empty and we aren't sending messages, so we have
+  # nothing to do.
   @doc false
-  def terminate(_reason, %{queue: {[], []}} = state) do
+  def terminate(_reason, %{send_task: nil, queue: {[], []}} = state) do
     emit_queue_telemetry(state, 0)
     Logger.debug("Stopping Kafee async worker with empty queue")
   end
@@ -274,14 +275,15 @@ defmodule Kafee.Producer.AsyncWorker do
 
   # In this case, we already have a request in flight, but we need to
   # make sure we get an ack back from it and send all remaining messages.
-  def terminate(reason, state) do
+  def terminate(reason, %{send_task: %{ref: ref}} = state) do
     receive do
-      {:ok, sent_message_count} ->
+      {^ref, {:ok, sent_message_count}} ->
         {_sent_messages, remaining_messages} = :queue.split(sent_message_count, state.queue)
         emit_queue_telemetry(state, :queue.len(remaining_messages))
         terminate(reason, %{state | queue: remaining_messages, send_task: nil})
 
-      _ ->
+      {^ref, error} ->
+        Logger.error("Crash when sending messages to Kafka", error: inspect(error))
         terminate(reason, %{state | send_task: nil})
     after
       state.send_timeout ->
@@ -323,6 +325,8 @@ defmodule Kafee.Producer.AsyncWorker do
       for message <- :queue.to_list(state.queue) do
         Logger.error("Unsent Kafka message", data: message)
       end
+
+      :ok
   end
 
   @spec emit_queue_telemetry(t(), non_neg_integer()) :: :ok
@@ -355,6 +359,8 @@ defmodule Kafee.Producer.AsyncWorker do
                  :brod.produce(state.brod_client_id, state.topic, state.partition, :undefined, messages),
                :ok <- :brod.sync_produce_request(call_ref, state.send_timeout) do
             {{:ok, messages_length}, %{}}
+          else
+            res -> {res, %{}}
           end
         end
       )
