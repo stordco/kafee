@@ -324,15 +324,17 @@ defmodule Kafee.Producer.AsyncWorkerTest do
     end
   end
 
-  defp make_fake_task do
-    if Version.match?(System.version(), ">= 1.14") do
+  if Version.match?(System.version(), ">= 1.14.0") do
+    defp make_fake_task do
       %Task{
         ref: make_ref(),
         pid: self(),
         owner: self(),
         mfa: nil
       }
-    else
+    end
+  else
+    defp make_fake_task do
       %Task{
         ref: make_ref(),
         pid: self(),
