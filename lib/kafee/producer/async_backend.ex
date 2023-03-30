@@ -41,7 +41,7 @@ defmodule Kafee.Producer.AsyncBackend do
     S->>+W: queue/2
     W-->>-P: :ok
 
-    loop Every 10 seconds by default
+    loop
         W->>+Kafka: send/4
         Kafka-->>-W: :ack
     end
