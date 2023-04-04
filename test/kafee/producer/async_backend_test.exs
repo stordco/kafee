@@ -15,8 +15,7 @@ defmodule Kafee.Producer.AsyncBackendTest do
          [
            endpoints: KafkaCase.brod_endpoints(),
            topic: topic,
-           brod_client_opts: KafkaCase.brod_client_config(),
-           kafee_async_worker_opts: [send_interval: 1]
+           brod_client_opts: KafkaCase.brod_client_config()
          ]}
       )
 
