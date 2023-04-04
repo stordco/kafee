@@ -21,27 +21,6 @@ defmodule Kafee.Producer.SyncBackendTest do
     end
   end
 
-  setup %{brod_client_id: brod_client_id} do
-    topic = to_string(brod_client_id)
-    :ok = KafkaCase.create_kafka_topic(topic, 4)
-
-    pid =
-      start_supervised!(
-        {TestProducer,
-         [
-           endpoints: KafkaCase.brod_endpoints(),
-           topic: topic,
-           brod_client_opts: KafkaCase.brod_client_config()
-         ]}
-      )
-
-    on_exit(fn ->
-      KafkaCase.delete_kafka_topic(topic)
-    end)
-
-    {:ok, %{pid: pid}}
-  end
-
   describe "produce/2" do
     test "sends messages via :brod.produce_sync/5", %{config: config, topic: topic} do
       spy(:brod)
