@@ -42,7 +42,7 @@ defmodule Kafee.Producer do
     `:brod_producer`.
 
   - `kafee_async_worker_opts` Extra options to send to the
-    `Kafee.Producer.AsyncWorker` module. This only has effect if you are
+    `Kafee.Producer.AsyncWorker` module. This only has an effect if you are
     using the `Kafee.Producer.AsyncBackend`.
 
   ## Using

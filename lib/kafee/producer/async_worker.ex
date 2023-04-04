@@ -91,8 +91,10 @@ defmodule Kafee.Producer.AsyncWorker do
 
   This function also takes additional optional fields.
 
-    - `send_interval` (10_000) The amount of time we should wait before
-      attempting to send messages to Kafka.
+    - `send_timeout` - (10_000) The time we should wait for messages to be acked by Kafka
+    before assuming the worst and retrying
+    - `send_throttle_time` - (100) A throttle time for sending messages to Kafka
+
 
   """
   @spec start_link(opts()) :: GenServer.on_start()
