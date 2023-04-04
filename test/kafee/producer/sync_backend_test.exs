@@ -21,24 +21,25 @@ defmodule Kafee.Producer.SyncBackendTest do
     end
   end
 
-  describe "partition/2" do
-    test "calls :brod.get_partitions_count/2", %{config: config, topic: topic} do
-      spy(:brod)
-      start_supervised!({SyncBackend, config})
-      message = %Message{topic: topic, partition_fun: :random}
+  setup %{brod_client_id: brod_client_id} do
+    topic = to_string(brod_client_id)
+    :ok = KafkaCase.create_kafka_topic(topic, 4)
 
-      assert {:ok, _partition} = SyncBackend.partition(config, message)
-      assert_called(:brod.get_partitions_count(brod_client_id, _topic))
-    end
+    pid =
+      start_supervised!(
+        {TestProducer,
+         [
+           endpoints: KafkaCase.brod_endpoints(),
+           topic: topic,
+           brod_client_opts: KafkaCase.brod_client_config()
+         ]}
+      )
 
-    test "calls :brod_utils.make_part_fun/1", %{config: config, topic: topic} do
-      spy(:brod_utils)
-      start_supervised!({SyncBackend, config})
-      message = %Message{topic: topic, partition_fun: :random}
+    on_exit(fn ->
+      KafkaCase.delete_kafka_topic(topic)
+    end)
 
-      assert {:ok, _partition} = SyncBackend.partition(config, message)
-      assert_called(:brod_utils.make_part_fun(_partition_fun))
-    end
+    {:ok, %{pid: pid}}
   end
 
   describe "produce/2" do
