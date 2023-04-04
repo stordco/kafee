@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.5.0](https://github.com/stordco/kafee/compare/v2.4.0...v2.5.0) (2023-04-04)
+
+
+### Features
+
+* remove send_interval references, document new async worker options ([#44](https://github.com/stordco/kafee/issues/44)) ([3811516](https://github.com/stordco/kafee/commit/3811516431ac15d7b839e034ba8fbc7c843e7839))
+* use new async queue system for faster sending ([#41](https://github.com/stordco/kafee/issues/41)) ([9f9e105](https://github.com/stordco/kafee/commit/9f9e105b63fef4fd36326f6760977e0e3a69ed2c))
+
 ## [2.4.0](https://github.com/stordco/kafee/compare/v2.3.1...v2.4.0) (2023-03-17)
 
 
