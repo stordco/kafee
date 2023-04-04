@@ -43,8 +43,9 @@ defmodule Kafee.Producer.TestBackend do
   This will always return 0 as the partition.
   """
   @impl true
-  def partition(_config, _message) do
-    {:ok, 0}
+  def partition(_config, message) do
+    partition_fun = :brod_utils.make_part_fun(message.partition_fun)
+    partition_fun.(message.topic, 1, message.key, message.value)
   end
 
   @doc """

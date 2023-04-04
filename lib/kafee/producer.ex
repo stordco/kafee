@@ -56,10 +56,10 @@ defmodule Kafee.Producer do
   At which point you will be able to do this:
 
       iex> :ok = MyProducer.produce([%Kafee.Producer.Message{
-      iex>   key: "key",
-      iex>   value: "value",
-      iex>   topic: "my-topic"
-      iex> }])
+      ...> key: "key",
+      ...> value: "value",
+      ...> topic: "my-topic"
+      ...> }])
 
   Though we don't recommend calling `produce/1` directly in your code.
   Instead, you should add some function heads to your module to handle
@@ -181,7 +181,7 @@ defmodule Kafee.Producer do
   ## Examples
 
       iex> normalize([%Kafee.Producer.Message{key: "test", partition: nil}], MyProducer)
-      [%Kafee.Producer.Message{key: "test", partition: 0}]
+      [%Kafee.Producer.Message{key: "test", partition: 0, partition_fun: :random}]
 
   """
   @spec normalize([Message.t()], atom()) :: [Message.t()]
