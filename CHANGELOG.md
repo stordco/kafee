@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.6.0](https://github.com/stordco/kafee/compare/v2.5.0...v2.6.0) (2023-05-08)
+
+
+### Features
+
+* allow configurable max request size for async worker ([#46](https://github.com/stordco/kafee/issues/46)) ([7ae4738](https://github.com/stordco/kafee/commit/7ae473809ee9848e212bc07353ebd4e3c99461fe))
+
+
+### Bug Fixes
+
+* handle not retriable error cases ([#48](https://github.com/stordco/kafee/issues/48)) ([84f8807](https://github.com/stordco/kafee/commit/84f88078b46e988c08f201805965963523ee351d))
+
 ## [2.5.0](https://github.com/stordco/kafee/compare/v2.4.0...v2.5.0) (2023-04-04)
 
 
