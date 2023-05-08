@@ -212,8 +212,7 @@ defmodule Kafee.Producer.AsyncWorker do
       case error do
         {:error, {:producer_down, {:not_retriable, {_, _, _, _, :message_too_large}}}}
         when length(sent_messages) == 1 ->
-          [large_message] = sent_messages
-          Logger.error("Message in queue is too large", data: large_message)
+          Logger.error("Message in queue is too large", data: sent_messages)
           %{state | queue: :queue.drop(queue)}
 
         {:error, {:producer_down, {:not_retriable, {_, _, _, _, :message_too_large}}}} ->
