@@ -226,7 +226,7 @@ defmodule Kafee.Producer.AsyncWorker do
 
         {:error, {:producer_down, {:not_retriable, _}}} ->
           Logger.error(
-            "Producer is down and the last batch is not retriable. Dropping the head of the queue and retrying",
+            "Last sent batch is not retriable. Dropping the head of the queue and retrying",
             data: sent_messages
           )
 
