@@ -205,14 +205,34 @@ defmodule Kafee.Producer.AsyncWorker do
   # We ran into an error sending messages to Kafka. We don't clear the queue,
   # and we try again.
   @doc false
-  def handle_info({task_ref, error}, %{send_task: %{ref: task_ref}} = state) do
-    case error do
-      {:error, :timeout} ->
-        Logger.error("Hit timeout when sending messages to Kafka")
+  def handle_info({task_ref, error}, %{queue: queue, send_task: %{ref: task_ref}} = state) do
+    sent_messages = build_message_batch(queue, state.max_request_size)
 
-      anything_else ->
-        Logger.error("Error when sending messages to Kafka", error: inspect(anything_else))
-    end
+    state =
+      case error do
+        {:error, {:producer_down, {:not_retriable, {_, _, _, _, :message_too_large}}}}
+        when length(sent_messages) == 1 ->
+          [large_message] = sent_messages
+          Logger.error("Message in queue is too large", data: large_message)
+          %{state | queue: :queue.drop(queue)}
+
+        {:error, {:producer_down, {:not_retriable, {_, _, _, _, :message_too_large}}}} ->
+          new_max_request_size = max(state.max_request_size - 1024, 500_000)
+
+          Logger.error(
+            "The configured `max_request_size` is larger than the Kafka cluster allows. Adjusting to #{new_max_request_size} bytes"
+          )
+
+          %{state | max_request_size: new_max_request_size}
+
+        {:error, :timeout} ->
+          Logger.error("Hit timeout when sending messages to Kafka")
+          state
+
+        anything_else ->
+          Logger.error("Error when sending messages to Kafka", error: inspect(anything_else))
+          state
+      end
 
     Process.send_after(self(), :send, state.send_throttle_time)
     {:noreply, state}

@@ -119,6 +119,25 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       assert_receive :send
     end
 
+    @tag capture_log: true
+    test "any single message too large gets logged and dropped from queue", %{pid: pid, topic: topic} do
+      message = %Kafee.Producer.Message{
+        key: "key",
+        value: String.duplicate("Z", 10_000_000),
+        topic: topic,
+        partition: 0
+      }
+
+      log =
+        capture_log(fn ->
+          assert :ok = AsyncWorker.queue(pid, [message])
+          Process.sleep(@wait_timeout)
+        end)
+
+      assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, [^message]))
+      assert log =~ "Message in queue is too large"
+    end
+
     test "any other tuple logs error and retries sending messages", %{state: state} do
       task = make_fake_task()
       state = %{state | send_task: task}
