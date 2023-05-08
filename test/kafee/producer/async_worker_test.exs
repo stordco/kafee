@@ -309,15 +309,23 @@ defmodule Kafee.Producer.AsyncWorkerTest do
   end
 
   describe "build_message_batch/1" do
+    test "allows configurable max request size" do
+      messages = "topic" |> BrodApi.generate_producer_message_list(10_000) |> :queue.from_list()
+      expose(AsyncWorker, build_message_batch: 2)
+
+      batch = private(AsyncWorker.build_message_batch(messages, 1000))
+      assert 6 = length(batch)
+    end
+
     test "returns a list of messages under the max batch size" do
       messages = "topic" |> BrodApi.generate_producer_message_list(10_000) |> :queue.from_list()
-      expose(AsyncWorker, build_message_batch: 1)
+      expose(AsyncWorker, build_message_batch: 2)
 
-      batch = private(AsyncWorker.build_message_batch(messages))
+      batch = private(AsyncWorker.build_message_batch(messages, 1_040_384))
       assert 7029 = length(batch)
 
       {_batched_messages, remaining_messages} = :queue.split(length(batch), messages)
-      remaining_batch = private(AsyncWorker.build_message_batch(remaining_messages))
+      remaining_batch = private(AsyncWorker.build_message_batch(remaining_messages, 1_040_384))
       assert 2971 = length(remaining_batch)
 
       assert 10_000 = length(batch) + length(remaining_batch)
