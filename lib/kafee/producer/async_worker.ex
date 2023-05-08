@@ -225,6 +225,14 @@ defmodule Kafee.Producer.AsyncWorker do
 
           %{state | max_request_size: new_max_request_size}
 
+        {:error, {:producer_down, {:not_retriable, _}}} ->
+          Logger.error(
+            "Producer is down and the last batch is not retriable. Dropping the head of the queue and retrying",
+            data: sent_messages
+          )
+
+          %{state | queue: :queue.drop(queue)}
+
         {:error, :timeout} ->
           Logger.error("Hit timeout when sending messages to Kafka")
           state
