@@ -385,6 +385,9 @@ defmodule Kafee.Producer.AsyncWorker do
         # I know that `:erlang.external_size` won't match what we actually
         # send, but it should be under the limit that would cause Kafka errors
         case bytes + :erlang.external_size(message) do
+          total_bytes when batch == [] ->
+            {:cont, {total_bytes, [message]}}
+
           total_bytes when total_bytes <= max_request_size ->
             {:cont, {total_bytes, [message | batch]}}
 

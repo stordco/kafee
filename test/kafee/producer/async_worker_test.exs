@@ -330,6 +330,14 @@ defmodule Kafee.Producer.AsyncWorkerTest do
 
       assert 10_000 = length(batch) + length(remaining_batch)
     end
+
+    test "always returns one message if the queue exists" do
+      messages = "topic" |> BrodApi.generate_producer_message_list(10) |> :queue.from_list()
+      expose(AsyncWorker, build_message_batch: 2)
+
+      batch = private(AsyncWorker.build_message_batch(messages, 1))
+      assert 1 = length(batch)
+    end
   end
 
   if Version.match?(System.version(), ">= 1.14.0") do
