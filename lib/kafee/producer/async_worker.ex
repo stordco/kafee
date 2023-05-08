@@ -28,10 +28,11 @@ defmodule Kafee.Producer.AsyncWorker do
 
   # The max request size Kafka can handle by default is 1mb.
   # We shrink it by 8kb as an extra precaution for data.
-  @max_request_size 1_040_384
+  @default_max_request_size 1_040_384
 
   defstruct [
     :brod_client_id,
+    :max_request_size,
     :partition,
     :queue,
     :send_throttle_time,
@@ -44,6 +45,7 @@ defmodule Kafee.Producer.AsyncWorker do
   Internal data for the worker. Fields are as follow:
 
   - `brod_client_id` - The client id used for talking to `:brod`
+  - `max_request_size` - The max batch request size in bytes
   - `partition` - The Kafka partition we are sending messages to
   - `queue` - A `:queue` of messages waiting to be sent
   - `send_throttle_time` - A throttle time for sending messages to Kafka
@@ -55,6 +57,7 @@ defmodule Kafee.Producer.AsyncWorker do
   """
   @type t :: %__MODULE__{
           brod_client_id: :brod.client_id(),
+          max_request_size: pos_integer(),
           partition: :brod.partition(),
           queue: :queue.queue(),
           send_throttle_time: pos_integer(),
@@ -65,6 +68,7 @@ defmodule Kafee.Producer.AsyncWorker do
 
   @type opts :: [
           brod_client_id: :brod.client(),
+          max_request_size: pos_integer() | nil,
           topic: :brod.topic(),
           partition: :brod.partition(),
           send_throttle_time: pos_integer() | nil,
@@ -142,6 +146,7 @@ defmodule Kafee.Producer.AsyncWorker do
     Process.flag(:trap_exit, true)
 
     brod_client_id = Keyword.fetch!(opts, :brod_client_id)
+    max_request_size = Keyword.get(opts, :max_request_size, @default_max_request_size)
     topic = Keyword.fetch!(opts, :topic)
     partition = Keyword.fetch!(opts, :partition)
     send_throttle_time = Keyword.get(opts, :send_throttle_time, 100)
@@ -152,6 +157,7 @@ defmodule Kafee.Producer.AsyncWorker do
     {:ok,
      %__MODULE__{
        brod_client_id: brod_client_id,
+       max_request_size: max_request_size,
        partition: partition,
        queue: :queue.new(),
        send_throttle_time: send_throttle_time,
@@ -341,7 +347,7 @@ defmodule Kafee.Producer.AsyncWorker do
 
   @spec send_messages(t()) :: {:ok, sent_count :: pos_integer()} | term()
   defp send_messages(state) do
-    messages = build_message_batch(state.queue)
+    messages = build_message_batch(state.queue, state.max_request_size)
     messages_length = length(messages)
 
     if messages_length == 0 do
@@ -372,14 +378,14 @@ defmodule Kafee.Producer.AsyncWorker do
   # We batch matches til we get close to the `max.request.size`
   # limit in Kafka. This ensures we send the max amount of data per
   # request without causing errors.
-  @spec build_message_batch(:queue.queue()) :: [:brod.message_set()]
-  defp build_message_batch(queue) do
+  @spec build_message_batch(:queue.queue(), pos_integer()) :: [:brod.message_set()]
+  defp build_message_batch(queue, max_request_size) do
     {batch_bytes, batch_messages} =
       Enum.reduce_while(:queue.to_list(queue), {0, []}, fn message, {bytes, batch} ->
         # I know that `:erlang.external_size` won't match what we actually
         # send, but it should be under the limit that would cause Kafka errors
         case bytes + :erlang.external_size(message) do
-          total_bytes when total_bytes <= @max_request_size ->
+          total_bytes when total_bytes <= max_request_size ->
             {:cont, {total_bytes, [message | batch]}}
 
           _ ->
