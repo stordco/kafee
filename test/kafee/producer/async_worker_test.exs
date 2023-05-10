@@ -121,10 +121,13 @@ defmodule Kafee.Producer.AsyncWorkerTest do
 
     @tag capture_log: true
     test "any single message too large gets logged and dropped from queue", %{pid: pid, topic: topic} do
+      message_fixture = File.read!("test/support/example/large_message.json")
+      large_message = String.duplicate(message_fixture, 4)
+
       message = %Kafee.Producer.Message{
-        key: "key",
-        value: String.duplicate("Z", 10_000_000),
-        topic: topic,
+        key: "something_huge_above_4mb",
+        value: large_message,
+        topic: "wms-service",
         partition: 0
       }
 
@@ -136,6 +139,9 @@ defmodule Kafee.Producer.AsyncWorkerTest do
 
       assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, [^message]))
       assert log =~ "Message in queue is too large"
+
+      async_worker_state = pid |> Patch.Listener.target() |> :sys.get_state()
+      assert 0 == :queue.len(async_worker_state.queue)
     end
 
     test "any other tuple logs error and retries sending messages", %{state: state} do
