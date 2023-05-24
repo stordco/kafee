@@ -202,6 +202,12 @@ defmodule Kafee.Producer.AsyncWorker do
     {:noreply, %{state | queue: remaining_messages}}
   end
 
+  def handle_info({_task_ref, {:error, {:producer_down, :noproc}}}, state) do
+    Logger.debug("The brod producer process is currently down. Waiting for it to come back online")
+    Process.send_after(self(), :send, 10_000)
+    {:noreply, state}
+  end
+
   # We ran into an error sending messages to Kafka. We don't clear the queue,
   # and we try again.
   @doc false
