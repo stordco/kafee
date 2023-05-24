@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.6.1](https://github.com/stordco/kafee/compare/v2.6.0...v2.6.1) (2023-05-24)
+
+
+### Bug Fixes
+
+* add edge case testing around large messages ([#49](https://github.com/stordco/kafee/issues/49)) ([cb79607](https://github.com/stordco/kafee/commit/cb79607825cc7eb7630087e0bc3db7d6b910a0d1))
+
 ## [2.6.0](https://github.com/stordco/kafee/compare/v2.5.0...v2.6.0) (2023-05-08)
 
 
