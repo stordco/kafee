@@ -21,7 +21,7 @@ defmodule Kafee.MixProject do
   # Run "mix help compile.app" to learn about applications.
   def application do
     [
-      extra_applications: [:logger],
+      extra_applications: [:logger, :tls_certificate_check],
       mod: {Kafee.Application, []}
     ]
   end
@@ -34,8 +34,12 @@ defmodule Kafee.MixProject do
   defp deps do
     [
       {:brod, "~> 3.16.2"},
+      {:decorator, ">= 1.0.0"},
       {:jason, ">= 1.0.0"},
+      {:nebulex, ">= 2.0.0"},
+      {:req, "~> 0.3.0"},
       {:telemetry, ">= 1.0.0"},
+      {:tls_certificate_check, "~> 1.14"},
 
       # Dev & Test dependencies
       {:benchee, "~> 1.0", only: [:dev, :test]},

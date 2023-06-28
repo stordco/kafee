@@ -9,6 +9,7 @@ defmodule Kafee.Application do
   @spec start(Application.start_type(), term()) :: {:ok, pid} | {:error, term()}
   def start(_type, _args) do
     children = [
+      Kafee.SchemaRegistry.Cache,
       {Registry, keys: :unique, name: Kafee.Producer.AsyncRegistry}
     ]
 
