@@ -34,7 +34,8 @@ defmodule Kafee.Producer.TestBackendTest do
         value: "test-value",
         topic: "test-topic",
         partition: 0,
-        partition_fun: :hash
+        partition_fun: :hash,
+        headers: [{"dd-pathway-ctx", <<0>>}]
       }
 
       assert :ok = TestProducer.produce([message])

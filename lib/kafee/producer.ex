@@ -113,7 +113,11 @@ defmodule Kafee.Producer do
 
   """
 
+  require OpenTelemetry.Tracer, as: Tracer
+
   alias Kafee.Producer.{Config, Message, ValidationError}
+
+  @data_streams_propagator_key Datadog.DataStreams.Propagator.propagation_key()
 
   @doc false
   defmacro __using__(module_opts \\ []) do
@@ -168,6 +172,7 @@ defmodule Kafee.Producer do
         messages
         |> Kafee.Producer.normalize(__MODULE__)
         |> Kafee.Producer.validate_batch!()
+        |> Kafee.Producer.annotate_batch()
         |> Kafee.Producer.produce(__MODULE__)
       end
     end
@@ -266,18 +271,71 @@ defmodule Kafee.Producer do
   end
 
   @doc """
+  Annotates a list of messages with tracking. See `annotate/1` for more
+  information.
+  """
+  @spec annotate_batch([Message.t()]) :: [Message.t()]
+  def annotate_batch(messages) do
+    Enum.map(messages, &annotate/1)
+  end
+
+  @doc """
+  Annotations a message with tracking. Currently this only integrates the
+  `Datadog.DataStreams.Integrations.Kafka` module.
+  """
+  @spec annotate(Message.t()) :: Message.t()
+  def annotate(%Message{} = message) do
+    already_includes_header? =
+      Enum.find(message.headers, fn {key, _} ->
+        key == @data_streams_propagator_key
+      end)
+
+    if already_includes_header? do
+      message
+    else
+      Datadog.DataStreams.Integrations.Kafka.trace_produce(message)
+    end
+  end
+
+  @doc """
   Produces a list of messages depending on the configuration set
   in the producer.
 
   ## Examples
 
-      iex> produce([%Kafee.Producer.Message{}], MyProducer)
+      iex> produce([%Kafee.Producer.Message{topic: "test"}], MyProducer)
       :ok
 
   """
   @spec produce([Message.t()], atom) :: :ok | {:error, term()}
   def produce(messages, producer) do
     config = Config.get(producer)
-    config.producer_backend.produce(config, messages)
+    {span_name, span_attributes} = otel_values(messages, config)
+
+    Tracer.with_span span_name, span_attributes do
+      config.producer_backend.produce(config, messages)
+    end
+  end
+
+  # These values come from the official opentelemetry specification about messaging
+  # and Kafka handling. For more information, view this link:
+  # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/messaging.md
+  @spec otel_values([Message.t()], Config.t()) :: {String.t(), map()}
+  defp otel_values([message | _] = messages, config) do
+    {message.topic <> " publish",
+     %{
+       kind: :client,
+       attributes: %{
+         "messaging.batch.message_count": length(messages),
+         "messaging.destination.kind": "topic",
+         "messaging.destination.name": message.topic,
+         "messaging.operation": "publish",
+         "messaging.system": "kafka",
+         "network.transport": "tcp",
+         "peer.service": "kafka",
+         "server.address": config.hostname,
+         "server.socket.port": config.port
+       }
+     }}
   end
 end
