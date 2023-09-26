@@ -32,13 +32,12 @@ defmodule Kafee.Testing do
 
   """
   defmacro assert_producer_message(producer, map) do
-    assertion =
-      Macro.escape(
-        quote do
-          assert_message_produced(unquote(producer), unquote(map))
-        end,
-        prune_metadata: true
-      )
+    macro =
+      quote do
+        assert_message_produced(unquote(producer), unquote(map))
+      end
+
+    assertion = Macro.escape(macro, prune_metadata: true)
 
     quote do
       map = unquote(map)
@@ -83,13 +82,12 @@ defmodule Kafee.Testing do
 
   """
   defmacro refute_producer_message(producer, map) do
-    assertion =
-      Macro.escape(
-        quote do
-          refute_message_produced(unquote(producer), unquote(map))
-        end,
-        prune_metadata: true
-      )
+    macro =
+      quote do
+        refute_message_produced(unquote(producer), unquote(map))
+      end
+
+    assertion = Macro.escape(macro, prune_metadata: true)
 
     quote do
       map = unquote(map)

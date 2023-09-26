@@ -9,7 +9,7 @@ defmodule Kafee.Producer.AsyncSupervisor do
   alias Kafee.Producer.{AsyncRegistry, AsyncWorker, Config}
 
   @doc false
-  @impl true
+  @impl DynamicSupervisor
   def init(_config) do
     DynamicSupervisor.init(strategy: :one_for_one)
   end
@@ -36,7 +36,7 @@ defmodule Kafee.Producer.AsyncSupervisor do
       )
 
     with {:error, {:already_started, pid}} <-
-           DynamicSupervisor.start_child(process_name(config), {AsyncWorker, full_opts}) do
+           config |> process_name() |> DynamicSupervisor.start_child({AsyncWorker, full_opts}) do
       {:ok, pid}
     end
   end

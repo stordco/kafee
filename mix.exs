@@ -43,8 +43,8 @@ defmodule Kafee.MixProject do
       {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false},
       {:doctor, "~> 0.19.0", only: [:dev, :test], runtime: false},
       {:ex_doc, "~> 0.28", only: [:dev, :test], runtime: false},
-      {:faker, "~> 0.17", only: :test},
-      {:patch, "~> 0.12.0", only: :test}
+      {:faker, "~> 0.17", only: [:dev, :test]},
+      {:patch, "~> 0.12.0", only: [:dev, :test]}
     ]
   end
 
