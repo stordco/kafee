@@ -8,7 +8,14 @@ defmodule Kafee.KafkaApi do
   """
   @spec generate_topic :: binary()
   def generate_topic do
-    4 |> Faker.Lorem.words() |> Enum.join("-")
+    4
+    |> Faker.Lorem.words()
+    |> Enum.join("-")
+    |> String.normalize(:nfd)
+    |> String.downcase()
+    |> String.replace(~r/[^a-z-\s]/u, "")
+    |> String.replace(~r/\s/, "-")
+    |> String.slice(0..32)
   end
 
   @doc """
@@ -26,7 +33,22 @@ defmodule Kafee.KafkaApi do
       }
     ]
 
-    :brod.create_topics(endpoints(), configs, %{timeout: 100_000})
+    case :brod.create_topics(endpoints(), configs, %{timeout: 100_000}) do
+      {:error, :topic_already_exists} ->
+        :ok
+
+      :ok ->
+        # We get an odd case were we get an :ok from Kafka but the topic
+        # hasn't actually been created, which causes a brod error sending
+        # a message. I assume this is from Kafka syncing data in some
+        # configurations. Because this is a test and we don't care about
+        # performance, we just repeat until we confirm the topic alread exists.
+        Process.sleep(100)
+        create_topic(topic, partitions)
+
+      result ->
+        result
+    end
   end
 
   @doc """

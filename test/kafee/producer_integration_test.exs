@@ -1,10 +1,10 @@
 defmodule Kafee.ProducerIntegrationTest do
-  use Kafee.BrodCase
+  use Kafee.KafkaCase
 
   import ExUnit.CaptureLog
 
   # Generally enough time for the worker to do what ever it needs to do.
-  @wait_timeout 1000
+  @wait_timeout 5_000
 
   setup %{topic: topic} do
     start_supervised!(
@@ -20,9 +20,9 @@ defmodule Kafee.ProducerIntegrationTest do
   end
 
   describe "large messages" do
-    test "logs and continues" do
+    test "logs and continues", %{topic: topic} do
       message_fixture = File.read!("test/support/example/large_message.json")
-      large_message = String.duplicate(message_fixture, 4)
+      large_message = String.duplicate(message_fixture, 10)
 
       log =
         capture_log(fn ->
@@ -31,7 +31,7 @@ defmodule Kafee.ProducerIntegrationTest do
                      %Kafee.Producer.Message{
                        key: "something_huge_above_4mb",
                        value: large_message,
-                       topic: "wms-service",
+                       topic: topic,
                        partition: 0
                      }
                    ])
@@ -51,12 +51,12 @@ defmodule Kafee.ProducerIntegrationTest do
                      %Kafee.Producer.Message{
                        key: "something_small",
                        value: "aaaa",
-                       topic: "wms-service",
+                       topic: topic,
                        partition: 0
                      }
                    ])
 
-          Process.sleep(@wait_timeout + 10_000)
+          Process.sleep(@wait_timeout + 15_000)
         end)
 
       refute log =~ "Message in queue is too large"
