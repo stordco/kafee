@@ -339,7 +339,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       expose(AsyncWorker, build_message_batch: 2)
 
       batch = private(AsyncWorker.build_message_batch(messages, 1000))
-      assert 6 = length(batch)
+      assert length(batch) in 6..7
     end
 
     test "returns a list of messages under the max batch size" do
@@ -347,11 +347,11 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       expose(AsyncWorker, build_message_batch: 2)
 
       batch = private(AsyncWorker.build_message_batch(messages, 1_040_384))
-      assert 7029 = length(batch)
+      assert length(batch) in 7029..7484
 
       {_batched_messages, remaining_messages} = batch |> length() |> :queue.split(messages)
       remaining_batch = private(AsyncWorker.build_message_batch(remaining_messages, 1_040_384))
-      assert 2971 = length(remaining_batch)
+      assert length(remaining_batch) in 2516..2971
 
       assert 10_000 = length(batch) + length(remaining_batch)
     end

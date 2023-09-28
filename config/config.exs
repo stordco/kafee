@@ -1,5 +1,5 @@
 import Config
 
 config :logger, :console,
-  level: :warn,
+  level: :warning,
   metadata: [:data, :error, :partition, :ref, :topic]
