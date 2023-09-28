@@ -1,5 +1,5 @@
 defmodule Kafee.ProducerIntegrationTest do
-  use Kafee.BrodCase
+  use Kafee.KafkaCase
 
   import ExUnit.CaptureLog
 
