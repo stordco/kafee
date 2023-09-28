@@ -42,7 +42,7 @@ defmodule Kafee.KafkaApi do
   """
   @spec host() :: binary()
   def host do
-    System.get_env("KAFKA_HOST", "localhost")
+    System.get_env("KAFKA_HOST", "127.0.0.1")
   end
 
   @doc """
