@@ -349,7 +349,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       batch = private(AsyncWorker.build_message_batch(messages, 1_040_384))
       assert 7029 = length(batch)
 
-      {_batched_messages, remaining_messages} = :queue.split(length(batch), messages)
+      {_batched_messages, remaining_messages} = batch |> length() |> :queue.split(messages)
       remaining_batch = private(AsyncWorker.build_message_batch(remaining_messages, 1_040_384))
       assert 2971 = length(remaining_batch)
 

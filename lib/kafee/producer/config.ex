@@ -135,17 +135,21 @@ defmodule Kafee.Producer.Config do
   @spec validate!(t()) :: t()
   def validate!(%__MODULE__{} = config) do
     with {:error, _} <- Code.ensure_compiled(config.producer) do
+      received = inspect(config.producer)
+
       raise ArgumentError,
         message: """
         Kafee Producer configuration does not specify a valid producer module.
         Usually this indicates some broken library code.
 
         Received:
-        #{inspect(config.producer)}
+        #{received}
         """
     end
 
     with {:error, _} <- Code.ensure_compiled(config.producer_backend) do
+      received = inspect(config.producer_backend)
+
       raise ArgumentError,
         message: """
         The Kafee Producer backend is unavailable or not loaded. Usually this
@@ -157,7 +161,7 @@ defmodule Kafee.Producer.Config do
         - `Kafee.Producer.TestBackend`
 
         Received:
-        #{inspect(config.producer_backend)}
+        #{received}
         """
     end
 

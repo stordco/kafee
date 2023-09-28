@@ -121,7 +121,7 @@ defmodule Kafee.Producer do
       use Supervisor
 
       @doc false
-      @impl true
+      @impl Supervisor
       # credo:disable-for-lines:15 Credo.Check.Design.AliasUsage
       def init(init_opts \\ []) do
         # credo:disable-for-lines:2 Credo.Check.Warning.UnsafeToAtom

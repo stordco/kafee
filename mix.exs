@@ -14,7 +14,14 @@ defmodule Kafee.MixProject do
       docs: docs(),
       package: package(),
       source_url: "https://github.com/stordco/kafee",
-      dialyzer: [plt_add_apps: [:jason]]
+      dialyzer: [plt_add_apps: [:jason]],
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.html": :test,
+        "coveralls.circle": :test
+      ]
     ]
   end
 
@@ -42,9 +49,10 @@ defmodule Kafee.MixProject do
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
       {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false},
       {:doctor, "~> 0.19.0", only: [:dev, :test], runtime: false},
+      {:excoveralls, "~> 0.17.1", only: :test},
       {:ex_doc, "~> 0.28", only: [:dev, :test], runtime: false},
-      {:faker, "~> 0.17", only: :test},
-      {:patch, "~> 0.12.0", only: :test}
+      {:faker, "~> 0.17", only: [:dev, :test]},
+      {:patch, "~> 0.12.0", only: [:dev, :test]}
     ]
   end
 

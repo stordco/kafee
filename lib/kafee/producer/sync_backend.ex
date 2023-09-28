@@ -12,7 +12,7 @@ defmodule Kafee.Producer.SyncBackend do
   alias Kafee.Producer.Config
 
   @doc false
-  @impl true
+  @impl Supervisor
   def init(%Config{} = config) do
     brod_endpoints = Config.brod_endpoints(config)
     brod_client_opts = Config.brod_client_config(config)
@@ -28,20 +28,22 @@ defmodule Kafee.Producer.SyncBackend do
   end
 
   def init(opts) do
+    received = inspect(opts)
+
     raise ArgumentError,
       message: """
       The `Kafee.Producer.SyncBackend` module expects to be given
       a `Kafee.Producer.Config` struct on startup.
 
       Received:
-      #{inspect(opts)}
+      #{received}
       """
   end
 
   @doc """
   Starts a new `Kafee.Producer.SyncBackend` process and associated children.
   """
-  @impl true
+  @impl Kafee.Producer.Backend
   def start_link(%Config{} = config) do
     Supervisor.start_link(__MODULE__, config, name: Kafee.Producer.Backend.process_name(config.producer))
   end
@@ -58,7 +60,7 @@ defmodule Kafee.Producer.SyncBackend do
       {:ok, 1}
 
   """
-  @impl true
+  @impl Kafee.Producer.Backend
   def partition(%Config{brod_client_id: brod_client_id}, message) do
     with {:ok, partition_count} <- :brod.get_partitions_count(brod_client_id, message.topic) do
       partition_fun = :brod_utils.make_part_fun(message.partition_fun)
@@ -69,7 +71,7 @@ defmodule Kafee.Producer.SyncBackend do
   @doc """
   Calls the `:brod.produce_sync/5` function.
   """
-  @impl true
+  @impl Kafee.Producer.Backend
   def produce(%Config{} = config, messages) do
     for message <- messages do
       :telemetry.span([:kafee, :produce], %{topic: message.topic, partition: message.partition}, fn ->

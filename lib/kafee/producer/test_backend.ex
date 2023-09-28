@@ -14,19 +14,19 @@ defmodule Kafee.Producer.TestBackend do
   alias Kafee.Producer.{Backend, Config}
 
   @doc false
-  @impl true
+  @impl GenServer
   def init(_config) do
     {:ok, []}
   end
 
   @doc false
-  @impl true
+  @impl GenServer
   def handle_cast({:add, new_messages}, saved_messages) do
     {:noreply, new_messages ++ saved_messages}
   end
 
   @doc false
-  @impl true
+  @impl GenServer
   def handle_call(:get, _from, saved_messages) do
     {:reply, saved_messages, saved_messages}
   end
@@ -34,7 +34,7 @@ defmodule Kafee.Producer.TestBackend do
   @doc """
   Starts a new `Kafee.Producer.TestBackend` process.
   """
-  @impl true
+  @impl Kafee.Producer.Backend
   def start_link(config) do
     GenServer.start_link(__MODULE__, config, name: Backend.process_name(config.producer))
   end
@@ -42,7 +42,7 @@ defmodule Kafee.Producer.TestBackend do
   @doc """
   This will always return 0 as the partition.
   """
-  @impl true
+  @impl Kafee.Producer.Backend
   def partition(_config, message) do
     partition_fun = :brod_utils.make_part_fun(message.partition_fun)
     partition_fun.(message.topic, 1, message.key, message.value)
@@ -51,8 +51,10 @@ defmodule Kafee.Producer.TestBackend do
   @doc """
   Adds messages to the internal memory.
   """
-  @impl true
+  @impl Kafee.Producer.Backend
   def produce(%Config{} = config, messages) do
-    GenServer.cast(Backend.process_name(config.producer), {:add, messages})
+    config.producer
+    |> Backend.process_name()
+    |> GenServer.cast({:add, messages})
   end
 end
