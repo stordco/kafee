@@ -20,7 +20,7 @@ defmodule Kafee.ProducerIntegrationTest do
   end
 
   describe "large messages" do
-    test "logs and continues" do
+    test "logs and continues", %{topic: topic} do
       message_fixture = File.read!("test/support/example/large_message.json")
       large_message = String.duplicate(message_fixture, 10)
 
@@ -31,7 +31,7 @@ defmodule Kafee.ProducerIntegrationTest do
                      %Kafee.Producer.Message{
                        key: "something_huge_above_4mb",
                        value: large_message,
-                       topic: "wms-service",
+                       topic: topic,
                        partition: 0
                      }
                    ])
@@ -51,7 +51,7 @@ defmodule Kafee.ProducerIntegrationTest do
                      %Kafee.Producer.Message{
                        key: "something_small",
                        value: "aaaa",
-                       topic: "wms-service",
+                       topic: topic,
                        partition: 0
                      }
                    ])
