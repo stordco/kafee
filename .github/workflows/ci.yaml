@@ -28,8 +28,6 @@ concurrency:
 
 jobs:
   Credo:
-    if: ${{ !startsWith(github.head_ref, 'release-please--branches') }}
-
     runs-on: ubuntu-latest
 
     steps:
@@ -48,8 +46,6 @@ jobs:
         run: mix credo --strict
 
   Dependencies:
-    if: ${{ !startsWith(github.head_ref, 'release-please--branches') }}
-
     runs-on: ubuntu-latest
 
     steps:
@@ -68,8 +64,6 @@ jobs:
         run: mix deps.unlock --check-unused
 
   Dialyzer:
-    if: ${{ !startsWith(github.head_ref, 'release-please--branches') }}
-
     runs-on: ubuntu-latest
 
     steps:
@@ -88,8 +82,6 @@ jobs:
         run: mix dialyzer --format github
 
   Documentation:
-    if: ${{ !startsWith(github.head_ref, 'release-please--branches') }}
-
     runs-on: ubuntu-latest
 
     steps:
@@ -108,8 +100,6 @@ jobs:
         run: mix docs
 
   Format:
-    if: ${{ !startsWith(github.head_ref, 'release-please--branches') }}
-
     runs-on: ubuntu-latest
 
     steps:
@@ -128,11 +118,12 @@ jobs:
         run: mix format --check-formatted
 
   Test:
-    if: ${{ !startsWith(github.head_ref, 'release-please--branches') }}
-
     name: Test (Elixir ${{ matrix.versions.elixir }} OTP ${{ matrix.versions.otp }})
 
     runs-on: ubuntu-latest
+
+    env:
+      MIX_ENV: test
 
     services:
       kafka:
@@ -151,9 +142,6 @@ jobs:
           KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
           KAFKA_CFG_NODE_ID: "0"
           KAFKA_CFG_PROCESS_ROLES: "controller,broker"
-
-    env:
-      MIX_ENV: test
 
     steps:
       - name: Checkout
@@ -187,3 +175,4 @@ jobs:
             otp: 25
           - elixir: 1.15
             otp: 26
+
