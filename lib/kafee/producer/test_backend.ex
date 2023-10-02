@@ -1,42 +1,29 @@
 defmodule Kafee.Producer.TestBackend do
   @moduledoc """
-  This is a backend that stores all sent messages in it's local
-  process state. This is most useful when running tests and
-  you want to ensure a message was sent to Kafka. See the
-  `Kafee.Testing` module for more details on testing
-  Kafee.
+  This is a `Kafee.Producer.Backend` used for in local ExUnit
+  tests. It takes all messages and sends them to the testing
+  pid for use by the `Kafee.Test` module.
   """
 
   @behaviour Kafee.Producer.Backend
 
-  use GenServer
-
-  alias Kafee.Producer.{Backend, Config}
-
-  @doc false
-  @impl GenServer
-  def init(_config) do
-    {:ok, []}
-  end
-
-  @doc false
-  @impl GenServer
-  def handle_cast({:add, new_messages}, saved_messages) do
-    {:noreply, new_messages ++ saved_messages}
-  end
-
-  @doc false
-  @impl GenServer
-  def handle_call(:get, _from, saved_messages) do
-    {:reply, saved_messages, saved_messages}
+  def child_spec(config) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [config]},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 0
+    }
   end
 
   @doc """
-  Starts a new `Kafee.Producer.TestBackend` process.
+  Returns an `:ignore` atom so we don't start a process.
+  This flow is 100% sync.
   """
   @impl Kafee.Producer.Backend
-  def start_link(config) do
-    GenServer.start_link(__MODULE__, config, name: Backend.process_name(config.producer))
+  def start_link(_config) do
+    :ignore
   end
 
   @doc """
@@ -52,9 +39,11 @@ defmodule Kafee.Producer.TestBackend do
   Adds messages to the internal memory.
   """
   @impl Kafee.Producer.Backend
-  def produce(%Config{} = config, messages) do
-    config.producer
-    |> Backend.process_name()
-    |> GenServer.cast({:add, messages})
+  def produce(%Kafee.Producer.Config{} = config, messages) do
+    for message <- messages do
+      send(config.test_process, {:kafee_message, message})
+    end
+
+    :ok
   end
 end

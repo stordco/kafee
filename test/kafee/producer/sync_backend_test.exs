@@ -9,18 +9,6 @@ defmodule Kafee.Producer.SyncBackendTest do
     {:ok, %{config: config}}
   end
 
-  describe "init/1" do
-    test "starts brod child", %{config: config} do
-      assert {:ok, _pid} = start_supervised({SyncBackend, config})
-    end
-
-    test "raises when given invalid config" do
-      assert_raise ArgumentError, fn ->
-        SyncBackend.init([])
-      end
-    end
-  end
-
   describe "produce/2" do
     test "sends messages via :brod.produce_sync/5", %{config: config, topic: topic} do
       spy(:brod)

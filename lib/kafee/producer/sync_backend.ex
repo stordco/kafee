@@ -7,45 +7,27 @@ defmodule Kafee.Producer.SyncBackend do
 
   @behaviour Kafee.Producer.Backend
 
-  use Supervisor
-
   alias Kafee.Producer.Config
 
-  @doc false
-  @impl Supervisor
-  def init(%Config{} = config) do
+  def child_spec(config) do
     brod_endpoints = Config.brod_endpoints(config)
     brod_client_opts = Config.brod_client_config(config)
 
-    children = [
-      %{
-        id: config.brod_client_id,
-        start: {:brod_client, :start_link, [brod_endpoints, config.brod_client_id, brod_client_opts]}
-      }
-    ]
-
-    Supervisor.init(children, strategy: :one_for_one)
-  end
-
-  def init(opts) do
-    received = inspect(opts)
-
-    raise ArgumentError,
-      message: """
-      The `Kafee.Producer.SyncBackend` module expects to be given
-      a `Kafee.Producer.Config` struct on startup.
-
-      Received:
-      #{received}
-      """
+    %{
+      id: config.brod_client_id,
+      start: {:brod_client, :start_link, [brod_endpoints, config.brod_client_id, brod_client_opts]},
+      type: :worker,
+      restart: :permanent,
+      shutdown: 500
+    }
   end
 
   @doc """
   Starts a new `Kafee.Producer.SyncBackend` process and associated children.
   """
   @impl Kafee.Producer.Backend
-  def start_link(%Config{} = config) do
-    Supervisor.start_link(__MODULE__, config, name: Kafee.Producer.Backend.process_name(config.producer))
+  def start_link(_config) do
+    :ignore
   end
 
   @doc """
