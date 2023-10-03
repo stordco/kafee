@@ -67,10 +67,28 @@ defmodule Kafee.Producer.AsyncBackend do
   """
 
   @behaviour Kafee.Producer.Backend
-
-  use Supervisor
+  @behaviour Supervisor
 
   alias Kafee.Producer.{AsyncSupervisor, Config, Message}
+
+  @doc """
+  Child specification for the async worker backend. This starts
+  a `Kafee.Producer.AsyncWorker` for every partition in the topic
+  we send data to, as well as the lower level `:brod_client`.
+  """
+  @impl Kafee.Producer.Backend
+  def child_spec([config]) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [config]},
+      type: :supervisor
+    }
+  end
+
+  @doc false
+  def start_link(%Config{} = config) do
+    Supervisor.start_link(__MODULE__, config, name: Kafee.Producer.Backend.process_name(config.producer))
+  end
 
   @doc false
   @impl Supervisor
@@ -100,14 +118,6 @@ defmodule Kafee.Producer.AsyncBackend do
       Received:
       #{received}
       """
-  end
-
-  @doc """
-  Starts a new `Kafee.Producer.AsyncBackend` process and associated children.
-  """
-  @impl Kafee.Producer.Backend
-  def start_link(%Config{} = config) do
-    Supervisor.start_link(__MODULE__, config, name: Kafee.Producer.Backend.process_name(config.producer))
   end
 
   @doc """

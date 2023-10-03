@@ -61,7 +61,7 @@ defmodule Kafee.TestTest do
     end
 
     test "refutes a partial match" do
-      TestProducer.produce(create_message(%{key: "refute test"}))
+      %{key: "refute test"} |> create_message() |> TestProducer.produce()
       refute_kafee_message(%{key: "refute test", topic: "refute topic"})
     end
   end

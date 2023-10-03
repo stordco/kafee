@@ -134,9 +134,15 @@ defmodule Kafee.Producer do
           |> Kafee.Producer.Config.validate!()
 
         children = [
-          {Kafee.Producer.Config, config},
-          {config.producer_backend, config}
+          {Kafee.Producer.Config, config}
         ]
+
+        child_spec = config.producer_backend.child_spec([config])
+
+        children =
+          if is_nil(child_spec),
+            do: children,
+            else: Enum.reverse([child_spec | children])
 
         Supervisor.init(children, strategy: :one_for_one)
       end

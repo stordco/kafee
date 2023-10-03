@@ -71,32 +71,32 @@ defmodule Kafee.Test do
   """
   defmacro __using__(shared: true) do
     quote do
+      import Kafee.Test
+
       setup tags do
         if tags[:async] do
           raise """
           You cannot use Kafee.Test shared mode with async tests. Please
           set your test to [async: false].
           """
-        else
-          Application.put_env(:kafee, :test_process, self())
         end
 
+        Application.put_env(:kafee, :test_process, self())
         :ok
       end
-
-      import Kafee.Test
     end
   end
 
   defmacro __using__(_opts) do
     quote do
+      # credo:disable-for-lines:2 Credo.Check.Consistency.MultiAliasImportRequireUse
+      import ExUnit.Assertions
+      import Kafee.Test
+
       setup tags do
         Application.delete_env(:kafee, :test_process)
         :ok
       end
-
-      import ExUnit.Assertions
-      import Kafee.Test
     end
   end
 
@@ -148,7 +148,7 @@ defmodule Kafee.Test do
       assert [%Kafee.Producer.Message{}] = kafee_messages()
 
   """
-  def kafee_messages() do
+  def kafee_messages do
     {:messages, messages} = Process.info(self(), :messages)
 
     for {:kafee_message, message} <- messages do

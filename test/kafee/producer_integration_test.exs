@@ -4,11 +4,17 @@ defmodule Kafee.ProducerIntegrationTest do
   import ExUnit.CaptureLog
 
   # Generally enough time for the worker to do what ever it needs to do.
-  @wait_timeout 5_000
+  @wait_timeout 1_000
+
+  defmodule MyProducer do
+    use Kafee.Producer,
+      producer_backend: Kafee.Producer.AsyncBackend,
+      partition_fun: :random
+  end
 
   setup %{topic: topic} do
     start_supervised!(
-      {MyIntegrationProducer,
+      {MyProducer,
        [
          hostname: KafkaApi.host(),
          port: KafkaApi.port(),
@@ -27,7 +33,7 @@ defmodule Kafee.ProducerIntegrationTest do
       log =
         capture_log(fn ->
           assert :ok =
-                   MyIntegrationProducer.produce([
+                   MyProducer.produce([
                      %Kafee.Producer.Message{
                        key: "something_huge_above_4mb",
                        value: large_message,
@@ -47,7 +53,7 @@ defmodule Kafee.ProducerIntegrationTest do
       log =
         capture_log(fn ->
           assert :ok =
-                   MyIntegrationProducer.produce([
+                   MyProducer.produce([
                      %Kafee.Producer.Message{
                        key: "something_small",
                        value: "aaaa",
@@ -56,7 +62,7 @@ defmodule Kafee.ProducerIntegrationTest do
                      }
                    ])
 
-          Process.sleep(@wait_timeout + 15_000)
+          Process.sleep(@wait_timeout + 10_000)
         end)
 
       refute log =~ "Message in queue is too large"

@@ -1,13 +1,17 @@
 defmodule Kafee.Producer.TestBackendTest do
   use Kafee.KafkaCase
 
-  defmodule TestProducer do
-    use Kafee.Producer, producer_backend: Kafee.Producer.TestBackend
+  defmodule MyProducer do
+    use Kafee.Producer,
+      producer_backend: Kafee.Producer.TestBackend,
+      partition_fun: :random
   end
 
-  setup do
+  setup %{topic: topic} do
     Application.put_env(:kafee, :test_process, self())
-    start_supervised!({TestProducer, []})
+    Application.put_env(:kafee, :producer, topic: topic)
+
+    start_supervised!(MyProducer)
     :ok
   end
 
@@ -23,7 +27,7 @@ defmodule Kafee.Producer.TestBackendTest do
           }
         end
 
-      assert :ok = TestProducer.produce(messages)
+      assert :ok = MyProducer.produce(messages)
     end
   end
 
@@ -37,7 +41,7 @@ defmodule Kafee.Producer.TestBackendTest do
         partition_fun: :hash
       }
 
-      assert :ok = TestProducer.produce([message])
+      assert :ok = MyProducer.produce([message])
       assert_receive {:kafee_message, ^message}
     end
   end

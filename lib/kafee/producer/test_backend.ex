@@ -7,24 +7,9 @@ defmodule Kafee.Producer.TestBackend do
 
   @behaviour Kafee.Producer.Backend
 
-  def child_spec(config) do
-    %{
-      id: __MODULE__,
-      start: {__MODULE__, :start_link, [config]},
-      type: :worker,
-      restart: :permanent,
-      shutdown: 0
-    }
-  end
-
-  @doc """
-  Returns an `:ignore` atom so we don't start a process.
-  This flow is 100% sync.
-  """
+  @doc false
   @impl Kafee.Producer.Backend
-  def start_link(_config) do
-    :ignore
-  end
+  def child_spec([_config]), do: nil
 
   @doc """
   This will always return 0 as the partition.

@@ -9,7 +9,11 @@ defmodule Kafee.Producer.SyncBackend do
 
   alias Kafee.Producer.Config
 
-  def child_spec(config) do
+  @doc """
+  Child specification for the lower level `:brod_client`.
+  """
+  @impl Kafee.Producer.Backend
+  def child_spec([config]) do
     brod_endpoints = Config.brod_endpoints(config)
     brod_client_opts = Config.brod_client_config(config)
 
@@ -20,14 +24,6 @@ defmodule Kafee.Producer.SyncBackend do
       restart: :permanent,
       shutdown: 500
     }
-  end
-
-  @doc """
-  Starts a new `Kafee.Producer.SyncBackend` process and associated children.
-  """
-  @impl Kafee.Producer.Backend
-  def start_link(_config) do
-    :ignore
   end
 
   @doc """
