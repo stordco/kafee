@@ -40,17 +40,17 @@ defmodule Kafee.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:brod, "~> 3.16.2"},
+      {:brod, "~> 3.17.0"},
       {:jason, ">= 1.0.0"},
       {:telemetry, ">= 1.0.0"},
 
       # Dev & Test dependencies
       {:benchee, "~> 1.0", only: [:dev, :test]},
-      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false},
-      {:doctor, "~> 0.19.0", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:doctor, "~> 0.21", only: [:dev, :test], runtime: false},
       {:excoveralls, "~> 0.17.1", only: :test},
-      {:ex_doc, "~> 0.28", only: [:dev, :test], runtime: false},
+      {:ex_doc, "~> 0.30", only: [:dev, :test], runtime: false},
       {:faker, "~> 0.17", only: [:dev, :test]},
       {:patch, "~> 0.12.0", only: [:dev, :test]}
     ]
