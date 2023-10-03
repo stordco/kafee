@@ -186,8 +186,8 @@ defmodule Kafee.Producer do
 
   ## Examples
 
-      iex> normalize([%Kafee.Producer.Message{key: "test", partition: nil}], MyProducer)
-      [%Kafee.Producer.Message{key: "test", partition: 0, partition_fun: :random}]
+      iex> normalize([%Kafee.Producer.Message{key: "test", partition: nil, topic: "test"}], MyProducer)
+      [%Kafee.Producer.Message{key: "test", partition: 0, partition_fun: :random, topic: "test"}]
 
   """
   @spec normalize([Message.t()], atom()) :: [Message.t()]
