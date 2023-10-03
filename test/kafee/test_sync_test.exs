@@ -1,6 +1,6 @@
-defmodule Kafee.TestTest do
-  use ExUnit.Case, async: true
-  use Kafee.Test
+defmodule Kafee.TestSyncTest do
+  use ExUnit.Case, async: false
+  use Kafee.Test, shared: trueg
 
   defmodule TestProducer do
     use Kafee.Producer, producer_backend: Kafee.Producer.TestBackend
