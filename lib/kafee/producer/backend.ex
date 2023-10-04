@@ -32,9 +32,10 @@ defmodule Kafee.Producer.Backend do
   alias Kafee.Producer.{Config, Message}
 
   @doc """
-  Starts the backend process.
+  Child specification for the backend process. This can result a `:supervisor.child_spec`
+  or if the backend does not require a process to run, can return `nil`.
   """
-  @callback start_link(Config.t()) :: :ignore | {:ok, pid()} | {:error, any()}
+  @callback child_spec([Config.t()]) :: :supervisor.child_spec() | nil
 
   @doc """
   Returns the partition number for a message. Usually relies on

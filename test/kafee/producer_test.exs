@@ -1,14 +1,9 @@
 defmodule Kafee.ProducerTest do
-  use Kafee.BrodCase
+  use Kafee.BrodCase, async: false
 
   import Kafee.Producer
 
   alias Kafee.Producer.{Config, Message}
-
-  setup do
-    on_exit(fn -> Application.delete_env(:kafee, :producer) end)
-    :ok
-  end
 
   describe "doctest" do
     setup do

@@ -134,9 +134,15 @@ defmodule Kafee.Producer do
           |> Kafee.Producer.Config.validate!()
 
         children = [
-          {Kafee.Producer.Config, config},
-          {config.producer_backend, config}
+          {Kafee.Producer.Config, config}
         ]
+
+        child_spec = config.producer_backend.child_spec([config])
+
+        children =
+          if is_nil(child_spec),
+            do: children,
+            else: Enum.reverse([child_spec | children])
 
         Supervisor.init(children, strategy: :one_for_one)
       end
@@ -180,8 +186,8 @@ defmodule Kafee.Producer do
 
   ## Examples
 
-      iex> normalize([%Kafee.Producer.Message{key: "test", partition: nil}], MyProducer)
-      [%Kafee.Producer.Message{key: "test", partition: 0, partition_fun: :random}]
+      iex> normalize([%Kafee.Producer.Message{key: "test", partition: nil, topic: "test"}], MyProducer)
+      [%Kafee.Producer.Message{key: "test", partition: 0, partition_fun: :random, topic: "test"}]
 
   """
   @spec normalize([Message.t()], atom()) :: [Message.t()]

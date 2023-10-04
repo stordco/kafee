@@ -39,7 +39,10 @@ defmodule Kafee.Producer.Config do
     brod_producer_opts: [],
 
     # Extra Kafee options
-    kafee_async_worker_opts: []
+    kafee_async_worker_opts: [],
+
+    # Testing configuration
+    test_process: nil
   ]
 
   @typedoc """
@@ -60,7 +63,8 @@ defmodule Kafee.Producer.Config do
           partition_fun: :brod.partitioner(),
           brod_client_opts: :brod.client_config(),
           brod_producer_opts: :brod.producer_config(),
-          kafee_async_worker_opts: Keyword.t()
+          kafee_async_worker_opts: Keyword.t(),
+          test_process: pid()
         }
 
   @doc """
@@ -76,10 +80,10 @@ defmodule Kafee.Producer.Config do
 
   ## Examples
 
-      iex> config = %Config{producer: MyProducer}
+      iex> config = %Config{producer: MyProducer, test_process: self()}
       ...> {:ok, _pid} = Config.start_link(config)
       ...> Config.get(MyProducer)
-      %Config{producer: MyProducer}
+      %Config{producer: MyProducer, test_process: self()}
 
   """
   @spec get(atom()) :: t()
@@ -87,6 +91,7 @@ defmodule Kafee.Producer.Config do
     producer
     |> process_name()
     |> Agent.get(& &1)
+    |> set_test_process()
   end
 
   @doc """
@@ -270,5 +275,17 @@ defmodule Kafee.Producer.Config do
   def process_name(producer) do
     # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
     Module.concat(producer, Config)
+  end
+
+  # This function is responsible for setting the dynamic test process pid.
+  # If it is set in the application environment, we are testing in a shared
+  # mode and should always use that pid. If it is unset, we can assume
+  # that the self() pid is also the test pid.
+  defp set_test_process(config) do
+    if pid = Application.get_env(:kafee, :test_process) do
+      %{config | test_process: pid}
+    else
+      %{config | test_process: self()}
+    end
   end
 end
