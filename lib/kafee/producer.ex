@@ -328,13 +328,17 @@ defmodule Kafee.Producer do
   # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/messaging.md
   @spec otel_values([Message.t()], Config.t()) :: {String.t(), map()}
   defp otel_values([message | _] = messages, config) do
-    {message.topic <> " publish",
+    # Ideally the topic will be validated above before producing, but
+    # we want to be double safe.
+    topic = if is_nil(message.topic), do: "unknown-topic", else: message.topic
+
+    {topic <> " publish",
      %{
        kind: :client,
        attributes: %{
          "messaging.batch.message_count": length(messages),
          "messaging.destination.kind": "topic",
-         "messaging.destination.name": message.topic,
+         "messaging.destination.name": topic,
          "messaging.operation": "publish",
          "messaging.system": "kafka",
          "network.transport": "tcp",

@@ -26,6 +26,8 @@ defmodule Kafee.Producer.AsyncWorker do
 
   require Logger
 
+  alias Datadog.DataStreams.Integrations.Kafka, as: DDKafka
+
   # The max request size Kafka can handle by default is 1mb.
   # We shrink it by 8kb as an extra precaution for data.
   @default_max_request_size 1_040_384
@@ -192,9 +194,9 @@ defmodule Kafee.Producer.AsyncWorker do
   # We sent messages to Kafka successfully, so we pull them from the message queue
   # and try sending more messages
   @doc false
-  def handle_info({task_ref, {:ok, messages_sent}}, %{send_task: %{ref: task_ref}} = state) do
+  def handle_info({task_ref, {:ok, messages_sent, offset}}, %{send_task: %{ref: task_ref}} = state) do
     Logger.debug("Successfully sent messages to Kafka")
-
+    if is_integer(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
     {_sent_messages, remaining_messages} = :queue.split(messages_sent, state.queue)
     emit_queue_telemetry(state, :queue.len(remaining_messages))
 
@@ -202,6 +204,7 @@ defmodule Kafee.Producer.AsyncWorker do
     {:noreply, %{state | queue: remaining_messages}}
   end
 
+  @doc false
   def handle_info({_task_ref, {:error, {:producer_down, :noproc}}}, state) do
     Logger.debug("The brod producer process is currently down. Waiting for it to come back online")
     Process.send_after(self(), :send, 10_000)
@@ -318,7 +321,8 @@ defmodule Kafee.Producer.AsyncWorker do
   # make sure we get an ack back from it and send all remaining messages.
   def terminate(reason, %{send_task: %{ref: ref}} = state) do
     receive do
-      {^ref, {:ok, sent_message_count}} ->
+      {^ref, {:ok, sent_message_count, offset}} ->
+        if is_integer(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
         {_sent_messages, remaining_messages} = :queue.split(sent_message_count, state.queue)
         emit_queue_telemetry(state, :queue.len(remaining_messages))
         terminate(reason, %{state | queue: remaining_messages, send_task: nil})
@@ -335,13 +339,15 @@ defmodule Kafee.Producer.AsyncWorker do
   @spec terminate_send(t()) :: :ok
   defp terminate_send(state) do
     case send_messages(state) do
-      {:ok, 0} ->
+      {:ok, 0, offset} ->
         Logger.info("Successfully sent all remaining messages to Kafka before termination")
+        if is_integer(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
         emit_queue_telemetry(state, 0)
         :ok
 
-      {:ok, sent_message_count} ->
+      {:ok, sent_message_count, offset} ->
         Logger.debug("Successfully sent #{sent_message_count} messages to Kafka before termination")
+        if is_integer(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
         {_sent_messages, remaining_messages} = :queue.split(sent_message_count, state.queue)
         emit_queue_telemetry(state, :queue.len(remaining_messages))
         terminate_send(%{state | queue: remaining_messages})
@@ -378,13 +384,13 @@ defmodule Kafee.Producer.AsyncWorker do
     })
   end
 
-  @spec send_messages(t()) :: {:ok, sent_count :: pos_integer()} | term()
+  @spec send_messages(t()) :: {:ok, sent_count :: pos_integer(), offset :: integer() | nil} | term()
   defp send_messages(state) do
     messages = build_message_batch(state.queue, state.max_request_size)
     messages_length = length(messages)
 
     if messages_length == 0 do
-      {:ok, 0}
+      {:ok, 0, nil}
     else
       Logger.debug("Sending #{messages_length} messages to Kafka")
 
@@ -398,8 +404,8 @@ defmodule Kafee.Producer.AsyncWorker do
         fn ->
           with {:ok, call_ref} <-
                  :brod.produce(state.brod_client_id, state.topic, state.partition, :undefined, messages),
-               :ok <- :brod.sync_produce_request(call_ref, state.send_timeout) do
-            {{:ok, messages_length}, %{}}
+               {:ok, offset} <- :brod.sync_produce_request_offset(call_ref, state.send_timeout) do
+            {{:ok, messages_length, offset}, %{}}
           else
             res -> {res, %{}}
           end

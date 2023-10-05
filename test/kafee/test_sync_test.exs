@@ -2,23 +2,13 @@ defmodule Kafee.TestSyncTest do
   use ExUnit.Case, async: false
   use Kafee.Test, shared: true
 
+  alias Kafee.BrodApi
+
   defmodule TestProducer do
     use Kafee.Producer, producer_backend: Kafee.Producer.TestBackend
   end
 
-  def create_message(opts \\ %{}) do
-    Map.merge(
-      %Kafee.Producer.Message{
-        topic: Faker.Pokemon.name(),
-        key: Faker.Team.creature(),
-        value: Faker.Markdown.markdown(),
-        partition: 0,
-        partition_fun: :random,
-        headers: []
-      },
-      opts
-    )
-  end
+  @topic "kafee-test-sync-test"
 
   setup do
     start_supervised!({TestProducer, []})
@@ -27,48 +17,47 @@ defmodule Kafee.TestSyncTest do
 
   describe "assert_kafee_message/2" do
     test "asserts an exact matching message" do
-      message = create_message()
+      message = BrodApi.generate_producer_message(@topic)
       TestProducer.produce(message)
       assert_kafee_message(^message)
     end
 
     test "asserts a partial match" do
-      message = create_message(%{key: "testing key"})
+      message = BrodApi.generate_producer_message("a new test topic")
       TestProducer.produce(message)
-      assert_kafee_message(%{key: "testing key"})
+      assert_kafee_message(%{topic: "a new test topic"})
     end
 
     test "asserts allow matching" do
-      message = create_message()
-      %{key: key} = message
+      message = BrodApi.generate_producer_message(@topic)
       TestProducer.produce(message)
-      assert_kafee_message(%{key: ^key})
+      assert_kafee_message(%{topic: @topic})
     end
 
     test "assert allows variable assignment" do
-      message = create_message()
+      message = BrodApi.generate_producer_message(@topic)
       TestProducer.produce(message)
-      assert_kafee_message(%{key: key})
-      assert key
+      assert_kafee_message(%{topic: topic})
+      assert topic == @topic
     end
   end
 
   describe "refute_kafee_message/2" do
     test "refutes an exact matching message" do
-      message = create_message()
-      TestProducer.produce(create_message())
-      refute_kafee_message(^message)
+      message = BrodApi.generate_producer_message(@topic)
+      TestProducer.produce(BrodApi.generate_producer_message(@topic))
+      assert_raise ExUnit.AssertionError, fn -> refute_kafee_message(^message) end
     end
 
     test "refutes a partial match" do
-      %{key: "refute test"} |> create_message() |> TestProducer.produce()
-      refute_kafee_message(%{key: "refute test", topic: "refute topic"})
+      @topic |> BrodApi.generate_producer_message() |> TestProducer.produce()
+      assert_raise ExUnit.AssertionError, fn -> refute_kafee_message(%{topic: @topic}) end
     end
   end
 
   describe "kafee_messages/0" do
     test "returns a list of messages produced" do
-      message = create_message()
+      message = BrodApi.generate_producer_message(@topic)
       TestProducer.produce(message)
       assert [^message] = kafee_messages()
     end

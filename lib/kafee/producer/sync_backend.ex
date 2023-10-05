@@ -7,6 +7,7 @@ defmodule Kafee.Producer.SyncBackend do
 
   @behaviour Kafee.Producer.Backend
 
+  alias Datadog.DataStreams.Integrations.Kafka, as: DDKafka
   alias Kafee.Producer.Config
 
   @doc """
@@ -54,7 +55,10 @@ defmodule Kafee.Producer.SyncBackend do
     for message <- messages do
       :telemetry.span([:kafee, :produce], %{topic: message.topic, partition: message.partition}, fn ->
         # We pattern match here because it will cause `:telemetry.span/3` to measure exceptions
-        :ok = :brod.produce_sync(config.brod_client_id, message.topic, message.partition, message.key, message)
+        {:ok, offset} =
+          :brod.produce_sync_offset(config.brod_client_id, message.topic, message.partition, message.key, message)
+
+        if is_integer(offset), do: DDKafka.track_produce(message.topic, message.partition, offset)
         {:ok, %{}}
       end)
     end
