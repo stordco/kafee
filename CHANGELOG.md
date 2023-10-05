@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.6.2](https://github.com/stordco/kafee/compare/v2.6.1...v2.6.2) (2023-09-28)
+
+
+### Bug Fixes
+
+* Update CI to include kafka service ([#57](https://github.com/stordco/kafee/issues/57)) ([d297248](https://github.com/stordco/kafee/commit/d2972489ffccc9c196073061e410a9538bfd37b2))
+
+
+### Miscellaneous
+
+* Add common-config-elixir workflow ([#53](https://github.com/stordco/kafee/issues/53)) ([4771f6f](https://github.com/stordco/kafee/commit/4771f6f5194a048477ff59bf28b21f1c8c817811))
+* Sync files with stordco/common-config-elixir ([#54](https://github.com/stordco/kafee/issues/54)) ([5753ed7](https://github.com/stordco/kafee/commit/5753ed7cac42823ed02e05c4dceb59ee91079537))
+* Sync files with stordco/common-config-elixir ([#56](https://github.com/stordco/kafee/issues/56)) ([c283269](https://github.com/stordco/kafee/commit/c2832692183f31520ac474687e84545ce3509e1f))
+
 ## [2.6.1](https://github.com/stordco/kafee/compare/v2.6.0...v2.6.1) (2023-05-24)
 
 

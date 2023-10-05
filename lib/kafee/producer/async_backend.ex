@@ -67,13 +67,31 @@ defmodule Kafee.Producer.AsyncBackend do
   """
 
   @behaviour Kafee.Producer.Backend
-
-  use Supervisor
+  @behaviour Supervisor
 
   alias Kafee.Producer.{AsyncSupervisor, Config, Message}
 
+  @doc """
+  Child specification for the async worker backend. This starts
+  a `Kafee.Producer.AsyncWorker` for every partition in the topic
+  we send data to, as well as the lower level `:brod_client`.
+  """
+  @impl Kafee.Producer.Backend
+  def child_spec([config]) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [config]},
+      type: :supervisor
+    }
+  end
+
   @doc false
-  @impl true
+  def start_link(%Config{} = config) do
+    Supervisor.start_link(__MODULE__, config, name: Kafee.Producer.Backend.process_name(config.producer))
+  end
+
+  @doc false
+  @impl Supervisor
   def init(%Config{} = config) do
     brod_endpoints = Config.brod_endpoints(config)
     brod_client_opts = Config.brod_client_config(config)
@@ -90,22 +108,16 @@ defmodule Kafee.Producer.AsyncBackend do
   end
 
   def init(opts) do
+    received = inspect(opts)
+
     raise ArgumentError,
       message: """
       The `Kafee.Producer.AsyncBackend` module expects to be given
       a `Kafee.Producer.Config` struct on startup.
 
       Received:
-      #{inspect(opts)}
+      #{received}
       """
-  end
-
-  @doc """
-  Starts a new `Kafee.Producer.AsyncBackend` process and associated children.
-  """
-  @impl true
-  def start_link(%Config{} = config) do
-    Supervisor.start_link(__MODULE__, config, name: Kafee.Producer.Backend.process_name(config.producer))
   end
 
   @doc """
@@ -120,7 +132,7 @@ defmodule Kafee.Producer.AsyncBackend do
       {:ok, 1}
 
   """
-  @impl true
+  @impl Kafee.Producer.Backend
   def partition(%Config{brod_client_id: brod_client_id}, message) do
     with {:ok, partition_count} <- :brod.get_partitions_count(brod_client_id, message.topic) do
       partition_fun = :brod_utils.make_part_fun(message.partition_fun)
@@ -132,7 +144,7 @@ defmodule Kafee.Producer.AsyncBackend do
   Sends all of the given messages to an `Kafee.Producer.AsyncWorker` queue
   to be sent to Kafka in the future.
   """
-  @impl true
+  @impl Kafee.Producer.Backend
   def produce(%Config{} = config, messages) do
     # Here we partition the message, but we also strip the message down to just
     # a key value map, which is what's required by `:brod`. This saves us a

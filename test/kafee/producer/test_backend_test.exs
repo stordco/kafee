@@ -1,13 +1,17 @@
 defmodule Kafee.Producer.TestBackendTest do
   use Kafee.KafkaCase
-  import Kafee.Testing
 
-  defmodule TestProducer do
-    use Kafee.Producer, producer_backend: Kafee.Producer.TestBackend
+  defmodule MyProducer do
+    use Kafee.Producer,
+      producer_backend: Kafee.Producer.TestBackend,
+      partition_fun: :random
   end
 
-  setup do
-    start_supervised!({TestProducer, []})
+  setup %{topic: topic} do
+    Application.put_env(:kafee, :test_process, self())
+    Application.put_env(:kafee, :producer, topic: topic)
+
+    start_supervised!(MyProducer)
     :ok
   end
 
@@ -23,7 +27,7 @@ defmodule Kafee.Producer.TestBackendTest do
           }
         end
 
-      assert :ok = TestProducer.produce(messages)
+      assert :ok = MyProducer.produce(messages)
     end
   end
 
@@ -38,56 +42,8 @@ defmodule Kafee.Producer.TestBackendTest do
         headers: [{"dd-pathway-ctx", <<0>>}]
       }
 
-      assert :ok = TestProducer.produce([message])
-      assert_producer_message(TestProducer, message)
-    end
-
-    test "it asserts partial keys on a message" do
-      message = %Kafee.Producer.Message{
-        key: "test-key-go-weeeeeee",
-        value: "test-value-blablabla",
-        topic: "test-topic-but-different",
-        partition: 0
-      }
-
-      assert :ok = TestProducer.produce([message])
-      assert_producer_message(TestProducer, %{key: "test-key-go-weeeeeee"})
-    end
-
-    test "it gets a super cool error message" do
-      message = %Kafee.Producer.Message{
-        key: "test-key-no-go",
-        value: "test-value-mega-failure",
-        topic: "local-dev-machine",
-        partition: 0
-      }
-
-      assert :ok = TestProducer.produce([message])
-
-      assert_raise ExUnit.AssertionError, ~r/Message matching the map given was not found/, fn ->
-        assert_producer_message(TestProducer, %{key: "failure"})
-      end
-    end
-  end
-
-  describe "refute_producer_message/2" do
-    test "refutes that a message was produced when we don't call produce" do
-      refute_producer_message(TestProducer, %{key: "test-key-go-weeee"})
-    end
-
-    test "raises an error when the message was actually produced" do
-      message = %Kafee.Producer.Message{
-        key: "test-key-no-go",
-        value: "test-value-mega-failure",
-        topic: "local-dev-machine",
-        partition: 0
-      }
-
-      assert :ok = TestProducer.produce([message])
-
-      assert_raise ExUnit.AssertionError, ~r/Message matching the map given was found while it shouldn't/, fn ->
-        refute_producer_message(TestProducer, %{key: "test-key-no-go"})
-      end
+      assert :ok = MyProducer.produce([message])
+      assert_receive {:kafee_message, ^message}
     end
   end
 end

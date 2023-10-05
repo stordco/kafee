@@ -414,7 +414,9 @@ defmodule Kafee.Producer.AsyncWorker do
   @spec build_message_batch(:queue.queue(), pos_integer()) :: [:brod.message_set()]
   defp build_message_batch(queue, max_request_size) do
     {batch_bytes, batch_messages} =
-      Enum.reduce_while(:queue.to_list(queue), {0, []}, fn message, {bytes, batch} ->
+      queue
+      |> :queue.to_list()
+      |> Enum.reduce_while({0, []}, fn message, {bytes, batch} ->
         # I know that `:erlang.external_size` won't match what we actually
         # send, but it should be under the limit that would cause Kafka errors
         case bytes + :erlang.external_size(message) do

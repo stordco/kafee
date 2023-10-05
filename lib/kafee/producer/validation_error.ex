@@ -6,7 +6,7 @@ defmodule Kafee.Producer.ValidationError do
 
   defexception message: "Error while validating a message for Kafka", kafee_message: nil, validation_error: nil
 
-  @impl true
+  @impl Exception
   def exception(value) do
     kafee_message = Keyword.fetch!(value, :kafee_message)
 
