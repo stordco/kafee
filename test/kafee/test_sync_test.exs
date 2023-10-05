@@ -4,11 +4,11 @@ defmodule Kafee.TestSyncTest do
 
   alias Kafee.BrodApi
 
+  @topic "kafee-test-sync-test"
+
   defmodule TestProducer do
     use Kafee.Producer, producer_backend: Kafee.Producer.TestBackend
   end
-
-  @topic "kafee-test-sync-test"
 
   setup do
     start_supervised!({TestProducer, []})
@@ -45,7 +45,7 @@ defmodule Kafee.TestSyncTest do
   describe "refute_kafee_message/2" do
     test "refutes an exact matching message" do
       message = BrodApi.generate_producer_message(@topic)
-      TestProducer.produce(BrodApi.generate_producer_message(@topic))
+      @topic |> BrodApi.generate_producer_message() |> TestProducer.produce()
       assert_raise ExUnit.AssertionError, fn -> refute_kafee_message(^message) end
     end
 

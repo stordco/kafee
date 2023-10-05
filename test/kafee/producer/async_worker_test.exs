@@ -390,6 +390,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       Process.sleep(@wait_timeout)
 
       # Now we can assert that the actual call was made and that the offset was not 0
+      # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls
       assert_called(Datadog.DataStreams.Integrations.Kafka.track_produce(^topic, 0, offset))
       assert offset >= 1
     end

@@ -51,6 +51,7 @@ defmodule Kafee.Producer.SyncBackend do
   Calls the `:brod.produce_sync/5` function.
   """
   @impl Kafee.Producer.Backend
+  @dialyzer {:no_match, produce: 2}
   def produce(%Config{} = config, messages) do
     for message <- messages do
       :telemetry.span([:kafee, :produce], %{topic: message.topic, partition: message.partition}, fn ->
@@ -59,6 +60,7 @@ defmodule Kafee.Producer.SyncBackend do
           :brod.produce_sync_offset(config.brod_client_id, message.topic, message.partition, message.key, message)
 
         if is_integer(offset), do: DDKafka.track_produce(message.topic, message.partition, offset)
+
         {:ok, %{}}
       end)
     end
