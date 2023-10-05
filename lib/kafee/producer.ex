@@ -330,15 +330,15 @@ defmodule Kafee.Producer do
   defp otel_values([message | _] = messages, config) do
     # Ideally the topic will be validated above before producing, but
     # we want to be double safe.
-    topic = if is_nil(message.topic), do: "unknown-topic", else: message.topic
+    span_name = if is_nil(message.topic), do: "publish", else: message.topic <> " publish"
 
-    {topic <> " publish",
+    {span_name,
      %{
        kind: :client,
        attributes: %{
          "messaging.batch.message_count": length(messages),
          "messaging.destination.kind": "topic",
-         "messaging.destination.name": topic,
+         "messaging.destination.name": message.topic,
          "messaging.operation": "publish",
          "messaging.system": "kafka",
          "network.transport": "tcp",
