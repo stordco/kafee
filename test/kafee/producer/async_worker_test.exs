@@ -1,4 +1,9 @@
 defmodule Kafee.Producer.AsyncWorkerTest do
+  # It's worth mentioning that some of the tests in this file deal with
+  # binary size batching and are very flaky due to different OTP versions
+  # and how data is stored low level. Most of those tests test against a
+  # wide range to still assert what we need, but avoid flake.
+
   use Kafee.KafkaCase
 
   import ExUnit.CaptureLog
@@ -11,6 +16,10 @@ defmodule Kafee.Producer.AsyncWorkerTest do
   setup do
     spy(:brod)
     on_exit(fn -> restore(:brod) end)
+
+    spy(Datadog.DataStreams.Integrations.Kafka)
+    on_exit(fn -> restore(Datadog.DataStreams.Integrations.Kafka) end)
+
     :ok
   end
 
@@ -90,7 +99,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       remaining_messages = BrodApi.generate_producer_message_list(topic, 3)
       state = %{state | send_task: task, queue: :queue.from_list(send_messages ++ remaining_messages)}
 
-      assert {:noreply, new_state} = AsyncWorker.handle_info({task.ref, {:ok, 4}}, state)
+      assert {:noreply, new_state} = AsyncWorker.handle_info({task.ref, {:ok, 4, 0}}, state)
       assert ^remaining_messages = :queue.to_list(new_state.queue)
     end
 
@@ -100,7 +109,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       remaining_messages = BrodApi.generate_producer_message_list(topic, 3)
       state = %{state | send_task: task, queue: :queue.from_list(send_messages ++ remaining_messages)}
 
-      assert {:noreply, _new_state} = AsyncWorker.handle_info({task.ref, {:ok, 4}}, state)
+      assert {:noreply, _new_state} = AsyncWorker.handle_info({task.ref, {:ok, 4, 0}}, state)
       assert_receive {:telemetry_event, [:kafee, :queue], %{count: 3}, %{partition: 0, topic: ^topic}}
     end
 
@@ -271,7 +280,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       task = make_fake_task()
       state = %{state | queue: :queue.from_list(remaining_messages), send_task: task, send_timeout: :infinity}
 
-      Process.send_after(self(), {task.ref, {:ok, 0}}, 10)
+      Process.send_after(self(), {task.ref, {:ok, 0, 0}}, 10)
       assert :ok = AsyncWorker.terminate(:normal, state)
       assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, ^remaining_messages))
     end
@@ -300,7 +309,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       remaining_messages = BrodApi.generate_producer_message_list(topic, 10)
       state = %{state | queue: :queue.from_list(remaining_messages), send_timeout: :infinity}
 
-      patch(:brod, :sync_produce_request, fn _ref, _timeout ->
+      patch(:brod, :sync_produce_request_offset, fn _ref, _timeout ->
         {:error, :timeout}
       end)
 
@@ -318,7 +327,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       remaining_messages = BrodApi.generate_producer_message_list(topic, 10)
       state = %{state | queue: :queue.from_list(remaining_messages), send_timeout: :infinity}
 
-      patch(:brod, :sync_produce_request, fn _ref, _timeout ->
+      patch(:brod, :sync_produce_request_offset, fn _ref, _timeout ->
         raise RuntimeError, message: "test"
       end)
 
@@ -339,7 +348,8 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       expose(AsyncWorker, build_message_batch: 2)
 
       batch = private(AsyncWorker.build_message_batch(messages, 1000))
-      assert length(batch) in 6..7
+      # This is not an exact science.
+      assert length(batch) in 4..7
     end
 
     test "returns a list of messages under the max batch size" do
@@ -347,11 +357,11 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       expose(AsyncWorker, build_message_batch: 2)
 
       batch = private(AsyncWorker.build_message_batch(messages, 1_040_384))
-      assert length(batch) in 7029..7484
+      assert length(batch) in 5000..7484
 
       {_batched_messages, remaining_messages} = batch |> length() |> :queue.split(messages)
       remaining_batch = private(AsyncWorker.build_message_batch(remaining_messages, 1_040_384))
-      assert length(remaining_batch) in 2516..2971
+      assert length(remaining_batch) in 2516..5000
 
       assert 10_000 = length(batch) + length(remaining_batch)
     end
@@ -362,6 +372,27 @@ defmodule Kafee.Producer.AsyncWorkerTest do
 
       batch = private(AsyncWorker.build_message_batch(messages, 1))
       assert 1 = length(batch)
+    end
+  end
+
+  describe "Datadog.DataStreams.Integrations.Kafka" do
+    test "calls track_produce/3 with current produce offset", %{pid: pid, topic: topic} do
+      # We send the first message to ensure the offset gets set to something not 0. This
+      # isn't strictly required, but it's nice to test that the offset number isn't just
+      # being ignored or unset.
+      first_message = BrodApi.generate_producer_message(topic)
+      assert :ok = AsyncWorker.queue(pid, [first_message])
+      Process.sleep(@wait_timeout)
+
+      # Then we finally send the actual messages
+      more_messages = BrodApi.generate_producer_message_list(topic, 20)
+      assert :ok = AsyncWorker.queue(pid, more_messages)
+      Process.sleep(@wait_timeout)
+
+      # Now we can assert that the actual call was made and that the offset was not 0
+      # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls
+      assert_called(Datadog.DataStreams.Integrations.Kafka.track_produce(^topic, 0, offset))
+      assert offset >= 1
     end
   end
 

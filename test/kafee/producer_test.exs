@@ -181,6 +181,23 @@ defmodule Kafee.ProducerTest do
     end
   end
 
+  describe "annotate/1" do
+    @header "dd-pathway-ctx"
+
+    test "adds a Data Streams header to messages" do
+      message = Kafee.Producer.annotate(%Kafee.Producer.Message{})
+      assert header = Enum.find(message.headers, fn {key, _value} -> key == @header end)
+      assert {@header, value} = header
+      assert is_binary(value)
+    end
+
+    test "does not overwrite an existing Data Streams header" do
+      message = Kafee.Producer.annotate(%Kafee.Producer.Message{headers: [{"dd-pathway-ctx", "test"}]})
+      assert header = Enum.find(message.headers, fn {key, _value} -> key == "dd-pathway-ctx" end)
+      assert {@header, "test"} = header
+    end
+  end
+
   describe "produce/2" do
     test "sends messages to the producer", %{topic: topic} do
       message = %Kafee.Producer.Message{key: "test", value: "test", topic: topic}
