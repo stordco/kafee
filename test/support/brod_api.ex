@@ -5,6 +5,8 @@ defmodule Kafee.BrodApi do
 
   import ExUnit.Callbacks, only: [start_supervised!: 1]
 
+  @data_streams_propagator_key Datadog.DataStreams.Propagator.propagation_key()
+
   @doc """
   Creates a random atom to use as a `:brod_client` id.
 
@@ -56,7 +58,9 @@ defmodule Kafee.BrodApi do
       key: "test",
       value: "test",
       topic: topic,
-      partition: 0
+      partition: 0,
+      partition_fun: :random,
+      headers: [{@data_streams_propagator_key, "test"}]
     }
   end
 
