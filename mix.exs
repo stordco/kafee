@@ -41,7 +41,8 @@ defmodule Kafee.MixProject do
   defp deps do
     [
       {:brod, "~> 3.17.0"},
-      {:jason, ">= 1.0.0"},
+      {:jason, ">= 1.0.0", optional: true},
+      {:protobuf, ">= 0.10.0", optional: true},
       {:telemetry, ">= 1.0.0"},
 
       # Dev & Test dependencies
