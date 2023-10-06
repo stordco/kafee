@@ -43,6 +43,7 @@ defmodule Kafee.MixProject do
       {:brod, "~> 3.17.0"},
       {:data_streams, ">= 1.2.0"},
       {:jason, ">= 1.0.0"},
+      {:nimble_options, ">= 1.0.0"},
       {:opentelemetry_api, ">= 1.0.0"},
       {:telemetry, ">= 1.0.0"},
 
