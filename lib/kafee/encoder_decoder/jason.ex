@@ -20,12 +20,17 @@ if Code.ensure_loaded?(Jason) do
         reraise Kafee.EncoderDecoder.Error, [message: Exception.message(e)], __STACKTRACE__
 
       _e in Protocol.UndefinedError ->
-        raise Kafee.EncoderDecoder.Error,
-          message: """
-          Jason.Encoder protocol is not implemented for value.
+        inspected_value = inspect(value)
 
-          #{inspect(value)}
-          """
+        reraise Kafee.EncoderDecoder.Error,
+                [
+                  message: """
+                  Jason.Encoder protocol is not implemented for value.
+
+                  #{inspected_value}
+                  """
+                ],
+                __STACKTRACE__
     end
 
     @doc false

@@ -17,11 +17,11 @@ defmodule Kafee.ProtobufJsonEncoderDecoderTest do
 
   describe "encode!/2" do
     test "encodes regular map" do
-      assert "{\"key\":\"value\"}" = EncoderDecoder.encode!(%MyProtobuf{key: "value"}, [])
+      assert ~s({"key":"value"}) = EncoderDecoder.encode!(%MyProtobuf{key: "value"}, [])
     end
 
     test "allows passing options in" do
-      assert "{\"key\":\"value\"}" = EncoderDecoder.encode!(%MyProtobuf{key: "value"}, use_proto_names: true)
+      assert ~s({"key":"value"}) = EncoderDecoder.encode!(%MyProtobuf{key: "value"}, use_proto_names: true)
     end
 
     test "raises on unencodable data" do
@@ -31,11 +31,11 @@ defmodule Kafee.ProtobufJsonEncoderDecoderTest do
 
   describe "decode!/2" do
     test "raises error without module specified" do
-      assert_raise Kafee.EncoderDecoder.Error, fn -> EncoderDecoder.decode!("{\"key\":\"value\"}", []) end
+      assert_raise Kafee.EncoderDecoder.Error, fn -> EncoderDecoder.decode!(~s({"key":"value"}), []) end
     end
 
     test "decodes regular map" do
-      assert %MyProtobuf{key: "value"} = EncoderDecoder.decode!("{\"key\":\"value\"}", module: MyProtobuf)
+      assert %MyProtobuf{key: "value"} = EncoderDecoder.decode!(~s({"key":"value"}), module: MyProtobuf)
     end
 
     test "raises on undecodable data" do

@@ -6,12 +6,6 @@ defmodule Kafee.EncoderDecoder do
   structures while testing to avoid issues like JSON key sorting in OTP 26+.
   """
 
-  @optional_callbacks content_type: 0
-
-  defmodule Error do
-    defexception [:message]
-  end
-
   @doc """
   Returns the content type of the encoder decoder. This will be placed as the
   `content-type` header in the Kafka message.
@@ -29,4 +23,10 @@ defmodule Kafee.EncoderDecoder do
   is an issue decoding the data.
   """
   @callback decode!(binary, Keyword.t()) :: any
+
+  @optional_callbacks content_type: 0
+
+  defmodule Error do
+    defexception [:message]
+  end
 end

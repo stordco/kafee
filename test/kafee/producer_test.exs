@@ -41,43 +41,43 @@ defmodule Kafee.ProducerTest do
 
   describe "__using__/1 produce/1" do
     test "allows sending a single message", %{topic: topic} do
-      message = %Message{key: "test", value: "test", topic: topic}
+      message = BrodApi.generate_producer_message(topic)
 
       spy(Kafee.Producer)
       start_supervised(MyProducer)
       assert :ok = MyProducer.produce(message)
-      assert_called_once(Kafee.Producer.produce([message], _producer))
+      # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls
+      assert_called_once(Kafee.Producer.produce([^message], _producer))
     end
 
     test "allows sending a list of messages", %{topic: topic} do
-      messages = [
-        %Message{key: "test", value: "test", topic: topic},
-        %Message{key: "test2", value: "test2", topic: topic}
-      ]
+      messages = BrodApi.generate_producer_message_list(topic, 2)
 
       spy(Kafee.Producer)
       start_supervised(MyProducer)
       assert :ok = MyProducer.produce(messages)
-      assert_called_once(Kafee.Producer.produce(messages, _producer))
+      # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls
+      assert_called_once(Kafee.Producer.produce(^messages, _producer))
     end
 
     test "normalizes the data", %{topic: topic} do
-      message = %Message{key: "test", value: "test", topic: topic}
+      message = BrodApi.generate_producer_message(topic)
 
       spy(Kafee.Producer)
       start_supervised(MyProducer)
-      config = Kafee.Producer.Config.get(MyProducer)
       assert :ok = MyProducer.produce(message)
-      assert_called_once(Kafee.Producer.do_normalize(^message, ^config))
+      # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls
+      assert_called_once(Kafee.Producer.do_normalize(^message, _config))
     end
   end
 
   describe "normalize_batch/2" do
     test "runs normalize/2", %{topic: topic} do
       spy(Kafee.Producer)
-      message = %Message{key: "test", value: "test", topic: topic}
+      message = BrodApi.generate_producer_message(topic)
       start_supervised(MyProducer)
       assert [%{topic: ^topic}] = Kafee.Producer.normalize_batch([message], MyProducer)
+      # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls
       assert_called_once(Kafee.Producer.do_normalize(^message, _config))
     end
   end

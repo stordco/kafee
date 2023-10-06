@@ -11,11 +11,11 @@ defmodule Kafee.JasonEncoderDecoderTest do
 
   describe "encode!/2" do
     test "encodes regular map" do
-      assert "{\"key\":\"value\"}" = EncoderDecoder.encode!(%{key: "value"}, [])
+      assert ~s({"key":"value"}) = EncoderDecoder.encode!(%{key: "value"}, [])
     end
 
     test "allows passing options in" do
-      assert "{\n  \"key\": \"value\"\n}" = EncoderDecoder.encode!(%{key: "value"}, pretty: true)
+      assert ~s({\n  "key": "value"\n}) = EncoderDecoder.encode!(%{key: "value"}, pretty: true)
     end
 
     test "raises on unencodable data" do
@@ -25,11 +25,11 @@ defmodule Kafee.JasonEncoderDecoderTest do
 
   describe "decode!/2" do
     test "decodes regular map" do
-      assert %{"key" => "value"} = EncoderDecoder.decode!("{\"key\":\"value\"}", [])
+      assert %{"key" => "value"} = EncoderDecoder.decode!(~s({"key":"value"}), [])
     end
 
     test "allows passing options in" do
-      assert %{key: "value"} = EncoderDecoder.decode!("{\"key\":\"value\"}", keys: :atoms)
+      assert %{key: "value"} = EncoderDecoder.decode!(~s({"key":"value"}), keys: :atoms)
     end
 
     test "raises on undecodable data" do

@@ -22,12 +22,17 @@ if Code.ensure_loaded?(Protobuf) do
         reraise Kafee.EncoderDecoder.Error, [message: Exception.message(e)], __STACKTRACE__
 
       _e in FunctionClauseError ->
-        raise Kafee.EncoderDecoder.Error,
-          message: """
-          Expected the value given to be a Protobuf encodable struct.
+        inspected_value = inspect(value)
 
-          #{inspect(value)}
-          """
+        reraise Kafee.EncoderDecoder.Error,
+                [
+                  message: """
+                  Expected the value given to be a Protobuf encodable struct.
+
+                  #{inspected_value}
+                  """
+                ],
+                __STACKTRACE__
     end
 
     @doc false
