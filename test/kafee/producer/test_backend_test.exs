@@ -44,5 +44,21 @@ defmodule Kafee.Producer.TestBackendTest do
       assert :ok = MyProducer.produce([message])
       assert_receive {:kafee_message, ^message}
     end
+
+    test "it decodes messages before sending to test pid" do
+      spy(Kafee.NilEncoderDecoder)
+
+      message = %Kafee.Producer.Message{
+        key: "test-key",
+        value: "test-value",
+        topic: "test-topic",
+        partition: 0,
+        partition_fun: :hash
+      }
+
+      assert :ok = MyProducer.produce([message])
+      assert_receive {:kafee_message, ^message}
+      assert_called_once(Kafee.NilEncoderDecoder.decode!("test-value", _config))
+    end
   end
 end
