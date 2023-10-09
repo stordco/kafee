@@ -36,6 +36,11 @@ defmodule Kafee.Producer do
     all messages sent via this module. See `:brod` for more details on
     partitioning and the partition function.
 
+  - `encoder_decoder` An implementation of `Kafee.EncoderDecoder` for
+    automatic encoding of messages. See examples for more details.
+  - `encoder_decoder_options` A list of extra options given to the
+    encoder decoder module. See individual modules for supported options.
+
   - `brod_client_opts` Any extra client options to be used when creating a
     `:brod_client`.
   - `brod_producer_opts` Any extra options to be used when creating a
@@ -81,11 +86,41 @@ defmodule Kafee.Producer do
 
       iex> :ok = MyProducer.publish(:order_created, %Order{})
 
+  ### Automatic encoding
+
+  We also support using `Kafee.EncoderDecoder` to automatically encode
+  the message value before publishing. This can make your code cleaner
+  as well as ensure common practices are enforced (like setting the
+  `content-type` header.) To enable this, you'll need to set the
+  `encoder_decoder` option like so:
+
+      defmodule MyProducer do
+        use Kafee.Producer,
+          encoder_decoder: Kafee.JasonEncoderDecoder
+
+        def publish(:order_created, %Order{} = order)
+          produce([%Kafee.Producer.Message{
+            key: order.tenant_id,
+            value: order,
+            topic: "order-created"
+          }])
+        end
+      end
+
   ## Testing
 
   Kafee includes a `Kafee.Producer.TestBackend` to help test if messages
   were sent in your code. See `Kafee.Producer.TestBackend` and
   `Kafee.Testing` for more information.
+
+  > #### OPT 26+ {: .info}
+  >
+  > If you are using OTP 26 or later, maps are no longer sorted in a consistent
+  > way. This means if you are testing JSON formatted messages, there is a good
+  > chance the keys will be out of order resulting in flakey tests. We strongly
+  > recommend using [an encoder decoder module](#automatic-encoding) to work
+  > with native types. More info available in the `Kafee.Producer.TestBackend`
+  > module.
 
   ## Telemetry Events
 
@@ -176,7 +211,7 @@ defmodule Kafee.Producer do
       """
       def produce(messages) do
         messages
-        |> Kafee.Producer.normalize(__MODULE__)
+        |> Kafee.Producer.normalize_batch(__MODULE__)
         |> Kafee.Producer.validate_batch!()
         |> Kafee.Producer.annotate_batch()
         |> Kafee.Producer.produce(__MODULE__)
@@ -185,46 +220,76 @@ defmodule Kafee.Producer do
   end
 
   @doc """
-  Normalizes a list of messages by partitioning them and setting
-  producer default values. This is the last step before sending them
-  the backend and eventually Kafka.
+  Normalizes a batch of messages. See `normalize/2` for more information.
+  """
+  @spec normalize_batch([Message.t()], atom()) :: [Message.t()]
+  def normalize_batch(messages, producer) do
+    config = Config.get(producer)
+    Enum.map(messages, &do_normalize(&1, config))
+  end
+
+  @doc """
+  Normalizes a single message by ensuring the topic is set, the partition
+  function is set, encoding the message, and then determining what partition
+  it should go to.
 
   ## Examples
 
-      iex> normalize([%Kafee.Producer.Message{key: "test", partition: nil, topic: "test"}], MyProducer)
-      [%Kafee.Producer.Message{key: "test", partition: 0, partition_fun: :random, topic: "test"}]
+      iex> original_message = %Kafee.Producer.Message{
+      ...>   key: "test",
+      ...>   partition: nil,
+      ...>   topic: "test"
+      ...> }
+      iex> normalize(original_message, MyProducer)
+      %Kafee.Producer.Message{
+        key: "test",
+        partition: 0,
+        partition_fun: :random,
+        topic: "test"
+      }
 
   """
-  @spec normalize([Message.t()], atom()) :: [Message.t()]
-  def normalize(messages, producer) do
-    config = Config.get(producer)
+  @spec normalize(Message.t(), atom()) :: Message.t()
+  def normalize(message, producer),
+    do: do_normalize(message, Config.get(producer))
 
-    Enum.map(messages, fn message ->
-      message =
-        message
-        |> maybe_put_topic(config)
-        |> maybe_put_partition_fun(config)
-
-      case Map.get(message, :partition, nil) do
-        int when is_integer(int) ->
-          message
-
-        nil ->
-          {:ok, partition} = config.producer_backend.partition(config, message)
-          Map.put(message, :partition, partition)
-      end
-    end)
+  defp do_normalize(message, config) do
+    message
+    |> maybe_put_topic(config)
+    |> maybe_put_partition_fun(config)
+    |> maybe_encode(config)
+    |> maybe_put_partition(config)
   end
+
+  defp maybe_put_topic(%{topic: nil} = message, %{topic: topic}),
+    do: Map.put(message, :topic, topic)
+
+  defp maybe_put_topic(message, _config), do: message
 
   defp maybe_put_partition_fun(%{partition_fun: nil} = message, %{partition_fun: partition_fun}),
     do: Map.put(message, :partition_fun, partition_fun)
 
   defp maybe_put_partition_fun(message, _config), do: message
 
-  defp maybe_put_topic(%{topic: nil} = message, %{topic: topic}),
-    do: Map.put(message, :topic, topic)
+  defp maybe_encode(message, %{encoder_decoder: nil}), do: message
 
-  defp maybe_put_topic(message, _config), do: message
+  defp maybe_encode(message, %{encoder_decoder: encoder, encoder_decoder_options: opts}) do
+    new_headers =
+      if function_exported?(encoder, :content_type, 0),
+        do: [{"content-type", encoder.content_type()} | message.headers],
+        else: message.headers
+
+    new_value = encoder.encode!(message.value, opts)
+    %{message | headers: new_headers, value: new_value}
+  end
+
+  defp maybe_put_partition(%{partition: partition} = message, _config) when is_integer(partition),
+    do: message
+
+  defp maybe_put_partition(message, config) do
+    {:ok, partition} = config.producer_backend.partition(config, message)
+    Map.put(message, :partition, partition)
+  end
 
   @doc """
   Validates a list of messages. See `validate!/1` for more information.
@@ -236,9 +301,8 @@ defmodule Kafee.Producer do
 
   """
   @spec validate_batch!([Message.t()]) :: [Message.t()]
-  def validate_batch!(messages) do
-    Enum.map(messages, fn message -> validate!(message) end)
-  end
+  def validate_batch!(messages),
+    do: Enum.map(messages, &validate!(&1))
 
   @doc """
   Validates messages to ensure they have a topic and partition before

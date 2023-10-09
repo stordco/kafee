@@ -34,6 +34,10 @@ defmodule Kafee.Producer.Config do
     topic: nil,
     partition_fun: :hash,
 
+    # Automatic encoding and decoding of data
+    encoder_decoder: Kafee.NilEncoderDecoder,
+    encoder_decoder_options: [],
+
     # Extra brod options
     brod_client_opts: [],
     brod_producer_opts: [],
@@ -61,6 +65,8 @@ defmodule Kafee.Producer.Config do
           sasl: atom() | false,
           topic: :brod.topic() | nil,
           partition_fun: :brod.partitioner(),
+          encoder_decoder: module(),
+          encoder_decoder_options: Keyword.t(),
           brod_client_opts: :brod.client_config(),
           brod_producer_opts: :brod.producer_config(),
           kafee_async_worker_opts: Keyword.t(),

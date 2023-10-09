@@ -42,8 +42,9 @@ defmodule Kafee.MixProject do
     [
       {:brod, "~> 3.17.0"},
       {:data_streams, ">= 1.2.0"},
-      {:jason, ">= 1.0.0"},
+      {:jason, ">= 1.0.0", optional: true},
       {:opentelemetry_api, ">= 1.0.0"},
+      {:protobuf, ">= 0.10.0", optional: true},
       {:telemetry, ">= 1.0.0"},
 
       # Dev & Test dependencies
