@@ -14,6 +14,7 @@ defmodule Kafee.Consumer.Message do
     :value,
     :topic,
     :partition,
+    :offset,
     :consumer_group,
     :timestamp,
     headers: []
@@ -24,7 +25,9 @@ defmodule Kafee.Consumer.Message do
           value: binary(),
           topic: :brod.topic(),
           partition: :brod.partition(),
+          offset: integer(),
           consumer_group: binary(),
+          # unix epoch in Kafka
           timestamp: DateTime.t(),
           headers: :kpro.headers()
         }

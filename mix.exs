@@ -40,6 +40,7 @@ defmodule Kafee.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      {:broadway_kafka, "~> 0.3"},
       {:brod, "~> 3.17.0"},
       {:data_streams, ">= 1.2.0"},
       {:jason, ">= 1.0.0"},
@@ -55,6 +56,8 @@ defmodule Kafee.MixProject do
       {:excoveralls, "~> 0.17.1", only: :test},
       {:ex_doc, "~> 0.30", only: [:dev, :test], runtime: false},
       {:faker, "~> 0.17", only: [:dev, :test]},
+      {:opentelemetry, "~> 1.3", only: [:dev, :test]},
+      {:opentelemetry_exporter, "~> 1.3", only: [:dev, :test]},
       {:patch, "~> 0.12.0", only: [:dev, :test]}
     ]
   end

@@ -11,5 +11,5 @@ defmodule Kafee.Consumer.Backend do
   converting them to `t:Kafee.Consumer.Message` and passing them back
   to the consumer via `Kafee.Consumer.push_message/2`.
   """
-  @callback start_link(module(), Kafee.Consumer.options()) :: Supervisor.start_link()
+  @callback start_link(module(), Kafee.Consumer.options(), Keyword.t()) :: Supervisor.on_start()
 end
