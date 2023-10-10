@@ -8,8 +8,8 @@ defmodule Kafee.Consumer.Backend do
 
   @doc """
   Starts the lower level library responsible for fetching Kafka messages,
-  converting them to `t:Kafee.Consumer.Message` and passing them back
+  converting them to `t:Kafee.Consumer.Message.t/0` and passing them back
   to the consumer via `Kafee.Consumer.push_message/2`.
   """
-  @callback start_link(module(), Kafee.Consumer.options(), Keyword.t()) :: Supervisor.on_start()
+  @callback start_link(module(), Kafee.Consumer.options()) :: Supervisor.on_start()
 end

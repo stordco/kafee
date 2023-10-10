@@ -22,13 +22,13 @@ defmodule Kafee.Consumer.Message do
 
   @type t :: %__MODULE__{
           key: binary(),
-          value: binary(),
-          topic: :brod.topic(),
-          partition: :brod.partition(),
+          value: any(),
+          topic: binary(),
+          partition: -2147483648..2147483647,
           offset: integer(),
           consumer_group: binary(),
           # unix epoch in Kafka
           timestamp: DateTime.t(),
-          headers: :kpro.headers()
+          headers: [{binary(), binary()}]
         }
 end

@@ -79,10 +79,9 @@ defmodule Kafee.Consumer do
 
       defmodule MyConsumer do
         use Kafee.Consumer,
-          backend: {Kafee.Consumer.BroadwayBackend, [
-            host: "localhost",
-            port: 1234
-          ]}
+          backend: {Kafee.Consumer.BroadwayBackend, []},
+          host: "localhost",
+          port: 1234
 
         def handle_message(%Kafee.Consumer.Message{} = message) do
           # Do some logic
@@ -103,7 +102,11 @@ defmodule Kafee.Consumer do
 
       defmodule MyConsumer do
         use Kafee.Consumer,
-          backend: Application.compile_env(:my_app, :kafee_consumer_backend, nil)
+          backend: Application.compile_env(:my_app, :kafee_consumer_backend, nil),
+          host: "localhost",
+          port: 1234,
+          consumer_group_id: "my-app",
+          topic: "my-topic"
 
         # message handling code
       end
@@ -112,10 +115,7 @@ defmodule Kafee.Consumer do
   you can add some configuration in your `config/prod.exs` file to start
   the consumer when in production:
 
-      config :my_app, :kafee_consumer_backend, {Kafee.Consumer.BroadwayBackend, [
-        host: "localhost",
-        port: 1234
-      ]}
+      config :my_app, kafee_consumer_backend: {Kafee.Consumer.BroadwayBackend, []}
 
   ## Error Handling
 
@@ -130,8 +130,8 @@ defmodule Kafee.Consumer do
         defmodule MyConsumer do
           # setup and message handling code
 
-          def handle_failure({:error, %Ecto.Changeset{} = changeset}, message) do
-            # Here we hit an Ecto changeset error while processing a message.
+          def handle_failure(%MatchError{} = error, message) do
+            # Here we hit a match error while processing the message.
           end
 
           def handle_failure(%RuntimeError{} = error, message) do
@@ -144,12 +144,32 @@ defmodule Kafee.Consumer do
   Open Telemetry trace data.
 
   ## Telemetry
+
+  This module has built in support for Open Telemetry traces based on the
+  [OTEL 1.25.0 trace spec for messaging systems][otel-spec], as well as
+  support for [DataDog data streams monitoring][ddd] via [data-streams-ex][dsx].
+  View the documentation for Open Telemetry and DataDog data streams for
+  configuration.
+
+  As well as the mentioned above, Kafee also supports metrics via `:telemetry`.
+  This exports general metrics about how many messages we are consuming and
+  how long it takes to consume.
+
+  - `[:kafee, :consume, :start]`, `[:kafee, :consume, :stop]`, and
+    `[:kafee, :consume, :exception]` are all exported via a [span call][tel-span].
+    These metrics include a `:module` attribute which is the Elixir module name
+    that generated the metric.
+
+  [otel-spec]: https://opentelemetry.io/docs/specs/otel/trace/semantic_conventions/messaging/
+  [ddd]: https://www.datadoghq.com/product/data-streams-monitoring/
+  [dsx]: https://github.com/stordco/data-streams-ex
+  [tel-span]: https://hexdocs.pm/telemetry/telemetry.html#span/3
   """
 
   require OpenTelemetry.Tracer, as: Tracer
 
   @typedoc "All available options for a Kafee.Consumer module"
-  @type options() :: unquote(NimbleOptions.option_typespec(@options_schema))
+  @type options() :: [unquote(NimbleOptions.option_typespec(@options_schema))]
 
   @doc "Handles a single message from Kafka"
   @callback handle_message(Kafee.Consumer.Message.t()) :: :ok
@@ -227,11 +247,11 @@ defmodule Kafee.Consumer do
   validated and then passed to the configured backend, which is responsible
   for starting the whole process tree.
   """
-  @spec start_link(module(), Keyword.t()) :: Supervisor.on_start()
+  @spec start_link(module(), options()) :: Supervisor.on_start()
   def start_link(module, options) do
     with {:ok, options} <- NimbleOptions.validate(options, @options_schema),
-         {backend, backend_options} <- options[:backend] do
-      backend.start_link(module, options, backend_options)
+         {backend, _backend_options} <- options[:backend] do
+      backend.start_link(module, options)
     else
       nil -> :ignore
       {:error, validation_error} -> {:error, validation_error}

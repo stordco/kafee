@@ -79,6 +79,11 @@ defmodule Kafee.MixProject do
     [
       before_closing_body_tag: &before_closing_body_tag/1,
       extras: ["README.md", "CHANGELOG.md", "CONTRIBUTING.md"],
+      groups_for_modules: [
+        Consumer: [~r/Consumer/],
+        Producer: [~r/Producer/],
+        "Encoding & Decoding": [~r/EncoderDecoder/]
+      ],
       main: "readme"
     ]
   end

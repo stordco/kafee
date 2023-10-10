@@ -39,12 +39,14 @@ defmodule Kafee.Consumer.BroadwayBackend do
   require Logger
 
   @typedoc "All available options for a Kafee.Consumer.BroadwayBackend module"
-  @type options() :: unquote(NimbleOptions.option_typespec(@options_schema))
+  @type options() :: [unquote(NimbleOptions.option_typespec(@options_schema))]
 
   @doc false
   @impl Kafee.Consumer.Backend
-  @spec start_link(module(), Kafee.Consumer.options(), Keyword.t()) :: Supervisor.on_start()
-  def start_link(module, options, backend_options) do
+  @spec start_link(module(), Kafee.Consumer.options()) :: Supervisor.on_start()
+  def start_link(module, options) do
+    {_, backend_options} = options[:backend]
+
     with {:ok, backend_options} <- NimbleOptions.validate(backend_options, @options_schema) do
       Broadway.start_link(__MODULE__,
         name: module,

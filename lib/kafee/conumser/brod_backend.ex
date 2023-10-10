@@ -47,27 +47,32 @@ defmodule Kafee.Consumer.BrodBackend do
   require Logger
 
   @typedoc "All available options for a Kafee.Consumer.BroadwayBackend module"
-  @type options() :: unquote(NimbleOptions.option_typespec(@options_schema))
+  @type options() :: [unquote(NimbleOptions.option_typespec(@options_schema))]
 
   @doc false
   @impl Kafee.Consumer.Backend
-  @spec start_link(module(), Kafee.Consumer.options(), Keyword.t()) :: Supervisor.on_start()
-  def start_link(module, options, backend_options) do
-    Supervisor.start_link(__MODULE__, {module, options, backend_options})
+  @spec start_link(module(), Kafee.Consumer.options()) :: Supervisor.on_start()
+  def start_link(module, options) do
+    Supervisor.start_link(__MODULE__, {module, options})
   end
 
   @doc false
-  def child_spec({module, options, backend_options}) do
-    %{
+  @spec child_spec({module(), Kafee.Consumer.options()}) :: :supervisor.child_spec()
+  def child_spec({module, options}) do
+    default = %{
       id: __MODULE__,
-      start: {__MODULE__, :start_link, [{module, options, backend_options}]},
+      start: {__MODULE__, :start_link, [{module, options}]},
       type: :supervisor
     }
+
+    Supervisor.child_spec(default, [])
   end
 
   @doc false
   @impl Supervisor
-  def init({module, options, backend_options}) do
+  def init({module, options}) do
+    {_, backend_options} = options[:backend]
+
     with {:ok, backend_options} <- NimbleOptions.validate(backend_options, @options_schema) do
       # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
       brod_client = Module.concat(module, "BrodClient")
