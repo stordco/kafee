@@ -39,7 +39,7 @@ You'll first setup a module for your consumer logic like so:
 
 ```elixir
 defmodule MyConsumer do
-  use Kafee.COnsumer,
+  use Kafee.Consumer,
     backend: Application.compile_env(:my_app, :kafee_consumer_backend, nil),
     consumer_group_id: "my-app",
     topic: "my-topic"
