@@ -2,15 +2,14 @@
 
 Let's get energized with Kafka!
 
-## Goals
+Kafee is an abstraction layer above multiple different lower level Kafka libraries, while also adding features relevant to Stord. This allows switching between `:brod` or `Broadway` for message consuming with a quick configuration change and no code changes. Features include:
 
-- [ ] Encapsulate message publishing
-- [ ] Open telemetry support
-- [ ] Retries
-- [ ] Adaptable message encoding
-  - [ ] JSON
-  - [ ] Avro
-  - [ ] Protobuf
+- Behaviour based backends allowing quick low level changes.
+- Built in support for testing without mocking.
+- Automatic encoding and decoding of message values with `Jason` or `Protobuf`.
+- `:telemetry` metrics for producing and consuming messages
+- Open Telemetry traces with correct attributes
+- DataDog data streams support via `data-streams-ex`.
 
 ## Installation
 
@@ -32,16 +31,72 @@ Documentation is automatically generated and published to [HexDocs](https://stor
 
 ## Quick Start
 
+Here are two very basic examples of using a consumer and producer module with Kafee. Not all available options are documented, so please look at the individual modules for more details.
+
+### Consumers
+
+You'll first setup a module for your consumer logic like so:
+
+```elixir
+defmodule MyConsumer do
+  use Kafee.COnsumer,
+    backend: Application.compile_env(:my_app, :kafee_consumer_backend, nil),
+    consumer_group_id: "my-app",
+    topic: "my-topic"
+
+  def handle_message(%Kafee.Consumer.Message{} = message) do
+    # Do some message handling
+    :ok
+  end
+end
+```
+
+Then just start the module in your application with the correct connection details:
+
+```elixir
+defmodule MyApplication do
+  use Application
+
+  def start(_type, _args) do
+    children = [
+      {MyConsumer, [
+        host: "localhost",
+        port: 9092,
+        sasl: {:plain, "username", "password"},
+        ssl: true
+      ]}
+    ]
+
+    Supervisor.start_link(children, strategy: :one_for_one)
+  end
+end
+```
+
+And lastly, you'll want to set the consumer backend in production. You can do this by adding this line to your `config/prod.exs` file:
+
+```elixir
+import Config
+
+config :my_app, kafee_consumer_backend: {Kafee.Consumer.BroadwayBackend, []}
+```
+
+This will ensure that your consumer does not start in development or testing environments, but only runs in production.
+
+For more details on the consumer module, view the [Kafee Consumer module documentation](https://stord.hexdocs.pm/kafee/Kafee.Consumer.html).
+
 ### Producers
 
-So you want to send messages to Kafka eh? Well, here is some code for you.
+So you want to send messages to Kafka eh? Well, first you will need to create a producer module like so:
 
 ```elixir
 defmodule MyProducer do
   use Kafee.Producer,
-    producer_backend: Kafee.Producer.AsyncBackend,
-    topic: "my-kafka-topic"
+    producer_backend: Application.compile_env(:my_app, :kafee_producer_backend, Kafee.Producer.TestBackend),
+    topic: "my-topic"
 
+  # This is just a regular function that takes a struct from your
+  # application and converts it to a `t:Kafee.Producer.Message/0`
+  # struct and calls `produce/1`.
   def publish(:order_created, %Order{} = order) do
     produce([%Kafee.Producer.Message{
       key: order.tenant_id,
@@ -49,7 +104,11 @@ defmodule MyProducer do
     }])
   end
 end
+```
 
+Once your module is setup, you'll need to add it to the supervisor tree with connection details.
+
+```elixir
 defmodule MyApplication do
   use Application
 
@@ -70,10 +129,18 @@ defmodule MyApplication do
 end
 ```
 
+And finally, instead of using the `Kafee.Producer.TestBackend`, you'll want to use another backend in production. So set that up in your `config/prod.exs` file:
+
+```elixir
+import Config
+
+config :my_app, kafee_producer_backend: Kafee.Producer.AsyncBackend
+```
+
 Once that is done, to publish a message simply run:
 
 ```elixir
 MyProducer.publish(:order_created, %Order{})
 ```
 
-See the `Kafee.Producer` module for more options and information.
+All messages published _not_ in production will just be sent to the current process. This allows for easier testing with the [`Kafee.Test`](https://stord.hexdocs.pm/kafee/Kafee.Test.html) module, as well as not requiring Kafka running locally when in development. In production, the message will actually be sent to Kafka via the [`Kafee.Producer.AsyncBackend`](https://stord.hexdocs.pm/kafee/Kafee.Producer.AsyncBackend.html) module.
