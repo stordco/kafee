@@ -1,5 +1,14 @@
 defmodule Kafee.Consumer.BroadwayBackend do
   @options_schema NimbleOptions.new!(
+                    connect_timeout: [
+                      default: :timer.seconds(10),
+                      doc: """
+                      The timeout for `:brod` to connect to the Kafka cluster. This matches
+                      how `Elsa` connects and is required to give enough time for Confluent
+                      cloud connections.
+                      """,
+                      type: :non_neg_integer
+                    ],
                     consumer_concurrency: [
                       default: 4,
                       doc: """
@@ -52,7 +61,8 @@ defmodule Kafee.Consumer.BroadwayBackend do
         name: module,
         context: %{
           consumer_group: options[:consumer_group_id],
-          module: module
+          module: module,
+          options: options
         },
         producer: [
           module:
@@ -76,7 +86,7 @@ defmodule Kafee.Consumer.BroadwayBackend do
 
   defp client_config(options) do
     options
-    |> Keyword.take([:sasl, :ssl])
+    |> Keyword.take([:connect_timeout, :sasl, :ssl])
     |> Keyword.reject(fn {_k, v} -> is_nil(v) end)
   end
 
@@ -86,20 +96,19 @@ defmodule Kafee.Consumer.BroadwayBackend do
   @doc false
   @impl Broadway
   def handle_message(:default, %Broadway.Message{data: value, metadata: metadata} = message, %{
-        consumer_group: consumer_group,
-        module: module
+        module: module,
+        options: options
       }) do
-    :ok =
-      Kafee.Consumer.push_message(module, %Kafee.Consumer.Message{
-        key: metadata.key,
-        value: value,
-        topic: metadata.topic,
-        partition: metadata.partition,
-        offset: metadata.offset,
-        consumer_group: consumer_group,
-        timestamp: DateTime.from_unix!(metadata.ts, :millisecond),
-        headers: metadata.headers
-      })
+    Kafee.Consumer.Backend.push_message(module, options, %Kafee.Consumer.Message{
+      key: metadata.key,
+      value: value,
+      topic: metadata.topic,
+      partition: metadata.partition,
+      offset: metadata.offset,
+      consumer_group: options[:consumer_group_id],
+      timestamp: DateTime.from_unix!(metadata.ts, :millisecond),
+      headers: metadata.headers
+    })
 
     message
   end

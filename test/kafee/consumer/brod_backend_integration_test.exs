@@ -24,22 +24,17 @@ defmodule Kafee.Consumer.BrodBackendIntegrationTest do
        ]}
     )
 
-    # It takes a bit for Kafka to handle new topic creation and
-    # consumers / what not.
     Process.sleep(10_000)
 
     :ok
   end
 
   test "it processes messages", %{brod_client_id: brod, topic: topic} do
-    for i <- 1..10 do
+    for i <- 1..100 do
       :ok = :brod.produce_sync(brod, topic, :hash, "key-#{i}", "test value")
     end
 
-    # Wait for us to process all of the messages
-    Process.sleep(20_000)
-
-    for i <- 1..10 do
+    for i <- 1..100 do
       key = "key-#{i}"
       assert_receive {:consume_message, %Kafee.Consumer.Message{key: ^key}}
     end

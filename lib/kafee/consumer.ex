@@ -17,6 +17,20 @@ defmodule Kafee.Consumer do
                       required: true,
                       type: {:or, [nil, :mod_arg]}
                     ],
+                    decoder: [
+                      default: {Kafee.NilEncoderDecoder, []},
+                      doc: """
+                      A module implementing `Kafee.EncoderDecoder`. This module will automatically
+                      decode the Kafka message value to a native Elixir type.
+
+                      By default this uses the `Kafee.NilEncoderDecoder` module which does nothing.
+                      So if you are writing strings to Kafka, you'll be processing strings.
+
+                      Kafee has built in support for Jason and Protobuf encoding and decoding. See
+                      individual encoder decoder modules for more options.
+                      """,
+                      type: :mod_arg
+                    ],
                     host: [
                       default: "localhost",
                       doc: """
@@ -166,8 +180,6 @@ defmodule Kafee.Consumer do
   [tel-span]: https://hexdocs.pm/telemetry/telemetry.html#span/3
   """
 
-  require OpenTelemetry.Tracer, as: Tracer
-
   @typedoc "All available options for a Kafee.Consumer module"
   @type options() :: [unquote(NimbleOptions.option_typespec(@options_schema))]
 
@@ -254,94 +266,7 @@ defmodule Kafee.Consumer do
       backend.start_link(module, options)
     else
       nil -> :ignore
-      {:error, validation_error} -> {:error, validation_error}
-    end
-  end
-
-  @doc """
-  Pushes a list of messages to the consumer. See `push_message/2` for
-  more details.
-  """
-  @spec push_messages(module(), [Kafee.Consumer.Message.t()]) :: :ok
-  def push_messages(consumer, messages),
-    do: Enum.each(messages, &push_message(consumer, &1))
-
-  @doc """
-  Sends a message to the consumer for processing. This also wraps up
-  the error handling, open telemetry tracing, and data streams tracking.
-  """
-  @spec push_message(module(), Kafee.Consumer.Message.t()) :: :ok
-  def push_message(consumer, %Kafee.Consumer.Message{} = message) do
-    set_logger_request_id(message)
-
-    {span_name, span_attributes} = get_otel_tracer_data(message)
-
-    Tracer.with_span span_name, span_attributes do
-      Datadog.DataStreams.Integrations.Kafka.trace_consume(message, message.consumer_group)
-
-      Datadog.DataStreams.Integrations.Kafka.track_consume(
-        message.consumer_group,
-        message.topic,
-        message.partition,
-        message.offset
-      )
-
-      consumer.handle_message(message)
-    end
-
-    :ok
-  rescue
-    error ->
-      consumer.handle_failure(error, message)
-      :ok
-  end
-
-  # These values are taken from the OTEL 1.25.0 trace spec for messaging systems
-  # https://opentelemetry.io/docs/specs/otel/trace/semantic_conventions/messaging/
-  @spec get_otel_tracer_data(Kafee.Consumer.Message.t()) :: {String.t(), map()}
-  defp get_otel_tracer_data(message) do
-    span_name = if is_nil(message.topic), do: "consume", else: message.topic <> " consume"
-
-    attributes =
-      maybe_put_otel_conversation_id(
-        %{
-          "messaging.system": "kafka",
-          "messaging.operation": "process",
-          "messaging.source.name": message.topic,
-          "messaging.kafka.message.key": message.key,
-          "messaging.kafka.consumer.group": message.consumer_group,
-          "messaging.kafka.source.partition": message.partition,
-          "messaging.kafka.message.offset": message.offset
-        },
-        message
-      )
-
-    {span_name, %{kind: :client, attributes: attributes}}
-  end
-
-  @spec maybe_put_otel_conversation_id(map(), Kafee.Consumer.Message.t()) :: map()
-  defp maybe_put_otel_conversation_id(attributes, message) do
-    if request_id = get_request_id(message) do
-      Map.put(attributes, :"messaging.message.conversation_id", request_id)
-    else
-      attributes
-    end
-  end
-
-  @spec set_logger_request_id(Kafee.Consumer.Message.t()) :: no_return()
-  defp set_logger_request_id(message) do
-    if request_id = get_request_id(message) do
-      Logger.metadata(request_id: request_id)
-    else
-      Logger.metadata(request_id: nil)
-    end
-  end
-
-  @spec get_request_id(Kafee.Consumer.Message.t()) :: nil | String.t()
-  defp get_request_id(message) do
-    case Enum.find(message.headers, fn {k, _v} -> k === "kafka_correlationId" end) do
-      nil -> nil
-      {"kafka_correlationId", request_id} -> request_id
+      anything_else -> anything_else
     end
   end
 end

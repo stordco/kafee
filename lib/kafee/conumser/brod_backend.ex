@@ -103,8 +103,8 @@ defmodule Kafee.Consumer.BrodBackend do
                  cb_module: Kafee.Consumer.BrodWorker,
                  message_type: :message,
                  init_data: %{
-                   consumer_group: options[:consumer_group_id],
-                   module: module
+                   module: module,
+                   options: options
                  }
                }
              ]},

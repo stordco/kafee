@@ -57,7 +57,7 @@ defmodule Kafee.KafkaApi do
         # hasn't actually been created, which causes a brod error sending
         # a message. I assume this is from Kafka syncing data in some
         # configurations. Because this is a test and we don't care about
-        # performance, we just repeat until we confirm the topic alread exists.
+        # performance, we just repeat until we confirm the topic already exists.
         Process.sleep(100)
         create_topic(topic, partitions)
 

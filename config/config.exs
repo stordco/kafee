@@ -10,3 +10,5 @@ config :opentelemetry,
 config :opentelemetry, :processors, [
   {:otel_simple_processor, %{}}
 ]
+
+config :ex_unit, assert_receive_timeout: 20_000
