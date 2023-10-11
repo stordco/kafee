@@ -1,7 +1,5 @@
 defmodule Kafee.Application do
-  @moduledoc """
-  Starts up application global processes, like the `Kafee.Producer.AsyncRegistry`.
-  """
+  @moduledoc false
 
   use Application
 
