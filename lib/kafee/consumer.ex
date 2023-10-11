@@ -196,12 +196,6 @@ defmodule Kafee.Consumer do
     quote location: :keep, bind_quoted: [opts: opts, module: __CALLER__.module] do
       @behaviour Kafee.Consumer
 
-      unless Module.has_attribute?(__MODULE__, :moduledoc) do
-        @moduledoc """
-        Processing messages from Kafka.
-        """
-      end
-
       @doc false
       @spec child_spec(Kafee.Consumer.options()) :: Supervisor.child_spec()
       def child_spec(args) do
