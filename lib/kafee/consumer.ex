@@ -7,7 +7,7 @@ defmodule Kafee.Consumer do
                       the actual fetching and processing of Kafka messages allowing easy switching
                       with minimal code changes.
 
-                      If you set this value to `nil` (default), no backend will start and no messages
+                      If you set this value to `nil`, no backend will start and no messages
                       will be processed. This is useful to set in testing or development environments
                       where you do not have a Kafka server available but don't want to adjust your
                       supervisor tree.
@@ -18,18 +18,18 @@ defmodule Kafee.Consumer do
                       type: {:or, [nil, :mod_arg]}
                     ],
                     decoder: [
-                      default: {Kafee.NilEncoderDecoder, []},
+                      default: nil,
                       doc: """
                       A module implementing `Kafee.EncoderDecoder`. This module will automatically
                       decode the Kafka message value to a native Elixir type.
 
-                      By default this uses the `Kafee.NilEncoderDecoder` module which does nothing.
-                      So if you are writing strings to Kafka, you'll be processing strings.
+                      If you set this value to `nil`, no message value will be decoded. The original
+                      binary string value will be processed.
 
                       Kafee has built in support for Jason and Protobuf encoding and decoding. See
                       individual encoder decoder modules for more options.
                       """,
-                      type: :mod_arg
+                      type: {:or, [nil, :mod_arg]}
                     ],
                     host: [
                       default: "localhost",
@@ -52,7 +52,7 @@ defmodule Kafee.Consumer do
                       and password. For example, to use plain username and password
                       authentication you'd set this to `{:plain, "username", "password"}`.
                       """,
-                      type: {:tuple, [:string]}
+                      type: {:tuple, [:string, :string, :string]}
                     ],
                     ssl: [
                       default: false,
@@ -95,7 +95,7 @@ defmodule Kafee.Consumer do
         use Kafee.Consumer,
           backend: {Kafee.Consumer.BroadwayBackend, []},
           host: "localhost",
-          port: 1234
+          port: 9092
 
         def handle_message(%Kafee.Consumer.Message{} = message) do
           # Do some logic
@@ -118,7 +118,7 @@ defmodule Kafee.Consumer do
         use Kafee.Consumer,
           backend: Application.compile_env(:my_app, :kafee_consumer_backend, nil),
           host: "localhost",
-          port: 1234,
+          port: 9092,
           consumer_group_id: "my-app",
           topic: "my-topic"
 
@@ -154,7 +154,7 @@ defmodule Kafee.Consumer do
         end
 
   Keep in mind that Kafee will already do basic error tracking (as mentioned
-  in the next section.) You do not _need_ to emit custom telemetry or set
+  in the next section.) You do not need to emit custom telemetry or set
   Open Telemetry trace data.
 
   ## Telemetry

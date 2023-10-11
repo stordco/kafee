@@ -1,6 +1,6 @@
 defmodule Kafee.Consumer.Backend do
   @moduledoc """
-  A drop in interface for changing _how_ messages are fetched from
+  A behaviour for changing _how_ messages are fetched from
   Kafka and processed. This is made to allow new implementations
   with a simple configuration change and little to no other code
   changes.
@@ -13,7 +13,7 @@ defmodule Kafee.Consumer.Backend do
   @doc """
   Starts the lower level library responsible for fetching Kafka messages,
   converting them to `t:Kafee.Consumer.Message.t/0` and passing them back
-  to the consumer via `Kafee.Consumer.push_message/2`.
+  to the consumer via `push_message/3`.
   """
   @callback start_link(module(), Kafee.Consumer.options()) :: Supervisor.on_start()
 
@@ -61,12 +61,18 @@ defmodule Kafee.Consumer.Backend do
         message.offset
       )
 
-      {decoder, decoder_options} = options[:decoder]
-      new_message_value = decoder.decode!(message.value, decoder_options)
+      new_message_value =
+        case options[:decoder] do
+          nil -> message.value
+          {decoder, decoder_options} -> decoder.decode!(message.value, decoder_options)
+        end
 
-      message
-      |> Map.put(:value, new_message_value)
-      |> module.handle_message()
+      message = Map.put(message, :value, new_message_value)
+
+      :telemetry.span([:kafee, :consume], %{module: module}, fn ->
+        result = module.handle_message(message)
+        {result, %{}}
+      end)
     end
 
     :ok

@@ -115,11 +115,14 @@ defmodule Kafee.Consumer.BroadwayBackend do
 
   @doc false
   @impl Broadway
-  def handle_failed(message, _context) do
+  def handle_failed(message, %{module: module}) do
     # This error only occurs when there is an issue with the `handle_message/2`
-    # function above because `Kafee.Consumer.push_message/2` will catch any
+    # function above because `Kafee.Consumer.Backend.push_message/2` will catch any
     # errors.
-    Logger.error("Error in Broadway message pipe", message: message)
+
+    error = %RuntimeError{message: "Error converting a Broadway message to Kafee.Consumer.Message"}
+    module.handle_failure(error, message)
+
     message
   end
 end
