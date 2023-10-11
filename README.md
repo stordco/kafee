@@ -7,8 +7,8 @@ Kafee is an abstraction layer above multiple different lower level Kafka librari
 - Behaviour based backends allowing quick low level changes.
 - Built in support for testing without mocking.
 - Automatic encoding and decoding of message values with `Jason` or `Protobuf`.
-- `:telemetry` metrics for producing and consuming messages
-- Open Telemetry traces with correct attributes
+- `:telemetry` metrics for producing and consuming messages.
+- Open Telemetry traces with correct attributes.
 - DataDog data streams support via `data-streams-ex`.
 
 ## Installation
