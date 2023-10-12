@@ -12,18 +12,18 @@ defmodule Kafee.Test do
   ## Producer
 
   In order to test Kafee producers, you will need to set the
-  `Kafee.Producer.TestBackend`. This can be done in your config
+  `Kafee.Producer.TestAdapter`. This can be done in your config
   like so:
 
       config :kafee, :producer,
-        producer_backend: Kafee.Producer.TestBackend
+        producer_adapter: Kafee.Producer.TestAdapter
 
-  or if you are specifically setting the producer_backend in
+  or if you are specifically setting the producer_adapter in
   a module, you'll need to do the same there.
 
       def MyProducer
         use Kafee.Producer,
-          producer_backend: Application.compile_env(:my_app, :producer_backend)
+          producer_adapter: Application.compile_env(:my_app, :producer_adapter)
 
   Once that is done, you can use this testing module in your tests.
 
@@ -46,13 +46,13 @@ defmodule Kafee.Test do
   @doc """
   Imports the `Kafee.Test` helper macros.
 
-  The `Kafee.Test` and `Kafee.Producer.TestBackend` work by sending a message
+  The `Kafee.Test` and `Kafee.Producer.TestAdapter` work by sending a message
   to the current process when a Kafka message is sent. The process mailbox is
   then checked when the assertion helpers like `assert_producer_message/1`.
 
   Sometimes messages don't show up when asserting because you can send messages
   from a _different_ process than the test process. When that happens,
-  turn on the shared mode. This will tell `Kafee.Producer.TestBackend` to always
+  turn on the shared mode. This will tell `Kafee.Producer.TestAdapter` to always
   send the to the test process. This means that you cannot use shared mode with
   async tests.
 

@@ -1,9 +1,9 @@
-defmodule Kafee.Consumer.BrodBackendIntegrationTest do
+defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
   use Kafee.KafkaCase
 
   defmodule MyConsumer do
     use Kafee.Consumer,
-      backend: {Kafee.Consumer.BrodBackend, []}
+      adapter: {Kafee.Consumer.BroadwayAdapter, []}
 
     def handle_message(%Kafee.Consumer.Message{} = message) do
       test_pid = Application.get_env(:kafee, :test_pid, self())

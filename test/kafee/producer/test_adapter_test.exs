@@ -1,9 +1,9 @@
-defmodule Kafee.Producer.TestBackendTest do
+defmodule Kafee.Producer.TestAdapterTest do
   use Kafee.KafkaCase
 
   defmodule MyProducer do
     use Kafee.Producer,
-      producer_backend: Kafee.Producer.TestBackend,
+      producer_adapter: Kafee.Producer.TestAdapter,
       partition_fun: :random
   end
 

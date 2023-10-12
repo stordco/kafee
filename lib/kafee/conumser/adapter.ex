@@ -1,4 +1,4 @@
-defmodule Kafee.Consumer.Backend do
+defmodule Kafee.Consumer.Adapter do
   @moduledoc """
   A behaviour for changing _how_ messages are fetched from
   Kafka and processed. This is made to allow new implementations
@@ -19,16 +19,16 @@ defmodule Kafee.Consumer.Backend do
 
   @doc """
   This function is used to abstract a ton of tracing function calls
-  that all `Kafee.Consumer.Backend` modules should implement.
+  that all `Kafee.Consumer.Adapter` modules should implement.
 
   ## Examples
 
-      defmodule MyConsumerBackend do
-        @behaviour Kafee.Consumer.Backend
+      defmodule MyConsumerAdapter do
+        @behaviour Kafee.Consumer.Adapter
 
-        @impl Kafee.Consumer.Backend
+        @impl Kafee.Consumer.Adapter
         def start_link(module, options) do
-          # Start the backend processes
+          # Start the adapter processes
         end
 
         def handle_message(module, module_options, raw_kafka_message) do
@@ -39,7 +39,7 @@ defmodule Kafee.Consumer.Backend do
           # This will wrap a bunch of the Open Telemetry and
           # DataDog trace logic and push the final message
           # to the Kafee consumer module.
-          Kafee.Consumer.Backend.push_message(module, module_options, kafee_message)
+          Kafee.Consumer.Adapter.push_message(module, module_options, kafee_message)
         end
       end
 

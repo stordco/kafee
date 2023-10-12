@@ -1,21 +1,21 @@
 defmodule Kafee.Consumer do
   @options_schema NimbleOptions.new!(
-                    backend: [
+                    adapter: [
                       default: nil,
                       doc: """
-                      A module implementing `Kafee.Consumer.Backend`. This module is responsible for
+                      A module implementing `Kafee.Consumer.Adapter`. This module is responsible for
                       the actual fetching and processing of Kafka messages allowing easy switching
                       with minimal code changes.
 
-                      If you set this value to `nil`, no backend will start and no messages
+                      If you set this value to `nil`, no adapter will start and no messages
                       will be processed. This is useful to set in testing or development environments
                       where you do not have a Kafka server available but don't want to adjust your
                       supervisor tree.
 
-                      See individual backend modules for more options.
+                      See individual consumer adapter modules for more options.
                       """,
                       required: true,
-                      type: {:or, [nil, :mod_arg]}
+                      type: {:or, [nil, :atom, :mod_arg]}
                     ],
                     decoder: [
                       default: nil,
@@ -93,7 +93,7 @@ defmodule Kafee.Consumer do
 
       defmodule MyConsumer do
         use Kafee.Consumer,
-          backend: {Kafee.Consumer.BroadwayBackend, []},
+          adapter: Kafee.Consumer.BroadwayAdapter,
           host: "localhost",
           port: 9092
 
@@ -107,16 +107,16 @@ defmodule Kafee.Consumer do
   supervisor tree, it will start all of the processes needed to handle Kafka
   messages.
 
-  ### Without a backend
+  ### Without an adapter
 
-  The `Kafee.Consumer` module also accepts no `backend` option. This will
+  The `Kafee.Consumer` module also accepts no `adapter` option. This will
   disable the consumer from processing any messages. We recommend using this
-  as the default backend so a Kafka server is not required in development
+  as the default adapter so a Kafka server is not required in development
   or testing environments. A full setup would look something like this:
 
       defmodule MyConsumer do
         use Kafee.Consumer,
-          backend: Application.compile_env(:my_app, :kafee_consumer_backend, nil),
+          adapter: Application.compile_env(:my_app, :kafee_consumer_adapter, nil),
           host: "localhost",
           port: 9092,
           consumer_group_id: "my-app",
@@ -129,12 +129,12 @@ defmodule Kafee.Consumer do
   you can add some configuration in your `config/prod.exs` file to start
   the consumer when in production:
 
-      config :my_app, kafee_consumer_backend: {Kafee.Consumer.BroadwayBackend, []}
+      config :my_app, kafee_consumer_adapter: Kafee.Consumer.BroadwayAdapter
 
   ## Error Handling
 
   Error handling will (or will not) be reported differently to Kafka
-  depending on what backend you are using. However, there is an optional
+  depending on what adapter you are using. However, there is an optional
   `handle_failure/2` callback that can be implemented. This will be called
   when ever the `handle_message/1` function raises an error.
 
@@ -250,17 +250,17 @@ defmodule Kafee.Consumer do
 
   @doc """
   Starts a Kafee consumer module with the given options. These options are
-  validated and then passed to the configured backend, which is responsible
+  validated and then passed to the configured adapter, which is responsible
   for starting the whole process tree.
   """
   @spec start_link(module(), options()) :: Supervisor.on_start()
   def start_link(module, options) do
-    with {:ok, options} <- NimbleOptions.validate(options, @options_schema),
-         {backend, _backend_options} <- options[:backend] do
-      backend.start_link(module, options)
-    else
-      nil -> :ignore
-      anything_else -> anything_else
+    with {:ok, options} <- NimbleOptions.validate(options, @options_schema) do
+      case options[:adapter] do
+        nil -> :ignore
+        adapter when is_atom(adapter) -> adapter.start_link(module, options)
+        {adapter, _adapter_options} -> adapter.start_link(module, options)
+      end
     end
   end
 end

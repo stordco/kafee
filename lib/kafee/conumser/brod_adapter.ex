@@ -1,4 +1,4 @@
-defmodule Kafee.Consumer.BrodBackend do
+defmodule Kafee.Consumer.BrodAdapter do
   @options_schema NimbleOptions.new!(
                     connect_timeout: [
                       default: :timer.seconds(10),
@@ -29,9 +29,9 @@ defmodule Kafee.Consumer.BrodBackend do
 
   # credo:disable-for-lines:11 /\.Readability\./
   @moduledoc """
-  A Kafee consumer backend based on `:brod_group_subscriber_v2`.
+  A Kafee consumer adapter based on `:brod_group_subscriber_v2`.
   This will start a single process for each partition to process
-  messages, but unlike the `Kafee.Consumer.BroadwayBackend`, this
+  messages, but unlike the `Kafee.Consumer.BroadwayAdapter`, this
   will wait until the message is processed before acknowledging.
   This also guarantees message processing order at the expense
   of throughput.
@@ -41,16 +41,16 @@ defmodule Kafee.Consumer.BrodBackend do
   #{NimbleOptions.docs(@options_schema)}
   """
 
-  @behaviour Kafee.Consumer.Backend
+  @behaviour Kafee.Consumer.Adapter
   @behaviour Supervisor
 
   require Logger
 
-  @typedoc "All available options for a Kafee.Consumer.BroadwayBackend module"
+  @typedoc "All available options for a Kafee.Consumer.BroadwayAdapter module"
   @type options() :: [unquote(NimbleOptions.option_typespec(@options_schema))]
 
   @doc false
-  @impl Kafee.Consumer.Backend
+  @impl Kafee.Consumer.Adapter
   @spec start_link(module(), Kafee.Consumer.options()) :: Supervisor.on_start()
   def start_link(module, options) do
     Supervisor.start_link(__MODULE__, {module, options})
@@ -71,9 +71,14 @@ defmodule Kafee.Consumer.BrodBackend do
   @doc false
   @impl Supervisor
   def init({module, options}) do
-    {_, backend_options} = options[:backend]
+    adapter_options =
+      case options[:adapter] do
+        nil -> []
+        adapter when is_atom(adapter) -> []
+        {_adapter, adapter_options} -> adapter_options
+      end
 
-    with {:ok, backend_options} <- NimbleOptions.validate(backend_options, @options_schema) do
+    with {:ok, adapter_options} <- NimbleOptions.validate(adapter_options, @options_schema) do
       # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
       brod_client = Module.concat(module, "BrodClient")
 
@@ -85,7 +90,7 @@ defmodule Kafee.Consumer.BrodBackend do
              [
                [{options[:host], options[:port]}],
                brod_client,
-               client_config(options, backend_options)
+               client_config(options, adapter_options)
              ]},
           type: :worker,
           restart: :permanent,
@@ -121,8 +126,8 @@ defmodule Kafee.Consumer.BrodBackend do
     end
   end
 
-  defp client_config(options, backend_options) do
-    (options ++ backend_options)
+  defp client_config(options, adapter_options) do
+    (options ++ adapter_options)
     |> Keyword.take([:connect_timeout, :max_retries, :retry_backoff_ms, :sasl, :ssl])
     |> Keyword.reject(fn {_k, v} -> is_nil(v) end)
   end

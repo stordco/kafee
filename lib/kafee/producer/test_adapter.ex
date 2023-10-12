@@ -1,6 +1,6 @@
-defmodule Kafee.Producer.TestBackend do
+defmodule Kafee.Producer.TestAdapter do
   @moduledoc """
-  This is a `Kafee.Producer.Backend` used for in local ExUnit
+  This is a `Kafee.Producer.Adapter` used for in local ExUnit
   tests. It takes all messages and sends them to the testing
   pid for use by the `Kafee.Test` module.
 
@@ -10,7 +10,7 @@ defmodule Kafee.Producer.TestBackend do
   order is no longer sorted. This means if you take a standard text
   compare for JSON encoded data, it will probably fail.
 
-  To deal with this, the `Kafee.Producer.TestBackend` will automatically
+  To deal with this, the `Kafee.Producer.TestAdapter` will automatically
   use the `encoder_decoder` module set to decode data before sending
   it to the test process. This means you will be able to assert keys
   in the message value without issue. For example, if you have a producer
@@ -19,7 +19,7 @@ defmodule Kafee.Producer.TestBackend do
       defmodule MyProducer do
         use Kafee.Producer,
           encoder_decoder: Kafee.JasonEncoderDecoder,
-          producer_backend: Kafee.Producer.TestBackend
+          producer_adapter: Kafee.Producer.TestAdapter
 
         def publish(:order_created, %Order{} = order)
           produce(%Kafee.Producer.Message{
@@ -43,16 +43,16 @@ defmodule Kafee.Producer.TestBackend do
   map has string keys.
   """
 
-  @behaviour Kafee.Producer.Backend
+  @behaviour Kafee.Producer.Adapter
 
   @doc false
-  @impl Kafee.Producer.Backend
+  @impl Kafee.Producer.Adapter
   def child_spec([_config]), do: nil
 
   @doc """
   This will always return 0 as the partition.
   """
-  @impl Kafee.Producer.Backend
+  @impl Kafee.Producer.Adapter
   def partition(_config, message) do
     partition_fun = :brod_utils.make_part_fun(message.partition_fun)
     partition_fun.(message.topic, 1, message.key, message.value)
@@ -61,7 +61,7 @@ defmodule Kafee.Producer.TestBackend do
   @doc """
   Adds messages to the internal memory.
   """
-  @impl Kafee.Producer.Backend
+  @impl Kafee.Producer.Adapter
   def produce(
         %Kafee.Producer.Config{
           encoder_decoder: mod,

@@ -1,9 +1,9 @@
-defmodule Kafee.Consumer.BackendTest do
+defmodule Kafee.Consumer.AdapterTest do
   use Kafee.BrodCase
 
   require Record
 
-  alias Kafee.Consumer.Backend
+  alias Kafee.Consumer.Adapter
 
   # Use Record module to extract fields of the Span record from the opentelemetry dependency.
   @span_fields Record.extract(:span, from: "deps/opentelemetry/include/otel_span.hrl")
@@ -14,8 +14,8 @@ defmodule Kafee.Consumer.BackendTest do
   ]
 
   setup do
-    spy(Kafee.Consumer.Backend)
-    on_exit(fn -> restore(Kafee.Consumer.Backend) end)
+    spy(Kafee.Consumer.Adapter)
+    on_exit(fn -> restore(Kafee.Consumer.Adapter) end)
 
     spy(Datadog.DataStreams.Integrations.Kafka)
     on_exit(fn -> restore(Datadog.DataStreams.Integrations.Kafka) end)
@@ -28,7 +28,7 @@ defmodule Kafee.Consumer.BackendTest do
 
       patch(MyConsumer, :handle_message, fn _ -> raise error end)
 
-      assert :ok = Backend.push_message(MyConsumer, @consumer_options, message)
+      assert :ok = Adapter.push_message(MyConsumer, @consumer_options, message)
       # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls
       assert_called MyConsumer.handle_failure(^error, ^message)
     end
@@ -36,7 +36,7 @@ defmodule Kafee.Consumer.BackendTest do
     test "calls Datadog.DataStreams.Integration.Kafka.trace_consume/2" do
       message = Kafee.BrodApi.generate_consumer_message(consumer_group: "my-consumer-group")
 
-      assert :ok = Backend.push_message(MyConsumer, @consumer_options, message)
+      assert :ok = Adapter.push_message(MyConsumer, @consumer_options, message)
       # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls
       assert_called Datadog.DataStreams.Integrations.Kafka.trace_consume(^message, "my-consumer-group")
     end
@@ -50,7 +50,7 @@ defmodule Kafee.Consumer.BackendTest do
           offset: 4
         )
 
-      assert :ok = Backend.push_message(MyConsumer, @consumer_options, message)
+      assert :ok = Adapter.push_message(MyConsumer, @consumer_options, message)
       assert_called Datadog.DataStreams.Integrations.Kafka.track_consume("my-consumer-group", "test-topic", 2, 4)
     end
 
@@ -66,7 +66,7 @@ defmodule Kafee.Consumer.BackendTest do
           offset: 15
         )
 
-      assert :ok = Backend.push_message(MyConsumer, @consumer_options, message)
+      assert :ok = Adapter.push_message(MyConsumer, @consumer_options, message)
 
       assert_receive {:span, span(name: "testing test topic process")}
     end
@@ -76,7 +76,7 @@ defmodule Kafee.Consumer.BackendTest do
 
       message = Kafee.BrodApi.generate_consumer_message(headers: [{"kafka_correlationId", "testy mctester"}])
 
-      assert :ok = Backend.push_message(MyConsumer, @consumer_options, message)
+      assert :ok = Adapter.push_message(MyConsumer, @consumer_options, message)
 
       metadata = Logger.metadata()
       assert "testy mctester" = Keyword.get(metadata, :request_id)

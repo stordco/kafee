@@ -1,4 +1,4 @@
-defmodule Kafee.Consumer.BroadwayBackend do
+defmodule Kafee.Consumer.BroadwayAdapter do
   @options_schema NimbleOptions.new!(
                     connect_timeout: [
                       default: :timer.seconds(10),
@@ -31,8 +31,8 @@ defmodule Kafee.Consumer.BroadwayBackend do
 
   # credo:disable-for-lines:10 /\.Readability\./
   @moduledoc """
-  A Kafee consumer backend based on the exceptional `Broadway` library.
-  This backend is made for maximum freight train throughput with no
+  A Kafee consumer adapter based on the exceptional `Broadway` library.
+  This adatper is made for maximum freight train throughput with no
   stopping. **All messages are acknowledged immediately** after being
   received. This means that you are responsible for creating some logic
   to handle failed messages, **or they will be dropped**.
@@ -43,20 +43,25 @@ defmodule Kafee.Consumer.BroadwayBackend do
   """
 
   @behaviour Broadway
-  @behaviour Kafee.Consumer.Backend
+  @behaviour Kafee.Consumer.Adapter
 
   require Logger
 
-  @typedoc "All available options for a Kafee.Consumer.BroadwayBackend module"
+  @typedoc "All available options for a Kafee.Consumer.BroadwayAdapter module"
   @type options() :: [unquote(NimbleOptions.option_typespec(@options_schema))]
 
   @doc false
-  @impl Kafee.Consumer.Backend
+  @impl Kafee.Consumer.Adapter
   @spec start_link(module(), Kafee.Consumer.options()) :: Supervisor.on_start()
   def start_link(module, options) do
-    {_, backend_options} = options[:backend]
+    adapter_options =
+      case options[:adapter] do
+        nil -> []
+        adapter when is_atom(adapter) -> []
+        {_adapter, adapter_options} -> adapter_options
+      end
 
-    with {:ok, backend_options} <- NimbleOptions.validate(backend_options, @options_schema) do
+    with {:ok, adapter_options} <- NimbleOptions.validate(adapter_options, @options_schema) do
       Broadway.start_link(__MODULE__,
         name: module,
         context: %{
@@ -73,11 +78,11 @@ defmodule Kafee.Consumer.BroadwayBackend do
                topics: [options[:topic]],
                client_config: client_config(options)
              ]},
-          concurrency: backend_options[:consumer_concurrency]
+          concurrency: adapter_options[:consumer_concurrency]
         ],
         processors: [
           default: [
-            concurrency: processor_concurrency(backend_options)
+            concurrency: processor_concurrency(adapter_options)
           ]
         ]
       )
@@ -90,8 +95,8 @@ defmodule Kafee.Consumer.BroadwayBackend do
     |> Keyword.reject(fn {_k, v} -> is_nil(v) end)
   end
 
-  defp processor_concurrency(backend_options),
-    do: Keyword.get(backend_options, :processor_concurrency, System.schedulers_online() * 2)
+  defp processor_concurrency(adapter_options),
+    do: Keyword.get(adapter_options, :processor_concurrency, System.schedulers_online() * 2)
 
   @doc false
   @impl Broadway
@@ -99,7 +104,7 @@ defmodule Kafee.Consumer.BroadwayBackend do
         module: module,
         options: options
       }) do
-    Kafee.Consumer.Backend.push_message(module, options, %Kafee.Consumer.Message{
+    Kafee.Consumer.Adapter.push_message(module, options, %Kafee.Consumer.Message{
       key: metadata.key,
       value: value,
       topic: metadata.topic,
@@ -117,7 +122,7 @@ defmodule Kafee.Consumer.BroadwayBackend do
   @impl Broadway
   def handle_failed(message, %{module: module}) do
     # This error only occurs when there is an issue with the `handle_message/2`
-    # function above because `Kafee.Consumer.Backend.push_message/2` will catch any
+    # function above because `Kafee.Consumer.Adapter.push_message/2` will catch any
     # errors.
 
     error = %RuntimeError{message: "Error converting a Broadway message to Kafee.Consumer.Message"}

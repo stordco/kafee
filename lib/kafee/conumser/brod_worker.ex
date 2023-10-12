@@ -39,7 +39,7 @@ defmodule Kafee.Consumer.BrodWorker do
       ) do
     message = kafka_message(message)
 
-    Kafee.Consumer.Backend.push_message(module, options, %Kafee.Consumer.Message{
+    Kafee.Consumer.Adapter.push_message(module, options, %Kafee.Consumer.Message{
       key: message[:key],
       value: message[:value],
       topic: topic,
