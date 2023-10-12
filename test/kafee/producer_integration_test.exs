@@ -8,7 +8,7 @@ defmodule Kafee.ProducerIntegrationTest do
 
   defmodule MyProducer do
     use Kafee.Producer,
-      producer_backend: Kafee.Producer.AsyncBackend,
+      producer_adapter: Kafee.Producer.AsyncAdapter,
       partition_fun: :random
   end
 

@@ -4,7 +4,7 @@ Let's get energized with Kafka!
 
 Kafee is an abstraction layer above multiple different lower level Kafka libraries, while also adding features relevant to Stord. This allows switching between `:brod` or `Broadway` for message consuming with a quick configuration change and no code changes. Features include:
 
-- Behaviour based backends allowing quick low level changes.
+- Behaviour based adapters allowing quick low level changes.
 - Built in support for testing without mocking.
 - Automatic encoding and decoding of message values with `Jason` or `Protobuf`.
 - `:telemetry` metrics for producing and consuming messages.
@@ -40,7 +40,7 @@ You'll first setup a module for your consumer logic like so:
 ```elixir
 defmodule MyConsumer do
   use Kafee.Consumer,
-    backend: Application.compile_env(:my_app, :kafee_consumer_backend, nil),
+    adapter: Application.compile_env(:my_app, :kafee_consumer_adapter, nil),
     consumer_group_id: "my-app",
     topic: "my-topic"
 
@@ -72,12 +72,12 @@ defmodule MyApplication do
 end
 ```
 
-And lastly, you'll want to set the consumer backend in production. You can do this by adding this line to your `config/prod.exs` file:
+And lastly, you'll want to set the consumer adapter in production. You can do this by adding this line to your `config/prod.exs` file:
 
 ```elixir
 import Config
 
-config :my_app, kafee_consumer_backend: {Kafee.Consumer.BroadwayBackend, []}
+config :my_app, kafee_consumer_adapter: Kafee.Consumer.BroadwayAdapter
 ```
 
 This will ensure that your consumer does not start in development or testing environments, but only runs in production.
@@ -91,7 +91,7 @@ So you want to send messages to Kafka eh? Well, first you will need to create a 
 ```elixir
 defmodule MyProducer do
   use Kafee.Producer,
-    producer_backend: Application.compile_env(:my_app, :kafee_producer_backend, Kafee.Producer.TestBackend),
+    producer_adapter: Application.compile_env(:my_app, :kafee_producer_adapter, Kafee.Producer.TestAdapter),
     topic: "my-topic"
 
   # This is just a regular function that takes a struct from your
@@ -129,12 +129,12 @@ defmodule MyApplication do
 end
 ```
 
-And finally, instead of using the `Kafee.Producer.TestBackend`, you'll want to use another backend in production. So set that up in your `config/prod.exs` file:
+And finally, instead of using the `Kafee.Producer.TestAdapter`, you'll want to use another adapter in production. So set that up in your `config/prod.exs` file:
 
 ```elixir
 import Config
 
-config :my_app, kafee_producer_backend: Kafee.Producer.AsyncBackend
+config :my_app, kafee_producer_adapter: Kafee.Producer.AsyncAdapter
 ```
 
 Once that is done, to publish a message simply run:
@@ -143,4 +143,4 @@ Once that is done, to publish a message simply run:
 MyProducer.publish(:order_created, %Order{})
 ```
 
-All messages published _not_ in production will just be sent to the current process. This allows for easier testing with the [`Kafee.Test`](https://stord.hexdocs.pm/kafee/Kafee.Test.html) module, as well as not requiring Kafka running locally when in development. In production, the message will actually be sent to Kafka via the [`Kafee.Producer.AsyncBackend`](https://stord.hexdocs.pm/kafee/Kafee.Producer.AsyncBackend.html) module.
+All messages published _not_ in production will just be sent to the current process. This allows for easier testing with the [`Kafee.Test`](https://stord.hexdocs.pm/kafee/Kafee.Test.html) module, as well as not requiring Kafka running locally when in development. In production, the message will actually be sent to Kafka via the [`Kafee.Producer.AsyncAdaptor`](https://stord.hexdocs.pm/kafee/Kafee.Producer.AsyncAdaptor.html) module.

@@ -7,7 +7,7 @@ defmodule Kafee.TestAsyncTest do
   @topic "kafee-test-async-test"
 
   defmodule TestProducer do
-    use Kafee.Producer, producer_backend: Kafee.Producer.TestBackend
+    use Kafee.Producer, producer_adapter: Kafee.Producer.TestAdapter
   end
 
   setup do

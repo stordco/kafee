@@ -16,7 +16,7 @@ defmodule Kafee.Producer.Config do
   defstruct [
     # Reference data
     producer: nil,
-    producer_backend: nil,
+    producer_adapter: nil,
     brod_client_id: nil,
 
     # Brod client connection details
@@ -54,7 +54,7 @@ defmodule Kafee.Producer.Config do
   """
   @type t :: %__MODULE__{
           producer: atom(),
-          producer_backend: atom(),
+          producer_adapter: atom(),
           brod_client_id: atom() | nil,
           hostname: :brod.hostname(),
           port: :brod.portnum(),
@@ -158,18 +158,18 @@ defmodule Kafee.Producer.Config do
         """
     end
 
-    with {:error, _} <- Code.ensure_compiled(config.producer_backend) do
-      received = inspect(config.producer_backend)
+    with {:error, _} <- Code.ensure_compiled(config.producer_adapter) do
+      received = inspect(config.producer_adapter)
 
       raise ArgumentError,
         message: """
-        The Kafee Producer backend is unavailable or not loaded. Usually this
-        means a simple misspelling. Aside from custom backends, these are the
-        backends currently available:
+        The Kafee Producer adapter is unavailable or not loaded. Usually this
+        means a simple misspelling. Aside from custom adapters, these are the
+        adapters currently available:
 
-        - `Kafee.Producer.AsyncBackend`
-        - `Kafee.Producer.SyncBackend`
-        - `Kafee.Producer.TestBackend`
+        - `Kafee.Producer.AsyncAdapter`
+        - `Kafee.Producer.SyncAdapter`
+        - `Kafee.Producer.TestAdapter`
 
         Received:
         #{received}
@@ -191,7 +191,7 @@ defmodule Kafee.Producer.Config do
         message: """
         It looks like you are specificity setting the `auto_start_producers`
         option for your `Kafee.Producer`. This is unsupported and will break
-        how `Kafee.Producer.AsyncBackend` sends message. Please remove this
+        how `Kafee.Producer.AsyncAdapter` sends message. Please remove this
         option.
         """
     end
@@ -245,23 +245,23 @@ defmodule Kafee.Producer.Config do
     |> Keyword.put(:auto_start_producers, true)
     # This matches how Elsa connects and is required for our Confluent cloud connection.
     |> Keyword.put_new(:connect_timeout, :timer.seconds(10))
-    |> maybe_put_producer_backend_config(config.producer_backend)
+    |> maybe_put_producer_adapter_config(config.producer_adapter)
     |> maybe_put_sasl(config)
     |> :brod_utils.init_sasl_opt()
   end
 
-  defp maybe_put_producer_backend_config(opts, Kafee.Producer.SyncBackend) do
+  defp maybe_put_producer_adapter_config(opts, Kafee.Producer.SyncAdapter) do
     # We are noticing that the brod client is having troubles when our Confluent cloud
-    # restarts nodes. We set this configuration for the sync backend to help provide some
+    # restarts nodes. We set this configuration for the sync adapter to help provide some
     # resilience here. It matches what the official Java client does (even if we don't fully
-    # agree.) We _do not_ set this for the async backend as it will just keep retrying til
+    # agree.) We _do not_ set this for the async adapter as it will just keep retrying til
     # success.
     opts
     |> Keyword.put_new(:max_retries, -1)
     |> Keyword.put_new(:retry_backoff_ms, 100)
   end
 
-  defp maybe_put_producer_backend_config(opts, _backend), do: opts
+  defp maybe_put_producer_adapter_config(opts, _adapter), do: opts
 
   defp maybe_put_sasl(opts, %{sasl: false}), do: opts
 

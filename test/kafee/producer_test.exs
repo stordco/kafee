@@ -25,7 +25,7 @@ defmodule Kafee.ProducerTest do
     test "allows setting config via using macro" do
       defmodule MyTestProducer do
         use Kafee.Producer,
-          producer_backend: Kafee.Producer.TestBackend,
+          producer_adapter: Kafee.Producer.TestAdapter,
           topic: "my super-amazing-test-topic"
       end
 
@@ -202,10 +202,10 @@ defmodule Kafee.ProducerTest do
     test "sends messages to the producer", %{topic: topic} do
       message = %Kafee.Producer.Message{key: "test", value: "test", topic: topic}
 
-      spy(Kafee.Producer.TestBackend)
+      spy(Kafee.Producer.TestAdapter)
       start_supervised(MyProducer)
       assert :ok = Kafee.Producer.produce([message], MyProducer)
-      assert_called_once(Kafee.Producer.TestBackend.produce(_config, [message]))
+      assert_called_once(Kafee.Producer.TestAdapter.produce(_config, [message]))
     end
   end
 end

@@ -1,11 +1,11 @@
-defmodule Kafee.Producer.SyncBackend do
+defmodule Kafee.Producer.SyncAdapter do
   @moduledoc """
-  This is an synchronous backend for sending messages to Kafka.
+  This is an synchronous adapter for sending messages to Kafka.
   This will block the process until acknowledgement from Kafka
   before continuing. See `:brod.produce_sync` for more details.
   """
 
-  @behaviour Kafee.Producer.Backend
+  @behaviour Kafee.Producer.Adapter
 
   alias Datadog.DataStreams.Integrations.Kafka, as: DDKafka
   alias Kafee.Producer.Config
@@ -13,7 +13,7 @@ defmodule Kafee.Producer.SyncBackend do
   @doc """
   Child specification for the lower level `:brod_client`.
   """
-  @impl Kafee.Producer.Backend
+  @impl Kafee.Producer.Adapter
   def child_spec([config]) do
     brod_endpoints = Config.brod_endpoints(config)
     brod_client_opts = Config.brod_client_config(config)
@@ -39,7 +39,7 @@ defmodule Kafee.Producer.SyncBackend do
       {:ok, 1}
 
   """
-  @impl Kafee.Producer.Backend
+  @impl Kafee.Producer.Adapter
   def partition(%Config{brod_client_id: brod_client_id}, message) do
     with {:ok, partition_count} <- :brod.get_partitions_count(brod_client_id, message.topic) do
       partition_fun = :brod_utils.make_part_fun(message.partition_fun)
@@ -50,7 +50,7 @@ defmodule Kafee.Producer.SyncBackend do
   @doc """
   Calls the `:brod.produce_sync/5` function.
   """
-  @impl Kafee.Producer.Backend
+  @impl Kafee.Producer.Adapter
   @dialyzer {:no_match, produce: 2}
   def produce(%Config{} = config, messages) do
     for message <- messages do

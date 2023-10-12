@@ -1,6 +1,6 @@
-defmodule Kafee.Producer.AsyncBackend do
+defmodule Kafee.Producer.AsyncAdapter do
   @moduledoc """
-  This is an asynchronous backend for sending messages to Kafka. It utilizes a
+  This is an asynchronous adapter for sending messages to Kafka. It utilizes a
   `Registry` and `DynamicSupervisor` to start a `Kafee.Producer.AsyncWorker`
   process for every topic * partition we send messages to.
 
@@ -9,7 +9,7 @@ defmodule Kafee.Producer.AsyncBackend do
   ```mermaid
   graph TD
     M[MyProducer]
-    B[Kafee.Producer.AsyncBackend]
+    B[Kafee.Producer.AsyncAdapter]
     K[Kafee.Application]
 
     K --> R[Kafee.Producer.AsyncRegistry]
@@ -28,7 +28,7 @@ defmodule Kafee.Producer.AsyncBackend do
   ```mermaid
   sequenceDiagram
     participant P as MyProducer
-    participant B as Kafee.Producer.AsyncBackend
+    participant B as Kafee.Producer.AsyncAdapter
     participant S as Kafee.Producer.AsyncSupervisor
     participant W as Kafee.Producer.AsyncWorker
 
@@ -66,17 +66,17 @@ defmodule Kafee.Producer.AsyncBackend do
   > you may lose data.
   """
 
-  @behaviour Kafee.Producer.Backend
+  @behaviour Kafee.Producer.Adapter
   @behaviour Supervisor
 
   alias Kafee.Producer.{AsyncSupervisor, Config, Message}
 
   @doc """
-  Child specification for the async worker backend. This starts
+  Child specification for the async worker adapter. This starts
   a `Kafee.Producer.AsyncWorker` for every partition in the topic
   we send data to, as well as the lower level `:brod_client`.
   """
-  @impl Kafee.Producer.Backend
+  @impl Kafee.Producer.Adapter
   def child_spec([config]) do
     %{
       id: __MODULE__,
@@ -87,7 +87,7 @@ defmodule Kafee.Producer.AsyncBackend do
 
   @doc false
   def start_link(%Config{} = config) do
-    Supervisor.start_link(__MODULE__, config, name: Kafee.Producer.Backend.process_name(config.producer))
+    Supervisor.start_link(__MODULE__, config, name: Kafee.Producer.Adapter.process_name(config.producer))
   end
 
   @doc false
@@ -112,7 +112,7 @@ defmodule Kafee.Producer.AsyncBackend do
 
     raise ArgumentError,
       message: """
-      The `Kafee.Producer.AsyncBackend` module expects to be given
+      The `Kafee.Producer.AsyncAdapter` module expects to be given
       a `Kafee.Producer.Config` struct on startup.
 
       Received:
@@ -132,7 +132,7 @@ defmodule Kafee.Producer.AsyncBackend do
       {:ok, 1}
 
   """
-  @impl Kafee.Producer.Backend
+  @impl Kafee.Producer.Adapter
   def partition(%Config{brod_client_id: brod_client_id}, message) do
     with {:ok, partition_count} <- :brod.get_partitions_count(brod_client_id, message.topic) do
       partition_fun = :brod_utils.make_part_fun(message.partition_fun)
@@ -144,7 +144,7 @@ defmodule Kafee.Producer.AsyncBackend do
   Sends all of the given messages to an `Kafee.Producer.AsyncWorker` queue
   to be sent to Kafka in the future.
   """
-  @impl Kafee.Producer.Backend
+  @impl Kafee.Producer.Adapter
   def produce(%Config{} = config, messages) do
     # Here we partition the message, but we also strip the message down to just
     # a key value map, which is what's required by `:brod`. This saves us a

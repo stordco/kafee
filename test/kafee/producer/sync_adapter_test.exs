@@ -1,7 +1,7 @@
-defmodule Kafee.Producer.SyncBackendTest do
+defmodule Kafee.Producer.SyncAdapterTest do
   use Kafee.KafkaCase
 
-  alias Kafee.Producer.{Config, SyncBackend}
+  alias Kafee.Producer.{Config, SyncAdapter}
 
   setup do
     spy(:brod)
@@ -25,14 +25,14 @@ defmodule Kafee.Producer.SyncBackendTest do
         %Kafee.Producer.Message{topic: topic, partition: 0, key: "key", value: "value"}
       ]
 
-      assert :ok = SyncBackend.produce(config, messages)
+      assert :ok = SyncAdapter.produce(config, messages)
       assert_called(:brod.produce_sync_offset(_brod_client_id, _topic, _partition, _key, _message), 2)
     end
 
     test "returns errors from brod", %{config: config} do
       message = %Kafee.Producer.Message{topic: "", partition: 0, key: "key", value: "value"}
 
-      assert {:error, :unknown_topic_or_partition} = SyncBackend.produce(config, [message])
+      assert {:error, :unknown_topic_or_partition} = SyncAdapter.produce(config, [message])
       assert_called(:brod.produce_sync_offset(_brod_client_id, _topic, _partition, _key, _message), 1)
     end
   end
@@ -43,11 +43,11 @@ defmodule Kafee.Producer.SyncBackendTest do
       # isn't strictly required, but it's nice to test that the offset number isn't just
       # being ignored or unset.
       first_message = BrodApi.generate_producer_message(topic)
-      assert :ok = SyncBackend.produce(config, [first_message])
+      assert :ok = SyncAdapter.produce(config, [first_message])
 
       # Then we finally send the actual messages
       more_messages = BrodApi.generate_producer_message_list(topic, 20)
-      assert :ok = SyncBackend.produce(config, more_messages)
+      assert :ok = SyncAdapter.produce(config, more_messages)
 
       # Now we can assert that the actual call was made and that the offset was not 0
       # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls

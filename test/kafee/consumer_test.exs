@@ -5,17 +5,17 @@ defmodule Kafee.ConsumerTest do
     test "validates options" do
       assert {:error, %NimbleOptions.ValidationError{}} =
                Kafee.Consumer.start_link(__MODULE__,
-                 backend: 101
+                 adapter: 101
                )
     end
 
-    test "starts the backend process tree" do
+    test "starts the adapter process tree" do
       topic = Kafee.KafkaApi.generate_topic()
       :ok = Kafee.KafkaApi.create_topic(topic)
 
       assert {:ok, pid} =
                Kafee.Consumer.start_link(MyConsumer,
-                 backend: {Kafee.Consumer.BroadwayBackend, []},
+                 adapter: Kafee.Consumer.BroadwayAdapter,
                  host: Kafee.KafkaApi.host(),
                  port: Kafee.KafkaApi.port(),
                  consumer_group_id: Kafee.KafkaApi.generate_consumer_group_id(),

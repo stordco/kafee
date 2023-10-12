@@ -4,7 +4,7 @@ defmodule MyConsumer do
   """
 
   use Kafee.Consumer,
-    backend: nil,
+    adapter: nil,
     host: "localhost",
     consumer_group_id: "test",
     topic: "test"

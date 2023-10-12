@@ -1,6 +1,6 @@
 defmodule Kafee.Producer do
   @moduledoc """
-  A module based Kafka producer with pluggable backends allowing for
+  A module based Kafka producer with pluggable adapters allowing for
   asynchronous, synchronous, and no-op sending of messages to Kafka.
 
   ## Configuration Loading
@@ -17,8 +17,8 @@ defmodule Kafee.Producer do
   All configurations specified will be put into the `Kafee.Producer.Config`
   struct. You can view that module for more specific information.
 
-  - `producer_backend` The type backend module responsible for sending
-    messages to Kafka. See `Kafee.Producer.Backend` for more details.
+  - `producer_adapter` The type adapter module responsible for sending
+    messages to Kafka. See `Kafee.Producer.Adapter` for more details.
 
   - `hostname` (default: `localhost`)
   - `port` (default: `9092`)
@@ -48,7 +48,7 @@ defmodule Kafee.Producer do
 
   - `kafee_async_worker_opts` Extra options to send to the
     `Kafee.Producer.AsyncWorker` module. This only has an effect if you are
-    using the `Kafee.Producer.AsyncBackend`.
+    using the `Kafee.Producer.AsyncAdapter`.
 
   ## Using
 
@@ -109,8 +109,8 @@ defmodule Kafee.Producer do
 
   ## Testing
 
-  Kafee includes a `Kafee.Producer.TestBackend` to help test if messages
-  were sent in your code. See `Kafee.Producer.TestBackend` and
+  Kafee includes a `Kafee.Producer.TestAdapter` to help test if messages
+  were sent in your code. See `Kafee.Producer.TestAdapter` and
   `Kafee.Testing` for more information.
 
   > #### OPT 26+ {: .info}
@@ -119,7 +119,7 @@ defmodule Kafee.Producer do
   > way. This means if you are testing JSON formatted messages, there is a good
   > chance the keys will be out of order resulting in flakey tests. We strongly
   > recommend using [an encoder decoder module](#automatic-encoding) to work
-  > with native types. More info available in the `Kafee.Producer.TestBackend`
+  > with native types. More info available in the `Kafee.Producer.TestAdapter`
   > module.
 
   ## Telemetry Events
@@ -128,9 +128,9 @@ defmodule Kafee.Producer do
   - `[:kafee, :produce, :stop]` - Kafka acknowledged the message.
   - `[:kafee, :produce, :exception]` - An exception occurred sending a message to Kafka.
 
-  These events will be emitted for the async backend, and sync backend, but
-  _not_ the test backend. Each will include the topic and partition of the
-  message being sent, as well as the count if you are using the async backend.
+  These events will be emitted for the async adapter, and sync adapter, but
+  _not_ the test adapter. Each will include the topic and partition of the
+  message being sent, as well as the count if you are using the async adapter.
 
   The recommended collection of these metrics can be done via:
 
@@ -176,7 +176,7 @@ defmodule Kafee.Producer do
           {Kafee.Producer.Config, config}
         ]
 
-        child_spec = config.producer_backend.child_spec([config])
+        child_spec = config.producer_adapter.child_spec([config])
 
         children =
           if is_nil(child_spec),
@@ -195,7 +195,7 @@ defmodule Kafee.Producer do
       end
 
       @doc """
-      Sends a single message to the configured backend to be
+      Sends a single message to the configured adapter to be
       sent to Kafka. See `Kafee.Produce.normalize/1` and
       `Kafee.Producer.produce/2` functions for more information.
       """
@@ -205,7 +205,7 @@ defmodule Kafee.Producer do
       end
 
       @doc """
-      Sends a list of messages to the configured backend to be
+      Sends a list of messages to the configured adapter to be
       sent to Kafka. See `Kafee.Producer.normalize/2` and
       `Kafee.Producer.produce/2` functions for more information.
       """
@@ -287,7 +287,7 @@ defmodule Kafee.Producer do
     do: message
 
   defp maybe_put_partition(message, config) do
-    {:ok, partition} = config.producer_backend.partition(config, message)
+    {:ok, partition} = config.producer_adapter.partition(config, message)
     Map.put(message, :partition, partition)
   end
 
@@ -383,7 +383,7 @@ defmodule Kafee.Producer do
     {span_name, span_attributes} = otel_values(messages, config)
 
     Tracer.with_span span_name, span_attributes do
-      config.producer_backend.produce(config, messages)
+      config.producer_adapter.produce(config, messages)
     end
   end
 
