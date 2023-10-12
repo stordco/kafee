@@ -19,6 +19,21 @@ defmodule Kafee.KafkaApi do
   end
 
   @doc """
+  Generates a random consumer group string.
+  """
+  @spec generate_consumer_group_id :: binary()
+  def generate_consumer_group_id do
+    4
+    |> Faker.Lorem.words()
+    |> Enum.join("-")
+    |> String.normalize(:nfd)
+    |> String.downcase()
+    |> String.replace(~r/[^a-z-\s]/u, "")
+    |> String.replace(~r/\s/, "-")
+    |> String.slice(0..32)
+  end
+
+  @doc """
   Creates new Kafka topic.
   """
   @spec create_topic(binary(), non_neg_integer()) :: :ok
@@ -42,7 +57,7 @@ defmodule Kafee.KafkaApi do
         # hasn't actually been created, which causes a brod error sending
         # a message. I assume this is from Kafka syncing data in some
         # configurations. Because this is a test and we don't care about
-        # performance, we just repeat until we confirm the topic alread exists.
+        # performance, we just repeat until we confirm the topic already exists.
         Process.sleep(100)
         create_topic(topic, partitions)
 

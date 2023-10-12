@@ -42,6 +42,35 @@ defmodule Kafee.BrodApi do
   end
 
   @doc """
+  Generates a list of `Kafee.Consumer.Message` for testing.
+  """
+  def generate_consumer_message_list(number, options \\ []) do
+    Enum.map(1..number, fn _ -> generate_consumer_message(options) end)
+  end
+
+  @doc """
+  Generates a `Kafee.Consumer.Message` for testing.
+  """
+  def generate_consumer_message(options \\ []) do
+    struct!(
+      Kafee.Consumer.Message,
+      Keyword.merge(
+        [
+          key: "test",
+          value: "test",
+          topic: "test",
+          partition: 0,
+          offset: 0,
+          consumer_group: "test",
+          timestamp: DateTime.utc_now(),
+          headers: []
+        ],
+        options
+      )
+    )
+  end
+
+  @doc """
   Generates a list of `Kafee.Producer.Message` for testing.
   """
   def generate_producer_message_list(context_or_topic, number \\ 1),

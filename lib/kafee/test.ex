@@ -66,7 +66,7 @@ defmodule Kafee.Test do
       use ExUnit.Case, async: false
       use Kafee.Test, shared: true
 
-  It's common to require `shared: true` when sending Kafka messages from a `Task
+  It's common to require `shared: true` when sending Kafka messages from a `Task`
   or `GenServer`.
   """
   defmacro __using__(shared: true) do
