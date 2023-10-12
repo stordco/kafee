@@ -1,26 +1,5 @@
 # Changelog
 
-## [3.0.0](https://github.com/stordco/kafee/compare/v2.6.2...v3.0.0) (2023-10-12)
-
-
-### ⚠ BREAKING CHANGES
-
-* `Kafee.Testing` is now reworked to `Kafee.Test`
-
-### Features
-
-* [SRE-515] use testing pid for better kafka produce testing ([#58](https://github.com/stordco/kafee/issues/58)) ([cae7bce](https://github.com/stordco/kafee/commit/cae7bce4679761deace2d5ed14c064957284ab98))
-* [SRE-517] create a consumer module ([#63](https://github.com/stordco/kafee/issues/63)) ([d012734](https://github.com/stordco/kafee/commit/d01273421389f72a74a48b47ddaacdb2569e81f8))
-* [SRE-518] setup encoder decoder modules ([#62](https://github.com/stordco/kafee/issues/62)) ([b494049](https://github.com/stordco/kafee/commit/b494049ab18fba18ebeb8ce1e803d7c087bc8e5e))
-* Integrate data-streams into kafee producer ([#52](https://github.com/stordco/kafee/issues/52)) ([ffdd5da](https://github.com/stordco/kafee/commit/ffdd5da9a09b47333d3d67267addd4ce8f1f9d1b))
-
-
-### Miscellaneous
-
-* **deps:** Update outdated dependencies ([#59](https://github.com/stordco/kafee/issues/59)) ([5439acb](https://github.com/stordco/kafee/commit/5439acbc08ada73687d03128b0780059fa9a2370))
-* Update codeowners ([#61](https://github.com/stordco/kafee/issues/61)) ([10f0290](https://github.com/stordco/kafee/commit/10f029031b9235d8cf3041d98b4f312c8ececd2b))
-* Update README code examples ([#64](https://github.com/stordco/kafee/issues/64)) ([50bed75](https://github.com/stordco/kafee/commit/50bed7537cf18d217eb33d7b767e54bdb63a0dc3))
-
 ## [2.6.2](https://github.com/stordco/kafee/compare/v2.6.1...v2.6.2) (2023-09-28)
 
 
