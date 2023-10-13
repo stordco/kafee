@@ -73,17 +73,16 @@ defmodule Kafee.Producer.AsyncAdapter do
 
   ```mermaid
   graph TD
-    M[MyProducer]
+    M[MyProducer as Kafee.Producer.AsyncAdapter]
     K[Kafee.Application]
 
-    K --> R[Kafee.Producer.AsyncRegistry]
+    K --> R[Kafee.Registry]
 
     M --> U[MyProducer.BrodClient]
-    M --> S[Kafee.Producer.AsyncSupervisor]
 
-    S --> |"topic: 1, partition: 0"| W1[Kafee.Producer.AsyncWorker]
-    S --> |"topic: 1, partition: 1"| W2[Kafee.Producer.AsyncWorker]
-    S --> |"topic: 2, partition: 0"| W4[Kafee.Producer.AsyncWorker]
+    M --> |"topic: 1, partition: 0"| W1[Kafee.Producer.AsyncWorker]
+    M --> |"topic: 1, partition: 1"| W2[Kafee.Producer.AsyncWorker]
+    M --> |"topic: 2, partition: 0"| W3[Kafee.Producer.AsyncWorker]
   ```
 
   For the process of queuing messages, it looks something like this:
@@ -91,23 +90,23 @@ defmodule Kafee.Producer.AsyncAdapter do
   ```mermaid
   sequenceDiagram
     participant P as MyProducer
-    participant B as Kafee.Producer.AsyncAdapter
-    participant S as Kafee.Producer.AsyncSupervisor
+    participant A as Kafee.Producer.AsyncAdapter
     participant W as Kafee.Producer.AsyncWorker
+    participant B as :brod
 
-    P->>+B: produce/2
+    P->>+A: produce/2
 
-    B->>B: get_partitions/2
-    B-->>-B: [1, 2, 3, 4]
+    A->>+B: get_partitions/2
+    B->>-A: [1, 2, 3, 4]
 
-    B->>+S: queue/4
-    Note over S,W: Creates AsyncWorker if it doesn't exist
-    S->>+W: queue/2
-    W-->>-P: :ok
+    Note over A,W: Creates AsyncWorker if it doesn't exist
+    A->>+W: queue/2
+    W->>-A: :ok
+    A->>-P: :ok
 
     loop
-        W->>+Kafka: send/4
-        Kafka-->>-W: :ack
+        W->>+B: send/4
+        B-->>-W: :ack
     end
   ```
 

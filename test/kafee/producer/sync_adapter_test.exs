@@ -58,11 +58,15 @@ defmodule Kafee.Producer.SyncAdapterTest do
       assert {:error, :unknown_topic_or_partition} = MyProducer.produce(message)
 
       # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls
-      assert_called(:brod.produce_sync_offset(MyProducer.BrodClient, ^fake_topic, 0, :undefined, [%{
-        key: "key",
-        value: ~s({"key":"value"}),
-        headers: _headers
-      }]))
+      assert_called(
+        :brod.produce_sync_offset(MyProducer.BrodClient, ^fake_topic, 0, :undefined, [
+          %{
+            key: "key",
+            value: ~s({"key":"value"}),
+            headers: _headers
+          }
+        ])
+      )
     end
 
     test "ran the message normalization pipeline", %{topic: topic} do
