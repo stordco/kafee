@@ -148,6 +148,7 @@ defmodule Kafee.Test do
       assert [%Kafee.Producer.Message{}] = kafee_messages()
 
   """
+  @spec kafee_messages() :: [Kafee.Producer.Message.t()]
   def kafee_messages do
     {:messages, messages} = Process.info(self(), :messages)
 

@@ -145,7 +145,7 @@ defmodule Kafee.Producer.SyncAdapter do
       span_name = Message.get_otel_span_name(message)
       span_attributes = Message.get_otel_span_attributes(message)
 
-      Tracer.with_span span_name, %{kind: :producer, attributes: span_attributes} do
+      Tracer.with_span span_name, %{kind: :client, attributes: span_attributes} do
         message = Datadog.DataStreams.Integrations.Kafka.trace_produce(message)
 
         :telemetry.span([:kafee, :produce], %{topic: message.topic, partition: message.partition}, fn ->

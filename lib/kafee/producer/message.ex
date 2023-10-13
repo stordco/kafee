@@ -19,6 +19,7 @@ defmodule Kafee.Producer.Message do
   ]
 
   defmodule ValidationError do
+    @moduledoc false
     defexception [:error_key, :kafee_message, :message]
   end
 
@@ -198,6 +199,14 @@ defmodule Kafee.Producer.Message do
   end
 
   @doc """
+  Checks if the given message has a header with the given key.
+  """
+  @spec has_header?(t(), binary()) :: boolean()
+  def has_header?(%Message{} = message, key) do
+    Enum.any?(message.headers, fn {k, _v} -> k == key end)
+  end
+
+  @doc """
   Validates that the requires fields in a message are set. Raises
   `Kafee.Producer.Message.ValidationError` on a missing or incorrect field.
   """
@@ -274,6 +283,19 @@ defmodule Kafee.Producer.Message do
 
   ## Examples
 
+      iex> get_otel_span_attributes([%Message{
+      ...>   key: "test-message",
+      ...>   value: "message value",
+      ...>   topic: "test-topic",
+      ...>   partition: 1,
+      ...> }])
+      %{
+        "messaging.system": "kafka",
+        "messaging.destination.name": "test-topic",
+        "messaging.batch.message_count": 1,
+        "messaging.kafka.partition": 1
+      }
+
       iex> get_otel_span_attributes(%Message{
       ...>   key: "test-message",
       ...>   value: "message value",
@@ -297,7 +319,17 @@ defmodule Kafee.Producer.Message do
       }
 
   """
-  @spec get_otel_span_attributes(t()) :: map()
+  @spec get_otel_span_attributes(t() | [t()]) :: map()
+  def get_otel_span_attributes([message | _] = messages) when is_list(messages) do
+    message
+    |> get_otel_span_attributes()
+    |> Map.put(:"messaging.batch.message_count", length(messages))
+    |> Map.drop([
+      :"messaging.message.payload_size_bytes",
+      :"messaging.kafka.message.key"
+    ])
+  end
+
   def get_otel_span_attributes(%Message{value: value} = message) when is_binary(value) do
     [
       {:"messaging.system", "kafka"},

@@ -9,9 +9,15 @@ defmodule Kafee.Producer.AsyncWorker do
   use GenServer,
     shutdown: :timer.seconds(25)
 
+  import Kafee, only: [is_offset: 1]
+
   require Logger
+  require OpenTelemetry.Tracer, as: Tracer
 
   alias Datadog.DataStreams.Integrations.Kafka, as: DDKafka
+  alias Kafee.Producer.Message
+
+  @data_streams_propagator_key Datadog.DataStreams.Propagator.propagation_key()
 
   defmodule State do
     @moduledoc false
@@ -61,7 +67,7 @@ defmodule Kafee.Producer.AsyncWorker do
   end
 
   @doc false
-  @spec queue(pid(), [Kafee.Producer.Message.t()]) :: :ok
+  @spec queue(pid(), [Message.t()]) :: :ok
   def queue(pid, messages) do
     GenServer.cast(pid, {:queue, messages})
   end
@@ -128,7 +134,7 @@ defmodule Kafee.Producer.AsyncWorker do
   @doc false
   def handle_info({task_ref, {:ok, messages_sent, offset}}, %{send_task: %{ref: task_ref}} = state) do
     Logger.debug("Successfully sent messages to Kafka")
-    if is_integer(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
+    if is_offset(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
     {_sent_messages, remaining_messages} = :queue.split(messages_sent, state.queue)
     emit_queue_telemetry(state, :queue.len(remaining_messages))
 
@@ -254,7 +260,7 @@ defmodule Kafee.Producer.AsyncWorker do
   def terminate(reason, %{send_task: %{ref: ref}} = state) do
     receive do
       {^ref, {:ok, sent_message_count, offset}} ->
-        if is_integer(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
+        if is_offset(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
         {_sent_messages, remaining_messages} = :queue.split(sent_message_count, state.queue)
         emit_queue_telemetry(state, :queue.len(remaining_messages))
         terminate(reason, %{state | queue: remaining_messages, send_task: nil})
@@ -273,13 +279,13 @@ defmodule Kafee.Producer.AsyncWorker do
     case send_messages(state) do
       {:ok, 0, offset} ->
         Logger.info("Successfully sent all remaining messages to Kafka before termination")
-        if is_integer(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
+        if is_offset(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
         emit_queue_telemetry(state, 0)
         :ok
 
       {:ok, sent_message_count, offset} ->
         Logger.debug("Successfully sent #{sent_message_count} messages to Kafka before termination")
-        if is_integer(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
+        if is_offset(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
         {_sent_messages, remaining_messages} = :queue.split(sent_message_count, state.queue)
         emit_queue_telemetry(state, :queue.len(remaining_messages))
         terminate_send(%{state | queue: remaining_messages})
@@ -326,30 +332,48 @@ defmodule Kafee.Producer.AsyncWorker do
     else
       Logger.debug("Sending #{messages_length} messages to Kafka")
 
-      :telemetry.span(
-        [:kafee, :produce],
-        %{
-          count: messages_length,
-          topic: state.topic,
-          partition: state.partition
-        },
-        fn ->
-          with {:ok, call_ref} <-
-                 :brod.produce(state.brod_client_id, state.topic, state.partition, :undefined, messages),
-               {:ok, offset} <- :brod.sync_produce_request_offset(call_ref, state.send_timeout) do
-            {{:ok, messages_length, offset}, %{}}
-          else
-            res -> {res, %{}}
+      span_name = messages |> Enum.at(0) |> Message.get_otel_span_name()
+      span_attributes = Message.get_otel_span_attributes(messages)
+
+      Tracer.with_span span_name, %{kind: :client, attributes: span_attributes} do
+        messages = normalize_messages(messages)
+
+        :telemetry.span(
+          [:kafee, :produce],
+          %{
+            count: messages_length,
+            topic: state.topic,
+            partition: state.partition
+          },
+          fn ->
+            with {:ok, call_ref} <-
+                   :brod.produce(state.brod_client_id, state.topic, state.partition, :undefined, messages),
+                 {:ok, offset} <- :brod.sync_produce_request_offset(call_ref, state.send_timeout) do
+              {{:ok, messages_length, offset}, %{}}
+            else
+              res -> {res, %{}}
+            end
           end
-        end
-      )
+        )
+      end
     end
+  end
+
+  @spec normalize_messages([Message.t()]) :: [Message.t()]
+  defp normalize_messages(messages) do
+    messages
+    |> Enum.map(fn message ->
+      if Message.has_header?(message, @data_streams_propagator_key),
+        do: message,
+        else: Datadog.DataStreams.Integrations.Kafka.trace_produce(message)
+    end)
+    |> Enum.map(&Map.take(&1, [:key, :value, :headers]))
   end
 
   # We batch matches til we get close to the `max.request.size`
   # limit in Kafka. This ensures we send the max amount of data per
   # request without causing errors.
-  @spec build_message_batch(:queue.queue(), pos_integer()) :: [:brod.message_set()]
+  @spec build_message_batch(:queue.queue(), pos_integer()) :: [Message.t()]
   defp build_message_batch(queue, max_request_bytes) do
     {batch_bytes, batch_messages} =
       queue
@@ -357,7 +381,9 @@ defmodule Kafee.Producer.AsyncWorker do
       |> Enum.reduce_while({0, []}, fn message, {bytes, batch} ->
         # I know that `:erlang.external_size` won't match what we actually
         # send, but it should be under the limit that would cause Kafka errors
-        case bytes + :erlang.external_size(message) do
+        kafka_message = Map.take(message, [:key, :value, :headers])
+
+        case bytes + :erlang.external_size(kafka_message) do
           total_bytes when batch == [] ->
             {:cont, {total_bytes, [message]}}
 

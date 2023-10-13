@@ -27,6 +27,7 @@ defmodule Kafee.Consumer.BrodWorker do
 
   @doc false
   @impl :brod_group_subscriber_v2
+  @spec handle_message(:brod.message(), map()) :: {:ok, :ack, map()}
   def handle_message(
         message,
         %{

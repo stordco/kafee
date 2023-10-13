@@ -25,6 +25,7 @@ defmodule Kafee.EncoderDecoder do
   @callback decode!(binary, Keyword.t()) :: any
 
   defmodule Error do
+    @moduledoc false
     defexception [:message]
   end
 end
