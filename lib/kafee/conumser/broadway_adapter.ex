@@ -53,7 +53,7 @@ defmodule Kafee.Consumer.BroadwayAdapter do
   @doc false
   @impl Kafee.Consumer.Adapter
   @spec start_link(module(), Kafee.Consumer.options()) :: Supervisor.on_start()
-  def start_link(module, options) do
+  def start_link(consumer, options) do
     adapter_options =
       case options[:adapter] do
         nil -> []
@@ -63,10 +63,10 @@ defmodule Kafee.Consumer.BroadwayAdapter do
 
     with {:ok, adapter_options} <- NimbleOptions.validate(adapter_options, @options_schema) do
       Broadway.start_link(__MODULE__,
-        name: module,
+        name: consumer,
         context: %{
+          consumer: consumer,
           consumer_group: options[:consumer_group_id],
-          module: module,
           options: options
         },
         producer: [
@@ -101,10 +101,10 @@ defmodule Kafee.Consumer.BroadwayAdapter do
   @doc false
   @impl Broadway
   def handle_message(:default, %Broadway.Message{data: value, metadata: metadata} = message, %{
-        module: module,
+        consumer: consumer,
         options: options
       }) do
-    Kafee.Consumer.Adapter.push_message(module, options, %Kafee.Consumer.Message{
+    Kafee.Consumer.Adapter.push_message(consumer, options, %Kafee.Consumer.Message{
       key: metadata.key,
       value: value,
       topic: metadata.topic,
@@ -120,13 +120,13 @@ defmodule Kafee.Consumer.BroadwayAdapter do
 
   @doc false
   @impl Broadway
-  def handle_failed(message, %{module: module}) do
+  def handle_failed(message, %{consumer: consumer}) do
     # This error only occurs when there is an issue with the `handle_message/2`
     # function above because `Kafee.Consumer.Adapter.push_message/2` will catch any
     # errors.
 
     error = %RuntimeError{message: "Error converting a Broadway message to Kafee.Consumer.Message"}
-    module.handle_failure(error, message)
+    consumer.handle_failure(error, message)
 
     message
   end

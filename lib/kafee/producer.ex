@@ -245,14 +245,14 @@ defmodule Kafee.Producer do
   responsible for starting the whole process tree.
   """
   @spec start_link(module(), options()) :: Supervisor.on_start()
-  def start_link(module, options) do
+  def start_link(producer, options) do
     with {:ok, options} <- NimbleOptions.validate(options, @options_schema) do
-      :ets.insert(:kafee_config, {module, options})
+      :ets.insert(:kafee_config, {producer, options})
 
       case Keyword.get(options, :adapter) do
         nil -> :ignore
-        adapter when is_atom(adapter) -> adapter.start_link(module, options)
-        {adapter, _adapter_options} -> adapter.start_link(module, options)
+        adapter when is_atom(adapter) -> adapter.start_link(producer, options)
+        {adapter, _adapter_options} -> adapter.start_link(producer, options)
       end
     end
   end

@@ -20,7 +20,7 @@ defmodule Kafee.Consumer.BrodWorker do
     state =
       info
       |> Map.merge(config)
-      |> Map.take([:group_id, :module, :options, :partition, :topic])
+      |> Map.take([:consumer, :group_id, :options, :partition, :topic])
 
     {:ok, state}
   end
@@ -31,8 +31,8 @@ defmodule Kafee.Consumer.BrodWorker do
   def handle_message(
         message,
         %{
+          consumer: consumer,
           group_id: group_id,
-          module: module,
           options: options,
           partition: partition,
           topic: topic
@@ -40,7 +40,7 @@ defmodule Kafee.Consumer.BrodWorker do
       ) do
     message = kafka_message(message)
 
-    Kafee.Consumer.Adapter.push_message(module, options, %Kafee.Consumer.Message{
+    Kafee.Consumer.Adapter.push_message(consumer, options, %Kafee.Consumer.Message{
       key: message[:key],
       value: message[:value],
       topic: topic,

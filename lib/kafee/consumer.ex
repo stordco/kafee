@@ -252,12 +252,12 @@ defmodule Kafee.Consumer do
   for starting the whole process tree.
   """
   @spec start_link(module(), options()) :: Supervisor.on_start()
-  def start_link(module, options) do
+  def start_link(consumer, options) do
     with {:ok, options} <- NimbleOptions.validate(options, @options_schema) do
       case options[:adapter] do
         nil -> :ignore
-        adapter when is_atom(adapter) -> adapter.start_link(module, options)
-        {adapter, __options} -> adapter.start_link(module, options)
+        adapter when is_atom(adapter) -> adapter.start_link(consumer, options)
+        {adapter, __options} -> adapter.start_link(consumer, options)
       end
     end
   end

@@ -27,11 +27,11 @@ defmodule Kafee.Consumer.Adapter do
         @behaviour Kafee.Consumer.Adapter
 
         @impl Kafee.Consumer.Adapter
-        def start_link(module, options) do
+        def start_link(consumer, options) do
           # Start the adapter processes
         end
 
-        def handle_message(module, module_options, raw_kafka_message) do
+        def handle_message(consumer, options, raw_kafka_message) do
           kafee_message = %Kafee.Consumer.Message{
             # Set these fields from the raw kafka message
           }
@@ -39,13 +39,13 @@ defmodule Kafee.Consumer.Adapter do
           # This will wrap a bunch of the Open Telemetry and
           # DataDog trace logic and push the final message
           # to the Kafee consumer module.
-          Kafee.Consumer.Adapter.push_message(module, module_options, kafee_message)
+          Kafee.Consumer.Adapter.push_message(consumer, options, kafee_message)
         end
       end
 
   """
   @spec push_message(atom(), Kafee.Consumer.options(), Message.t()) :: :ok
-  def push_message(module, options, %Message{} = message) do
+  def push_message(consumer, options, %Message{} = message) do
     Message.set_logger_request_id(message)
 
     span_name = Message.get_otel_span_name(message)
@@ -70,8 +70,8 @@ defmodule Kafee.Consumer.Adapter do
 
       message = Map.put(message, :value, new_message_value)
 
-      :telemetry.span([:kafee, :consume], %{module: module}, fn ->
-        result = module.handle_message(message)
+      :telemetry.span([:kafee, :consume], %{module: consumer}, fn ->
+        result = consumer.handle_message(message)
         {result, %{}}
       end)
     end
@@ -79,7 +79,7 @@ defmodule Kafee.Consumer.Adapter do
     :ok
   rescue
     error ->
-      module.handle_failure(error, message)
+      consumer.handle_failure(error, message)
       :ok
   end
 end

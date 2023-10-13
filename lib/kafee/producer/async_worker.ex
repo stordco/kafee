@@ -74,8 +74,8 @@ defmodule Kafee.Producer.AsyncWorker do
 
   @doc false
   @spec process_name(:brod.client(), Kafee.topic(), Kafee.partition()) :: GenServer.name()
-  def process_name(module, topic, partition) do
-    {:via, Registry, {Kafee.Registry, {module, :worker, topic, partition}}}
+  def process_name(brod_client_id, topic, partition) do
+    {:via, Registry, {Kafee.Registry, {brod_client_id, :worker, topic, partition}}}
   end
 
   ## Server API
