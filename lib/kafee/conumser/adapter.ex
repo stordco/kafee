@@ -64,6 +64,7 @@ defmodule Kafee.Consumer.Adapter do
       new_message_value =
         case options[:decoder] do
           nil -> message.value
+          decoder when is_atom(decoder) -> decoder.decode!(message.value, [])
           {decoder, decoder_options} -> decoder.decode!(message.value, decoder_options)
         end
 

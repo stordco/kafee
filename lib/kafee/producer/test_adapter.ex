@@ -18,8 +18,8 @@ defmodule Kafee.Producer.TestAdapter do
 
       defmodule MyProducer do
         use Kafee.Producer,
-          encoder_decoder: Kafee.JasonEncoderDecoder,
-          producer_adapter: Kafee.Producer.TestAdapter
+          adapter: Kafee.Producer.TestAdapter,
+          encoder: Kafee.JasonEncoderDecoder
 
         def publish(:order_created, %Order{} = order)
           produce(%Kafee.Producer.Message{
@@ -45,33 +45,45 @@ defmodule Kafee.Producer.TestAdapter do
 
   @behaviour Kafee.Producer.Adapter
 
+  alias Kafee.Producer.Message
+
   @doc false
   @impl Kafee.Producer.Adapter
-  def child_spec([_config]), do: nil
+  def start_link(_producer, _options), do: :ignore
 
   @doc """
-  This will always return 0 as the partition.
+  Always returns a static `[0]` value for partitioning during
+  tests.
   """
   @impl Kafee.Producer.Adapter
-  def partition(_config, message) do
-    partition_fun = :brod_utils.make_part_fun(message.partition_fun)
-    partition_fun.(message.topic, 1, message.key, message.value)
-  end
+  @spec partitions(module(), Kafee.Producer.options()) :: [Kafee.partition()]
+  def partitions(_producer, _options), do: [0]
 
   @doc """
   Adds messages to the internal memory.
   """
   @impl Kafee.Producer.Adapter
-  def produce(
-        %Kafee.Producer.Config{
-          encoder_decoder: mod,
-          encoder_decoder_options: opts,
-          test_process: pid
-        },
-        messages
-      ) do
+  @spec produce([Message.t()], module(), Kafee.Producer.options()) :: :ok | {:error, term()}
+  def produce(messages, producer, options) do
+    pid = Application.get_env(:kafee, :test_process, self())
+
     for message <- messages do
-      send(pid, {:kafee_message, %{message | value: mod.decode!(message.value, opts)}})
+      new_message =
+        message
+        |> Message.set_module_values(producer, options)
+        |> Message.encode(producer, options)
+        |> Message.partition(producer, options)
+        |> Message.set_request_id_from_logger()
+        |> Message.validate!()
+
+      decoded_message_value =
+        case Keyword.get(options, :encoder, nil) do
+          nil -> new_message.value
+          encoder when is_atom(encoder) -> encoder.decode!(new_message.value, [])
+          {encoder, encoder_options} -> encoder.decode!(new_message.value, encoder_options)
+        end
+
+      send(pid, {:kafee_message, %{new_message | value: decoded_message_value}})
     end
 
     :ok

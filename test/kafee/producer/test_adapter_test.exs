@@ -1,45 +1,27 @@
 defmodule Kafee.Producer.TestAdapterTest do
-  use Kafee.KafkaCase
+  use Kafee.BrodCase, async: true
 
   defmodule MyProducer do
     use Kafee.Producer,
-      producer_adapter: Kafee.Producer.TestAdapter,
+      adapter: Kafee.Producer.TestAdapter,
+      encoder: Kafee.JasonEncoderDecoder,
       partition_fun: :random
   end
 
   setup %{topic: topic} do
-    Application.put_env(:kafee, :test_process, self())
-    Application.put_env(:kafee, :producer, topic: topic)
-
-    start_supervised!(MyProducer)
+    start_supervised!({MyProducer, topic: topic})
     :ok
   end
 
   describe "produce/2" do
-    test "sends messages" do
-      messages =
-        for num <- 1..10 do
-          %Kafee.Producer.Message{
-            key: to_string(num),
-            value: to_string(num),
-            topic: "test",
-            partition: 0
-          }
-        end
-
-      assert :ok = MyProducer.produce(messages)
-    end
-  end
-
-  describe "assert_message_produced/2" do
     test "it asserts all keys on a message" do
       message = %Kafee.Producer.Message{
         key: "test-key",
-        value: "test-value",
+        value: ~s({"key":"value"}),
         topic: "test-topic",
         partition: 0,
         partition_fun: :hash,
-        headers: [{"dd-pathway-ctx", <<0>>}]
+        headers: [{"dd-pathway-ctx", <<0>>}, {"kafka_contentType", "application/json"}]
       }
 
       assert :ok = MyProducer.produce([message])
@@ -47,20 +29,20 @@ defmodule Kafee.Producer.TestAdapterTest do
     end
 
     test "it decodes messages before sending to test pid" do
-      spy(Kafee.NilEncoderDecoder)
+      spy(Kafee.JasonEncoderDecoder)
 
       message = %Kafee.Producer.Message{
         key: "test-key",
-        value: "test-value",
+        value: %{"key" => "value"},
         topic: "test-topic",
         partition: 0,
         partition_fun: :hash,
-        headers: [{"dd-pathway-ctx", <<0>>}]
+        headers: [{"dd-pathway-ctx", <<0>>}, {"kafka_contentType", "application/json"}]
       }
 
       assert :ok = MyProducer.produce([message])
       assert_receive {:kafee_message, ^message}
-      assert_called_once(Kafee.NilEncoderDecoder.decode!("test-value", _config))
+      assert_called_once(Kafee.JasonEncoderDecoder.decode!(~s({"key":"value"}), _config))
     end
   end
 end
