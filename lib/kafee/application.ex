@@ -6,6 +6,8 @@ defmodule Kafee.Application do
   @doc false
   @spec start(Application.start_type(), term()) :: {:ok, pid} | {:error, term()}
   def start(_type, _args) do
+    :ets.new(:kafee_config, [:public, :set, :named_table, {:read_concurrency, true}])
+
     children = [
       {Registry, keys: :unique, name: Kafee.Registry}
     ]

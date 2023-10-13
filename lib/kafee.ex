@@ -33,4 +33,14 @@ defmodule Kafee do
 
   @typedoc "A list of Kafka message headers."
   @type headers :: [{binary(), binary()}]
+
+  @doc """
+  Checks if the valid is a valid Kafka partition.
+  """
+  defguard is_partition(number) when number in -2_147_483_648..2_147_483_647
+
+  @doc """
+  Checks if a value is a valid Kafka offset.
+  """
+  defguard is_offset(number) when number in -9_223_372_036_854_775_808..9_223_372_036_854_775_807
 end

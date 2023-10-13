@@ -39,6 +39,9 @@ defmodule Kafee.Producer.SyncAdapter do
   """
 
   @behaviour Kafee.Producer.Adapter
+  @behaviour Supervisor
+
+  import Kafee, only: [is_offset: 1]
 
   require OpenTelemetry.Tracer, as: Tracer
 
@@ -49,6 +52,24 @@ defmodule Kafee.Producer.SyncAdapter do
   @impl Kafee.Producer.Adapter
   @spec start_link(module(), Kafee.Producer.options()) :: Supervisor.on_start()
   def start_link(producer, options) do
+    Supervisor.start_link(__MODULE__, {producer, options})
+  end
+
+  @doc false
+  @spec child_spec({module(), Kafee.Producer.options()}) :: :supervisor.child_spec()
+  def child_spec({producer, options}) do
+    default = %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [{producer, options}]},
+      type: :supervisor
+    }
+
+    Supervisor.child_spec(default, [])
+  end
+
+  @doc false
+  @impl Supervisor
+  def init({producer, options}) do
     adapter_options =
       case options[:adapter] do
         nil -> []
@@ -96,8 +117,14 @@ defmodule Kafee.Producer.SyncAdapter do
   @impl Kafee.Producer.Adapter
   @spec partitions(module(), Kafee.Producer.options()) :: [Kafee.partition()]
   def partitions(producer, options) do
-    {:ok, partition_count} = :brod.get_partitions_count(brod_client(producer), options[:topic])
-    Range.new(1, partition_count)
+    {:ok, partition_count} =
+      producer
+      |> brod_client()
+      |> :brod.get_partitions_count(options[:topic])
+
+    0
+    |> Range.new(partition_count - 1)
+    |> Enum.to_list()
   end
 
   @doc """
@@ -124,9 +151,15 @@ defmodule Kafee.Producer.SyncAdapter do
         :telemetry.span([:kafee, :produce], %{topic: message.topic, partition: message.partition}, fn ->
           # We pattern match here because it will cause `:telemetry.span/3` to measure exceptions
           {:ok, offset} =
-            :brod.produce_sync_offset(brod_client(producer), message.topic, message.partition, message.key, message)
+            :brod.produce_sync_offset(brod_client(producer), message.topic, message.partition, :undefined, [
+              %{
+                key: message.key,
+                value: message.value,
+                headers: message.headers
+              }
+            ])
 
-          if is_integer(offset), do: DDKafka.track_produce(message.topic, message.partition, offset)
+          if is_offset(offset), do: DDKafka.track_produce(message.topic, message.partition, offset)
 
           {:ok, %{}}
         end)

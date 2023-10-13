@@ -44,9 +44,11 @@ defmodule Kafee.Producer.AsyncWorkerTest do
         {AsyncWorker,
          [
            brod_client_id: brod_client_id,
-           topic: topic,
+           max_request_bytes: 1_040_384,
            partition: 0,
-           send_interval: 1
+           send_timeout: :timer.seconds(10),
+           throttle_ms: 1,
+           topic: topic
          ]}
       )
 

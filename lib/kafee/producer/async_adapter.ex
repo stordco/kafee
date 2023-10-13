@@ -145,10 +145,10 @@ defmodule Kafee.Producer.AsyncAdapter do
 
   """
 
-  alias Kafee.Producer.{AsyncWorker, Message}
-
   @behaviour Kafee.Producer.Adapter
   @behaviour Supervisor
+
+  alias Kafee.Producer.{AsyncWorker, Message}
 
   @doc false
   @impl Kafee.Producer.Adapter
@@ -219,8 +219,14 @@ defmodule Kafee.Producer.AsyncAdapter do
   @impl Kafee.Producer.Adapter
   @spec partitions(module(), Kafee.Producer.options()) :: [Kafee.partition()]
   def partitions(producer, options) do
-    {:ok, partition_count} = :brod.get_partitions_count(brod_client(producer), options[:topic])
-    Range.new(1, partition_count)
+    {:ok, partition_count} =
+      producer
+      |> brod_client()
+      |> :brod.get_partitions_count(options[:topic])
+
+    0
+    |> Range.new(partition_count - 1)
+    |> Enum.to_list()
   end
 
   @doc """
@@ -282,7 +288,12 @@ defmodule Kafee.Producer.AsyncAdapter do
 
   @spec get_worker(module(), Kafee.topic(), Kafee.partition()) :: {:ok, pid()} | {:error, :not_found}
   defp get_worker(producer, topic, partition) do
-    case Registry.lookup(Kafee.Registry, AsyncWorker.process_name(brod_client(producer), topic, partition)) do
+    {:via, Registry, {registry_name, registry_key}} =
+      producer
+      |> brod_client()
+      |> AsyncWorker.process_name(topic, partition)
+
+    case Registry.lookup(registry_name, registry_key) do
       [{pid, _value}] -> {:ok, pid}
       [] -> {:error, :not_found}
     end

@@ -9,10 +9,6 @@ defmodule Kafee.Producer.Message do
 
   @derive {Jason.Encoder, except: []}
 
-  defmodule ValidationError do
-    defexception [:error_key, :kafee_message, :message]
-  end
-
   defstruct [
     :key,
     :value,
@@ -22,12 +18,16 @@ defmodule Kafee.Producer.Message do
     headers: []
   ]
 
+  defmodule ValidationError do
+    defexception [:error_key, :kafee_message, :message]
+  end
+
   @type t :: %Message{
           key: Kafee.key(),
           value: Kafee.value() | any(),
           topic: Kafee.topic(),
           partition: Kafee.partition(),
-          partition_fun: Kafee.Producer.partition_fun(),
+          partition_fun: Kafee.partition_fun(),
           headers: Kafee.headers()
         }
 
@@ -98,18 +98,23 @@ defmodule Kafee.Producer.Message do
       iex> partition(%Message{partition: 12}, MyProducer, [])
       %Message{partition: 12}
 
-      iex> partition(%Message{}, MyProducer, [])
-      %Message{partition: 1}
+      iex> message = %Message{key: "key", value: "value", partition_fun: :random}
+      ...> partition(message, MyProducer, [])
+      %Message{key: "key", value: "value", partition: 0, partition_fun: :random}
 
   """
   @spec partition(t(), module(), Kafee.Producer.options()) :: t()
   def partition(%Message{partition: nil} = message, producer, opts) do
+    # We override the topic because messages being consumed and technically
+    # be published to dynamic topics.
+    options_with_correct_topic = Keyword.put(opts, :topic, message.topic)
+
     valid_partitions =
       case Keyword.get(opts, :adapter, nil) do
         # If no adapter is set, then we can't partition, so we default to something.
         nil -> [0]
-        adapter when is_atom(adapter) -> adapter.partitions(producer, opts)
-        {adapter, _adapter_opts} -> adapter.partitions(producer, opts)
+        adapter when is_atom(adapter) -> adapter.partitions(producer, options_with_correct_topic)
+        {adapter, _adapter_opts} -> adapter.partitions(producer, options_with_correct_topic)
       end
 
     partition = do_partition(message, valid_partitions)
@@ -127,7 +132,8 @@ defmodule Kafee.Producer.Message do
     Enum.at(valid_partitions, hash_value)
   end
 
-  defp do_partition(%Message{key: key, value: value, topic: topic, partition_fun: fun}, valid_partitions) do
+  defp do_partition(%Message{key: key, value: value, topic: topic, partition_fun: fun}, valid_partitions)
+       when is_function(fun, 4) do
     fun.(topic, valid_partitions, key, value)
   end
 
@@ -143,7 +149,7 @@ defmodule Kafee.Producer.Message do
       iex> set_request_id(%Message{}, "testing")
       %Kafee.Producer.Message{
         headers: [{"kafka_correlationId", "testing"}]
-      })
+      }
 
   """
   @spec set_request_id(t(), String.t()) :: t()
@@ -167,7 +173,7 @@ defmodule Kafee.Producer.Message do
       ...> set_request_id_from_logger(%Message{})
       %Kafee.Producer.Message{
         headers: [{"kafka_correlationId", "testing"}]
-      })
+      }
 
   """
   @spec set_request_id_from_logger(t()) :: t()
@@ -202,6 +208,14 @@ defmodule Kafee.Producer.Message do
         error_key: :topic,
         kafee_message: message,
         message: "Topic is missing from message"
+      )
+
+  def validate!(%Message{topic: ""} = message),
+    do:
+      raise(ValidationError,
+        error_key: :topic,
+        kafee_message: message,
+        message: "Topic is empty in message"
       )
 
   def validate!(%Message{partition: nil} = message),

@@ -107,16 +107,17 @@ defmodule Kafee.Producer do
 
       defmodule MyProducer do
         use Kafee.Producer,
-          topic: "my-topic"
+          topic: "my-topic",
+          partition_fun: :random
       end
 
   At which point you will be able to do this:
 
-      iex> :ok = MyProducer.produce([%Kafee.Producer.Message{
+      iex> :ok = MyProducer.produce(%Kafee.Producer.Message{
       ...>   key: "key",
       ...>   value: "value",
       ...>   partition: 1
-      ...> }])
+      ...> })
 
   Though we don't recommend calling `produce/1` directly in your code.
   Instead, you should add some function heads to your module to handle
@@ -124,14 +125,15 @@ defmodule Kafee.Producer do
 
       defmodule MyProducer do
         use Kafee.Producer,
-          topic: "my-topic"
+          topic: "my-topic",
+          partition_fun: :random
 
         def publish(:order_created, %Order{} = order)
-          produce([%Kafee.Producer.Message{
+          produce(%Kafee.Producer.Message{
             key: order.tenant_id,
             value: Jason.encode!(order),
             partition: 1
-          }])
+          })
         end
       end
 
@@ -150,13 +152,14 @@ defmodule Kafee.Producer do
       defmodule MyProducer do
         use Kafee.Producer,
           encoder: Kafee.JasonEncoderDecoder,
-          topic: "order-created"
+          topic: "order-created",
+          partition_fun: :random
 
         def publish(:order_created, %Order{} = order)
-          produce([%Kafee.Producer.Message{
+          produce(%Kafee.Producer.Message{
             key: order.tenant_id,
             value: order
-          }])
+          })
         end
       end
 
@@ -243,9 +246,8 @@ defmodule Kafee.Producer do
   """
   @spec start_link(module(), options()) :: Supervisor.on_start()
   def start_link(module, options) do
-    with {:ok, options} <- NimbleOptions.validate(options, @options_schema),
-         config_spec <- configuration_spec(module, options) do
-      Supervisor.start_child(Kafee.Application, config_spec)
+    with {:ok, options} <- NimbleOptions.validate(options, @options_schema) do
+      :ets.insert(:kafee_config, {module, options})
 
       case Keyword.get(options, :adapter) do
         nil -> :ignore
@@ -260,38 +262,14 @@ defmodule Kafee.Producer do
   """
   @spec produce(module(), [Kafee.Producer.Message.t()]) :: :ok | {:error, term()}
   def produce(producer, messages) do
-    options = configuration(producer)
+    options = :ets.lookup_element(:kafee_config, producer, 2)
 
     case Keyword.get(options, :adapter, nil) do
       nil -> :ok
       adapter when is_atom(adapter) -> adapter.produce(messages, producer, options)
       {adapter, _adapter_opts} -> adapter.produce(messages, producer, options)
     end
+  rescue
+    _e in ArgumentError -> {:error, :producer_not_found}
   end
-
-  @doc """
-  Retrieves the full configuration for a producer.
-  """
-  @spec configuration(module()) :: options()
-  def configuration(producer) do
-    producer
-    |> configuration_module()
-    |> Agent.get(& &1)
-  end
-
-  @spec configuration_spec(module(), options()) :: Supervisor.child_spec()
-  defp configuration_spec(producer, options) do
-    %{
-      id: configuration_module(producer),
-      start:
-        {Agent, :start_link,
-         [
-           fn -> options end,
-           [name: configuration_module(producer)]
-         ]}
-    }
-  end
-
-  @spec configuration_module(module()) :: module()
-  defp configuration_module(producer), do: Module.concat(producer, "Config")
 end
