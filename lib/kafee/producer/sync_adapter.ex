@@ -101,6 +101,7 @@ defmodule Kafee.Producer.SyncAdapter do
   defp client_config(options, adapter_options) do
     (options ++ adapter_options)
     |> Keyword.take([:connect_timeout, :max_retries, :retry_backoff_ms, :sasl, :ssl])
+    |> Keyword.put(:allow_topic_auto_creation, true)
     |> Keyword.put(:auto_start_producers, true)
     |> Keyword.reject(fn {_k, v} -> is_nil(v) end)
   end
