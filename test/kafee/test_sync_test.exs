@@ -7,11 +7,14 @@ defmodule Kafee.TestSyncTest do
   @topic "kafee-test-sync-test"
 
   defmodule TestProducer do
-    use Kafee.Producer, producer_adapter: Kafee.Producer.TestAdapter
+    use Kafee.Producer,
+      adapter: Kafee.Producer.TestAdapter,
+      topic: "kafee-test-sync-test",
+      partition_fun: :random
   end
 
   setup do
-    start_supervised!({TestProducer, []})
+    start_supervised!(TestProducer)
     :ok
   end
 

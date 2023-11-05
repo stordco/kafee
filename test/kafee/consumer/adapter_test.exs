@@ -9,9 +9,7 @@ defmodule Kafee.Consumer.AdapterTest do
   @span_fields Record.extract(:span, from: "deps/opentelemetry/include/otel_span.hrl")
   Record.defrecordp(:span, @span_fields)
 
-  @consumer_options [
-    decoder: {Kafee.NilEncoderDecoder, []}
-  ]
+  @consumer_options []
 
   setup do
     spy(Kafee.Consumer.Adapter)

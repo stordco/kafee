@@ -24,9 +24,8 @@ defmodule Kafee.EncoderDecoder do
   """
   @callback decode!(binary, Keyword.t()) :: any
 
-  @optional_callbacks content_type: 0
-
   defmodule Error do
+    @moduledoc false
     defexception [:message]
   end
 end

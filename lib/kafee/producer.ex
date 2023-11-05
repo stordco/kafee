@@ -1,84 +1,139 @@
 defmodule Kafee.Producer do
+  @options_schema NimbleOptions.new!(
+                    adapter: [
+                      default: nil,
+                      doc: """
+                      A module implementing `Kafee.Producer.Adapter`. This module is
+                      responsible for the actual sending of messages to Kafka via
+                      various lower level libraries and strategies.
+
+                      If you set this value to `nil`, no messages will ever be sent
+                      to Kafka. This is useful in development mode where you do not
+                      care about messages being sent, or you do not have a Kafka
+                      instance to connect to.
+
+                      If you are in a testing environment, and want to test that
+                      messages are being produced without the need for mocking,
+                      you can use the `Kafee.Producer.TestAdapter`.
+
+                      See individual producer adapter modules for more options.
+                      """,
+                      required: true,
+                      type: {:or, [nil, :atom, :mod_arg]}
+                    ],
+                    encoder: [
+                      default: nil,
+                      doc: """
+                      A module implementing `Kafee.EncoderDecoder`. This module will
+                      automatically encode the Kafka message from a native Elixir
+                      data type to a binary type for the Kafka message value.
+
+                      If you set this value to `nil`, no message value will be
+                      encoded. The message value will need to be a binary value.
+
+                      Kafee has built in support for Jason and Protobuf encoding. See
+                      individual encoder decoder modules for more options.
+                      """,
+                      type: {:or, [nil, :atom, :mod_arg]}
+                    ],
+                    host: [
+                      default: "localhost",
+                      doc: """
+                      Kafka bootstrap server to connect to for sending messages.
+                      """,
+                      type: :string
+                    ],
+                    port: [
+                      default: 9092,
+                      doc: """
+                      Kafka bootstrap server port to connect to for sending messages.
+                      """,
+                      type: :non_neg_integer
+                    ],
+                    sasl: [
+                      doc: """
+                      A tuple for SASL authentication to the Kafka cluster. This can
+                      be `:plain`, `:scram_sha_256`, or `:scram_sha_512`, and a username
+                      and password. For example, to use plain username and password
+                      authentication you'd set this to `{:plain, "username", "password"}`.
+                      """,
+                      type: {:tuple, [:string, :string, :string]}
+                    ],
+                    ssl: [
+                      default: false,
+                      doc: """
+                      Enable SSL for communication with the Kafka cluster
+                      """,
+                      type: :boolean
+                    ],
+                    topic: [
+                      doc: """
+                      The Kafka topic to send messages to.
+                      """,
+                      required: true,
+                      type: :string,
+                      type_doc: "`Kafee.topic()`"
+                    ],
+                    partition_fun: [
+                      default: :hash,
+                      doc: """
+                      The default partition function for all messages sent via
+                      this module.
+
+                      This value can be set as `:hash`, `:random`, or a custom
+                      function like so:
+
+                          fn topic, partitions, key, value -> 2 end
+
+                      """,
+                      required: true,
+                      type: {:or, [:atom, {:fun, 4}]},
+                      type_doc: "`Kafee.partition_fun()`"
+                    ]
+                  )
+
+  # credo:disable-for-lines:7 /\.Readability\./
   @moduledoc """
   A module based Kafka producer with pluggable adapters allowing for
   asynchronous, synchronous, and no-op sending of messages to Kafka.
 
-  ## Configuration Loading
+  ## Options
 
-  Every `Kafee.Producer` can load configuration from three different places
-  (in order):
-
-  - The application configuration with `config :kafee, producer: []`
-  - The module options with `use Kafee.Producer`
-  - The init options with `{MyProducer, []}`
-
-  ## Configuration Options
-
-  All configurations specified will be put into the `Kafee.Producer.Config`
-  struct. You can view that module for more specific information.
-
-  - `producer_adapter` The type adapter module responsible for sending
-    messages to Kafka. See `Kafee.Producer.Adapter` for more details.
-
-  - `hostname` (default: `localhost`)
-  - `port` (default: `9092`)
-  - `endpoints` Override the single hostname and port with a list of
-    endpoints. See `:brod` for more information.
-
-  - `username`
-  - `password`
-  - `ssl` (default: `false`)
-
-  - `topic` An optional topic to automatically add to all messages sent
-    via this module. Note, any topic set on the message itself will take
-    priority.
-  - `partition_fun` (default: `:hash`) The default partition function for
-    all messages sent via this module. See `:brod` for more details on
-    partitioning and the partition function.
-
-  - `encoder_decoder` An implementation of `Kafee.EncoderDecoder` for
-    automatic encoding of messages. See examples for more details.
-  - `encoder_decoder_options` A list of extra options given to the
-    encoder decoder module. See individual modules for supported options.
-
-  - `brod_client_opts` Any extra client options to be used when creating a
-    `:brod_client`.
-  - `brod_producer_opts` Any extra options to be used when creating a
-    `:brod_producer`.
-
-  - `kafee_async_worker_opts` Extra options to send to the
-    `Kafee.Producer.AsyncWorker` module. This only has an effect if you are
-    using the `Kafee.Producer.AsyncAdapter`.
+  #{NimbleOptions.docs(@options_schema)}
 
   ## Using
 
   To get started simply make a module like so:
 
       defmodule MyProducer do
-        use Kafee.Producer
+        use Kafee.Producer,
+          topic: "my-topic",
+          partition_fun: :random
       end
 
   At which point you will be able to do this:
 
-      iex> :ok = MyProducer.produce([%Kafee.Producer.Message{
-      ...> key: "key",
-      ...> value: "value",
-      ...> topic: "my-topic"
-      ...> }])
+      iex> :ok = MyProducer.produce(%Kafee.Producer.Message{
+      ...>   key: "key",
+      ...>   value: "value",
+      ...>   partition: 1
+      ...> })
 
   Though we don't recommend calling `produce/1` directly in your code.
   Instead, you should add some function heads to your module to handle
   transformation and partitioning.
 
       defmodule MyProducer do
-        use Kafee.Producer
+        use Kafee.Producer,
+          topic: "my-topic",
+          partition_fun: :random
 
         def publish(:order_created, %Order{} = order)
-          produce([%Kafee.Producer.Message{
+          produce(%Kafee.Producer.Message{
             key: order.tenant_id,
             value: Jason.encode!(order),
-            topic: "order-created"
-          }])
+            partition: 1
+          })
         end
       end
 
@@ -92,18 +147,19 @@ defmodule Kafee.Producer do
   the message value before publishing. This can make your code cleaner
   as well as ensure common practices are enforced (like setting the
   `content-type` header.) To enable this, you'll need to set the
-  `encoder_decoder` option like so:
+  `encoder` option like so:
 
       defmodule MyProducer do
         use Kafee.Producer,
-          encoder_decoder: Kafee.JasonEncoderDecoder
+          encoder: Kafee.JasonEncoderDecoder,
+          topic: "order-created",
+          partition_fun: :random
 
         def publish(:order_created, %Order{} = order)
-          produce([%Kafee.Producer.Message{
+          produce(%Kafee.Producer.Message{
             key: order.tenant_id,
-            value: order,
-            topic: "order-created"
-          }])
+            value: order
+          })
         end
       end
 
@@ -148,268 +204,72 @@ defmodule Kafee.Producer do
 
   """
 
-  require OpenTelemetry.Tracer, as: Tracer
-
-  alias Kafee.Producer.{Config, Message, ValidationError}
-
-  @data_streams_propagator_key Datadog.DataStreams.Propagator.propagation_key()
+  @typedoc "All available options for a Kafee.Consumer module"
+  @type options() :: [unquote(NimbleOptions.option_typespec(@options_schema))]
 
   @doc false
-  defmacro __using__(module_opts \\ []) do
-    quote do
-      use Supervisor
-
+  defmacro __using__(opts \\ []) do
+    quote location: :keep, bind_quoted: [opts: opts, module: __CALLER__.module] do
       @doc false
-      @impl Supervisor
-      # credo:disable-for-lines:15 Credo.Check.Design.AliasUsage
-      def init(init_opts \\ []) do
-        # credo:disable-for-lines:2 Credo.Check.Warning.UnsafeToAtom
-        config =
-          [brod_client_id: Module.concat(__MODULE__, BrodClient), producer: __MODULE__]
-          |> Kafee.Producer.Config.new()
-          |> Kafee.Producer.Config.merge(Application.get_env(:kafee, :producer, []))
-          |> Kafee.Producer.Config.merge(unquote(module_opts))
-          |> Kafee.Producer.Config.merge(init_opts)
-          |> Kafee.Producer.Config.validate!()
+      @spec child_spec(Kafee.Producer.options()) :: Supervisor.child_spec()
+      def child_spec(args) do
+        full_opts = Keyword.merge(unquote(Macro.escape(opts)), args)
 
-        children = [
-          {Kafee.Producer.Config, config}
-        ]
-
-        child_spec = config.producer_adapter.child_spec([config])
-
-        children =
-          if is_nil(child_spec),
-            do: children,
-            else: Enum.reverse([child_spec | children])
-
-        Supervisor.init(children, strategy: :one_for_one)
-      end
-
-      @doc """
-      Starts a new `Kafee.Producer` process and associated children.
-      """
-      @spec start_link(Keyword.t()) :: Supervisor.on_start()
-      def start_link(opts) do
-        Supervisor.start_link(__MODULE__, opts, name: __MODULE__)
+        %{
+          id: __MODULE__,
+          start: {Kafee.Producer, :start_link, [__MODULE__, full_opts]}
+        }
       end
 
       @doc """
       Sends a single message to the configured adapter to be
-      sent to Kafka. See `Kafee.Produce.normalize/1` and
-      `Kafee.Producer.produce/2` functions for more information.
+      sent to Kafka.
       """
       @spec produce(Kafee.Producer.Message.t() | [Kafee.Producer.Message.t()]) :: :ok | {:error, term()}
-      def produce(message) when is_map(message) do
-        produce([message])
-      end
+      def produce(%Kafee.Producer.Message{} = message),
+        do: produce([message])
 
       @doc """
       Sends a list of messages to the configured adapter to be
-      sent to Kafka. See `Kafee.Producer.normalize/2` and
-      `Kafee.Producer.produce/2` functions for more information.
+      sent to Kafka.
       """
       def produce(messages) do
-        messages
-        |> Kafee.Producer.normalize_batch(__MODULE__)
-        |> Kafee.Producer.validate_batch!()
-        |> Kafee.Producer.annotate_batch()
-        |> Kafee.Producer.produce(__MODULE__)
+        Kafee.Producer.produce(__MODULE__, messages)
       end
     end
   end
 
   @doc """
-  Normalizes a batch of messages. See `normalize/2` for more information.
+  Starts a Kafee producer module with the given options. These options
+  are validated and then passed to the configured adapter, which is
+  responsible for starting the whole process tree.
   """
-  @spec normalize_batch([Message.t()], atom()) :: [Message.t()]
-  def normalize_batch(messages, producer) do
-    config = Config.get(producer)
-    Enum.map(messages, &do_normalize(&1, config))
-  end
+  @spec start_link(module(), options()) :: Supervisor.on_start()
+  def start_link(producer, options) do
+    with {:ok, options} <- NimbleOptions.validate(options, @options_schema) do
+      :ets.insert(:kafee_config, {producer, options})
 
-  @doc """
-  Normalizes a single message by ensuring the topic is set, the partition
-  function is set, encoding the message, and then determining what partition
-  it should go to.
-
-  ## Examples
-
-      iex> original_message = %Kafee.Producer.Message{
-      ...>   key: "test",
-      ...>   partition: nil,
-      ...>   topic: "test"
-      ...> }
-      iex> normalize(original_message, MyProducer)
-      %Kafee.Producer.Message{
-        key: "test",
-        partition: 0,
-        partition_fun: :random,
-        topic: "test"
-      }
-
-  """
-  @spec normalize(Message.t(), atom()) :: Message.t()
-  def normalize(message, producer),
-    do: do_normalize(message, Config.get(producer))
-
-  defp do_normalize(message, config) do
-    message
-    |> maybe_put_topic(config)
-    |> maybe_put_partition_fun(config)
-    |> maybe_encode(config)
-    |> maybe_put_partition(config)
-  end
-
-  defp maybe_put_topic(%{topic: nil} = message, %{topic: topic}),
-    do: Map.put(message, :topic, topic)
-
-  defp maybe_put_topic(message, _config), do: message
-
-  defp maybe_put_partition_fun(%{partition_fun: nil} = message, %{partition_fun: partition_fun}),
-    do: Map.put(message, :partition_fun, partition_fun)
-
-  defp maybe_put_partition_fun(message, _config), do: message
-
-  defp maybe_encode(message, %{encoder_decoder: nil}), do: message
-
-  defp maybe_encode(message, %{encoder_decoder: encoder, encoder_decoder_options: opts}) do
-    new_headers =
-      if function_exported?(encoder, :content_type, 0),
-        do: [{"content-type", encoder.content_type()} | message.headers],
-        else: message.headers
-
-    new_value = encoder.encode!(message.value, opts)
-    %{message | headers: new_headers, value: new_value}
-  end
-
-  defp maybe_put_partition(%{partition: partition} = message, _config) when is_integer(partition),
-    do: message
-
-  defp maybe_put_partition(message, config) do
-    {:ok, partition} = config.producer_adapter.partition(config, message)
-    Map.put(message, :partition, partition)
-  end
-
-  @doc """
-  Validates a list of messages. See `validate!/1` for more information.
-
-  ## Examples
-
-      iex> validate_batch!([%Kafee.Producer.Message{topic: "test", partition: 1}])
-      [%Kafee.Producer.Message{topic: "test", partition: 1}]
-
-  """
-  @spec validate_batch!([Message.t()]) :: [Message.t()]
-  def validate_batch!(messages),
-    do: Enum.map(messages, &validate!(&1))
-
-  @doc """
-  Validates messages to ensure they have a topic and partition before
-  sending them into a queue. This is designed to error early and
-  in-line before it gets to a queue, where the problem would be much,
-  _much_ bigger.
-
-      iex> validate!(%Kafee.Producer.Message{topic: nil, partition: 0})
-      ** (Kafee.Producer.ValidationError) Message is missing a topic to send to.
-
-      iex> validate!(%Kafee.Producer.Message{topic: "", partition: nil})
-      ** (Kafee.Producer.ValidationError) Message is missing a partition to send to.
-
-      iex> validate!(%Kafee.Producer.Message{topic: "", partition: 0, headers: [{"test", nil}]})
-      ** (Kafee.Producer.ValidationError) Message header keys and values must be a binary value.
-
-      iex> validate!(%Kafee.Producer.Message{topic: "", partition: 0, headers: []})
-      %Kafee.Producer.Message{topic: "", partition: 0, headers: []}
-
-  """
-  @spec validate!(Message.t()) :: Message.t()
-  def validate!(%Message{topic: nil} = message),
-    do: raise(ValidationError, kafee_message: message, validation_error: :topic)
-
-  def validate!(%Message{partition: nil} = message),
-    do: raise(ValidationError, kafee_message: message, validation_error: :partition)
-
-  def validate!(%Message{} = message) do
-    for {key, value} <- message.headers do
-      if not (is_binary(key) and is_binary(value)) do
-        raise(ValidationError, kafee_message: message, validation_error: :headers)
+      case Keyword.get(options, :adapter) do
+        nil -> :ignore
+        adapter when is_atom(adapter) -> adapter.start_link(producer, options)
+        {adapter, _adapter_options} -> adapter.start_link(producer, options)
       end
     end
-
-    message
   end
 
   @doc """
-  Annotates a list of messages with tracking. See `annotate/1` for more
-  information.
+  Produces a list of messages via the given `Kafee.Producer` module.
   """
-  @spec annotate_batch([Message.t()]) :: [Message.t()]
-  def annotate_batch(messages) do
-    Enum.map(messages, &annotate/1)
-  end
+  @spec produce(module(), [Kafee.Producer.Message.t()]) :: :ok | {:error, term()}
+  def produce(producer, messages) do
+    options = :ets.lookup_element(:kafee_config, producer, 2)
 
-  @doc """
-  Annotations a message with tracking. Currently this only integrates the
-  `Datadog.DataStreams.Integrations.Kafka` module.
-  """
-  @spec annotate(Message.t()) :: Message.t()
-  def annotate(%Message{} = message) do
-    already_includes_header? =
-      Enum.find(message.headers, fn {key, _} ->
-        key == @data_streams_propagator_key
-      end)
-
-    if already_includes_header? do
-      message
-    else
-      Datadog.DataStreams.Integrations.Kafka.trace_produce(message)
+    case Keyword.get(options, :adapter, nil) do
+      nil -> :ok
+      adapter when is_atom(adapter) -> adapter.produce(messages, producer, options)
+      {adapter, _adapter_opts} -> adapter.produce(messages, producer, options)
     end
-  end
-
-  @doc """
-  Produces a list of messages depending on the configuration set
-  in the producer.
-
-  ## Examples
-
-      iex> produce([%Kafee.Producer.Message{topic: "test"}], MyProducer)
-      :ok
-
-  """
-  @spec produce([Message.t()], atom) :: :ok | {:error, term()}
-  def produce(messages, producer) do
-    config = Config.get(producer)
-    {span_name, span_attributes} = otel_values(messages, config)
-
-    Tracer.with_span span_name, span_attributes do
-      config.producer_adapter.produce(config, messages)
-    end
-  end
-
-  # These values come from the official opentelemetry specification about messaging
-  # and Kafka handling. For more information, view this link:
-  # https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/trace/semantic_conventions/messaging.md
-  @spec otel_values([Message.t()], Config.t()) :: {String.t(), map()}
-  defp otel_values([message | _] = messages, config) do
-    # Ideally the topic will be validated above before producing, but
-    # we want to be double safe.
-    span_name = if is_nil(message.topic), do: "publish", else: message.topic <> " publish"
-
-    {span_name,
-     %{
-       kind: :client,
-       attributes: %{
-         "messaging.batch.message_count": length(messages),
-         "messaging.destination.kind": "topic",
-         "messaging.destination.name": message.topic,
-         "messaging.operation": "publish",
-         "messaging.system": "kafka",
-         "network.transport": "tcp",
-         "peer.service": "kafka",
-         "server.address": config.hostname,
-         "server.socket.port": config.port
-       }
-     }}
+  rescue
+    _e in ArgumentError -> {:error, :producer_not_found}
   end
 end

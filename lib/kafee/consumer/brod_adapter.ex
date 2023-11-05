@@ -52,16 +52,16 @@ defmodule Kafee.Consumer.BrodAdapter do
   @doc false
   @impl Kafee.Consumer.Adapter
   @spec start_link(module(), Kafee.Consumer.options()) :: Supervisor.on_start()
-  def start_link(module, options) do
-    Supervisor.start_link(__MODULE__, {module, options})
+  def start_link(consumer, options) do
+    Supervisor.start_link(__MODULE__, {consumer, options})
   end
 
   @doc false
   @spec child_spec({module(), Kafee.Consumer.options()}) :: :supervisor.child_spec()
-  def child_spec({module, options}) do
+  def child_spec({consumer, options}) do
     default = %{
       id: __MODULE__,
-      start: {__MODULE__, :start_link, [{module, options}]},
+      start: {__MODULE__, :start_link, [{consumer, options}]},
       type: :supervisor
     }
 
@@ -70,7 +70,7 @@ defmodule Kafee.Consumer.BrodAdapter do
 
   @doc false
   @impl Supervisor
-  def init({module, options}) do
+  def init({consumer, options}) do
     adapter_options =
       case options[:adapter] do
         nil -> []
@@ -80,7 +80,7 @@ defmodule Kafee.Consumer.BrodAdapter do
 
     with {:ok, adapter_options} <- NimbleOptions.validate(adapter_options, @options_schema) do
       # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
-      brod_client = Module.concat(module, "BrodClient")
+      brod_client = Module.concat(consumer, "BrodClient")
 
       children = [
         %{
@@ -97,7 +97,7 @@ defmodule Kafee.Consumer.BrodAdapter do
           shutdown: 500
         },
         %{
-          id: module,
+          id: consumer,
           start:
             {:brod_group_subscriber_v2, :start_link,
              [
@@ -108,7 +108,7 @@ defmodule Kafee.Consumer.BrodAdapter do
                  cb_module: Kafee.Consumer.BrodWorker,
                  message_type: :message,
                  init_data: %{
-                   module: module,
+                   consumer: consumer,
                    options: options
                  }
                }

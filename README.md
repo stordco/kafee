@@ -91,17 +91,21 @@ So you want to send messages to Kafka eh? Well, first you will need to create a 
 ```elixir
 defmodule MyProducer do
   use Kafee.Producer,
-    producer_adapter: Application.compile_env(:my_app, :kafee_producer_adapter, Kafee.Producer.TestAdapter),
-    topic: "my-topic"
+    adapter: Application.compile_env(:my_app, :kafee_producer_adapter, nil),
+    encoder: Kafee.JasonEncoderDecoder,
+    topic: "my-topic",
+    partition_fun: :hash
 
   # This is just a regular function that takes a struct from your
   # application and converts it to a `t:Kafee.Producer.Message/0`
-  # struct and calls `produce/1`.
+  # struct and calls `produce/1`. Note that because we have the
+  # `encoder` option set above, the `order` value will be JSON
+  # encoded before sending to Kafka.
   def publish(:order_created, %Order{} = order) do
-    produce([%Kafee.Producer.Message{
+    produce(%Kafee.Producer.Message{
       key: order.tenant_id,
-      value: Jason.encode!(order)
-    }])
+      value: order
+    })
   end
 end
 ```
@@ -117,10 +121,8 @@ defmodule MyApplication do
       {MyProducer, [
         host: "localhost",
         port: 9092,
-        username: "username",
-        password: "password",
-        ssl: true,
-        sasl: :plain
+        sasl: {:plain, "username", "password"},
+        ssl: true
       ]}
     ]
 
@@ -129,7 +131,7 @@ defmodule MyApplication do
 end
 ```
 
-And finally, instead of using the `Kafee.Producer.TestAdapter`, you'll want to use another adapter in production. So set that up in your `config/prod.exs` file:
+And finally, you'll want to use another adapter in production. So set that up in your `config/prod.exs` file:
 
 ```elixir
 import Config
@@ -143,4 +145,4 @@ Once that is done, to publish a message simply run:
 MyProducer.publish(:order_created, %Order{})
 ```
 
-All messages published _not_ in production will just be sent to the current process. This allows for easier testing with the [`Kafee.Test`](https://stord.hexdocs.pm/kafee/Kafee.Test.html) module, as well as not requiring Kafka running locally when in development. In production, the message will actually be sent to Kafka via the [`Kafee.Producer.AsyncAdaptor`](https://stord.hexdocs.pm/kafee/Kafee.Producer.AsyncAdaptor.html) module.
+All messages published _not_ in production will be a no-op. This means you do not need any Kafka instance setup to run in development. For testing, we recommend using the [`Kafee.Producer.AsyncAdaptor`](https://stord.hexdocs.pm/kafee/Kafee.Producer.AsyncAdaptor.html) adapter, allowing easier testing via the [`Kafee.Test`](https://stord.hexdocs.pm/kafee/Kafee.Test.html) module.
