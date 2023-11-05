@@ -7,6 +7,8 @@ defmodule Kafee.Consumer.Message do
   struct.
   """
 
+  alias __MODULE__
+
   @derive {Jason.Encoder, except: []}
 
   defstruct [
@@ -21,14 +23,14 @@ defmodule Kafee.Consumer.Message do
   ]
 
   @type t :: %__MODULE__{
-          key: binary(),
-          value: any(),
-          topic: binary(),
-          partition: -2_147_483_648..2_147_483_647,
-          offset: integer(),
-          consumer_group: binary(),
+          key: Kafee.key(),
+          value: Kafee.value() | any(),
+          topic: Kafee.topic(),
+          partition: Kafee.partition(),
+          offset: Kafee.offset(),
+          consumer_group: Kafee.consumer_group_id(),
           timestamp: DateTime.t(),
-          headers: [{binary(), binary()}]
+          headers: Kafee.headers()
         }
 
   @doc """
@@ -48,7 +50,7 @@ defmodule Kafee.Consumer.Message do
 
   """
   @spec get_request_id(t()) :: String.t() | nil
-  def get_request_id(message) do
+  def get_request_id(%Message{} = message) do
     case Enum.find(message.headers, fn {k, _v} -> k === "kafka_correlationId" end) do
       nil -> nil
       {"kafka_correlationId", request_id} -> request_id
@@ -73,7 +75,7 @@ defmodule Kafee.Consumer.Message do
 
   """
   @spec get_otel_span_name(t()) :: String.t()
-  def get_otel_span_name(message) do
+  def get_otel_span_name(%Message{} = message) do
     prefix = if is_nil(message.topic), do: "(anonymous)", else: message.topic
     prefix <> " process"
   end
@@ -118,7 +120,7 @@ defmodule Kafee.Consumer.Message do
 
   """
   @spec get_otel_span_attributes(t()) :: map()
-  def get_otel_span_attributes(%Kafee.Consumer.Message{value: value} = message) when is_binary(value) do
+  def get_otel_span_attributes(%Message{value: value} = message) when is_binary(value) do
     [
       {:"messaging.system", "kafka"},
       {:"messaging.source.name", message.topic},
@@ -134,7 +136,7 @@ defmodule Kafee.Consumer.Message do
     |> Map.new()
   end
 
-  def get_otel_span_attributes(%Kafee.Consumer.Message{} = message) do
+  def get_otel_span_attributes(%Message{} = message) do
     inspected_message = inspect(message)
 
     raise RuntimeError,
@@ -151,7 +153,7 @@ defmodule Kafee.Consumer.Message do
 
   @doc false
   @spec set_logger_request_id(t()) :: no_return()
-  def set_logger_request_id(message) do
+  def set_logger_request_id(%Message{} = message) do
     if request_id = get_request_id(message) do
       Logger.metadata(request_id: request_id)
     else

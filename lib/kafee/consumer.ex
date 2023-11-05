@@ -29,7 +29,7 @@ defmodule Kafee.Consumer do
                       Kafee has built in support for Jason and Protobuf encoding and decoding. See
                       individual encoder decoder modules for more options.
                       """,
-                      type: {:or, [nil, :mod_arg]}
+                      type: {:or, [nil, :atom, :mod_arg]}
                     ],
                     host: [
                       default: "localhost",
@@ -189,8 +189,6 @@ defmodule Kafee.Consumer do
   @doc "Handles an error while processing a Kafka message"
   @callback handle_failure(any(), Kafee.Consumer.Message.t()) :: :ok
 
-  @optional_callbacks handle_failure: 2
-
   @doc false
   defmacro __using__(opts \\ []) do
     quote location: :keep, bind_quoted: [opts: opts, module: __CALLER__.module] do
@@ -254,12 +252,12 @@ defmodule Kafee.Consumer do
   for starting the whole process tree.
   """
   @spec start_link(module(), options()) :: Supervisor.on_start()
-  def start_link(module, options) do
+  def start_link(consumer, options) do
     with {:ok, options} <- NimbleOptions.validate(options, @options_schema) do
       case options[:adapter] do
         nil -> :ignore
-        adapter when is_atom(adapter) -> adapter.start_link(module, options)
-        {adapter, _adapter_options} -> adapter.start_link(module, options)
+        adapter when is_atom(adapter) -> adapter.start_link(consumer, options)
+        {adapter, __options} -> adapter.start_link(consumer, options)
       end
     end
   end

@@ -93,6 +93,16 @@ defmodule Kafee.BrodApi do
     }
   end
 
+  @doc """
+  Returns a simple map of all of the message fields we send to brod and Kafka.
+  """
+  @spec to_kafka_message(value) :: value when value: Message.t() | [Message.t()]
+  def to_kafka_message(messages) when is_list(messages),
+    do: Enum.map(messages, &to_kafka_message/1)
+
+  def to_kafka_message(%Kafee.Producer.Message{} = message),
+    do: Map.take(message, [:key, :value, :headers])
+
   defdelegate host(), to: Kafee.KafkaApi
   defdelegate port(), to: Kafee.KafkaApi
   defdelegate endpoints(), to: Kafee.KafkaApi

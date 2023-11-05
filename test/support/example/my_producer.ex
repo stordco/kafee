@@ -4,7 +4,8 @@ defmodule MyProducer do
   """
 
   use Kafee.Producer,
-    producer_adapter: Kafee.Producer.TestAdapter,
+    adapter: nil,
+    topic: "test-topic",
     partition_fun: :random
 
   def publish(_type, messages), do: produce(messages)

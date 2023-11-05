@@ -1,108 +1,62 @@
 defmodule Kafee.Producer.AsyncWorker do
-  @moduledoc """
-  A simple GenServer for every topic * partition in Kafka. It holds an
-  erlang `:queue` and sends messages every so often. On process close, we
-  attempt to send all messages to Kafka, and in the unlikely event we can't
-  we write all messages to the logs.
+  # A simple GenServer for every topic * partition in Kafka. It holds an
+  # erlang `:queue` and sends messages every so often. On process close, we
+  # attempt to send all messages to Kafka, and in the unlikely event we can't
+  # we write all messages to the logs.
 
-  ## Telemetry Events
-
-  - `kafee.queue.count` - The amount of messages in queue
-    waiting to be sent to Kafka. This includes the number of messages currently
-    in flight awaiting to be acknowledged from Kafka.
-
-    We recommend capturing this with `last_value/2` like so:
-
-      last_value(
-        "kafee.queue.count",
-        description: "The amount of messages in queue waiting to be sent to Kafka",
-        tags: [:topic, :partition]
-      )
-
-  """
+  @moduledoc false
 
   use GenServer,
     shutdown: :timer.seconds(25)
 
+  import Kafee, only: [is_offset: 1]
+
   require Logger
+  require OpenTelemetry.Tracer, as: Tracer
 
   alias Datadog.DataStreams.Integrations.Kafka, as: DDKafka
+  alias Kafee.Producer.Message
 
-  # The max request size Kafka can handle by default is 1mb.
-  # We shrink it by 8kb as an extra precaution for data.
-  @default_max_request_size 1_040_384
+  @data_streams_propagator_key Datadog.DataStreams.Propagator.propagation_key()
 
-  defstruct [
-    :brod_client_id,
-    :max_request_size,
-    :partition,
-    :queue,
-    :send_throttle_time,
-    :send_task,
-    :send_timeout,
-    :topic
-  ]
+  defmodule State do
+    @moduledoc false
 
-  @typedoc """
-  Internal data for the worker. Fields are as follow:
+    defstruct [
+      :brod_client_id,
+      :max_request_bytes,
+      :partition,
+      :queue,
+      :throttle_ms,
+      :send_task,
+      :send_timeout,
+      :topic
+    ]
 
-  - `brod_client_id` - The client id used for talking to `:brod`
-  - `max_request_size` - The max batch request size in bytes
-  - `partition` - The Kafka partition we are sending messages to
-  - `queue` - A `:queue` of messages waiting to be sent
-  - `send_throttle_time` - A throttle time for sending messages to Kafka
-  - `send_task` - A task currently sending messages to Kafka
-  - `send_timeout` - The time we should wait for messages to be acked by Kafka
-    before assuming the worst and retrying
-  - `topic` - The Kafka topic we are sending messages to
-
-  """
-  @type t :: %__MODULE__{
-          brod_client_id: :brod.client_id(),
-          max_request_size: pos_integer(),
-          partition: :brod.partition(),
-          queue: :queue.queue(),
-          send_throttle_time: pos_integer(),
-          send_task: Task.t() | nil,
-          send_timeout: pos_integer(),
-          topic: :brod.topic()
-        }
+    @type t :: %__MODULE__{
+            brod_client_id: :brod.client_id(),
+            max_request_bytes: pos_integer(),
+            partition: Kafee.partition(),
+            queue: :queue.queue(),
+            throttle_ms: pos_integer(),
+            send_task: Task.t() | nil,
+            send_timeout: pos_integer(),
+            topic: Kafee.topic()
+          }
+  end
 
   @type opts :: [
           brod_client_id: :brod.client(),
-          max_request_size: pos_integer() | nil,
-          topic: :brod.topic(),
-          partition: :brod.partition(),
-          send_throttle_time: pos_integer() | nil,
-          send_timeout: pos_integer() | nil
+          max_request_bytes: pos_integer(),
+          partition: Kafee.partition(),
+          send_timeout: pos_integer(),
+          throttle_ms: pos_integer(),
+          topic: Kafee.topic()
         ]
 
-  ## Client API
+  ## Public-ish API
 
-  @doc """
-  Starts the GenServer with information about our Kafka instance.
-
-  ## Examples
-
-      iex> init([brod_client_id: :brod_client_id, topic: "test-topic", partition: 1])
-      {:ok, _pid}
-
-  ## Options
-
-  This GenServer requires the following fields to be given on creation.
-
-    - `brod_client_id` The id given when you created a `:brod_client`.
-    - `topic` The Kafka topic to publish to.
-    - `partition` The Kafka partition of the topic to publish to.
-
-  This function also takes additional optional fields.
-
-    - `send_timeout` - (10_000) The time we should wait for messages to be acked by Kafka
-    before assuming the worst and retrying
-    - `send_throttle_time` - (100) A throttle time for sending messages to Kafka
-
-
-  """
+  @doc false
   @spec start_link(opts()) :: GenServer.on_start()
   def start_link(opts) do
     brod_client_id = Keyword.fetch!(opts, :brod_client_id)
@@ -112,57 +66,41 @@ defmodule Kafee.Producer.AsyncWorker do
     GenServer.start_link(__MODULE__, opts, name: process_name(brod_client_id, topic, partition))
   end
 
-  @doc """
-  Adds messages to the send queue.
-
-  ## Examples
-
-      iex> queue(async_worker_pid, [message_one, message_two])
-      :ok
-
-  """
-  @spec queue(pid(), :brod.message_set()) :: :ok
+  @doc false
+  @spec queue(pid(), [Message.t()]) :: :ok
   def queue(pid, messages) do
     GenServer.cast(pid, {:queue, messages})
   end
 
-  @doc """
-  Creates a process name via `Kafee.Producer.AsyncRegistry`.
-
-  ## Examples
-
-      iex> process_name(:test, :topic, 1)
-      {:via, Registry, {Kafee.Producer.AsyncRegistry, _}}
-
-  """
-  @spec process_name(:brod.client(), :brod.topic(), :brod.partition()) :: GenServer.name()
+  @doc false
+  @spec process_name(:brod.client(), Kafee.topic(), Kafee.partition()) :: GenServer.name()
   def process_name(brod_client_id, topic, partition) do
-    {:via, Registry, {Kafee.Producer.AsyncRegistry, {brod_client_id, :worker, topic, partition}}}
+    {:via, Registry, {Kafee.Registry, {brod_client_id, :worker, topic, partition}}}
   end
 
   ## Server API
 
   @doc false
-  @spec init(opts()) :: {:ok, t()}
+  @spec init(opts()) :: {:ok, State.t()}
   def init(opts) do
     Process.flag(:trap_exit, true)
 
     brod_client_id = Keyword.fetch!(opts, :brod_client_id)
-    max_request_size = Keyword.get(opts, :max_request_size, @default_max_request_size)
+    max_request_bytes = Keyword.fetch!(opts, :max_request_bytes)
     topic = Keyword.fetch!(opts, :topic)
     partition = Keyword.fetch!(opts, :partition)
-    send_throttle_time = Keyword.get(opts, :send_throttle_time, 100)
-    send_timeout = Keyword.get(opts, :send_timeout, :timer.seconds(10))
+    throttle_ms = Keyword.fetch!(opts, :throttle_ms)
+    send_timeout = Keyword.fetch!(opts, :send_timeout)
 
     Logger.metadata(topic: topic, partition: partition)
 
     {:ok,
-     %__MODULE__{
+     %State{
        brod_client_id: brod_client_id,
-       max_request_size: max_request_size,
+       max_request_bytes: max_request_bytes,
        partition: partition,
        queue: :queue.new(),
-       send_throttle_time: send_throttle_time,
+       throttle_ms: throttle_ms,
        send_task: nil,
        send_timeout: send_timeout,
        topic: topic
@@ -196,11 +134,11 @@ defmodule Kafee.Producer.AsyncWorker do
   @doc false
   def handle_info({task_ref, {:ok, messages_sent, offset}}, %{send_task: %{ref: task_ref}} = state) do
     Logger.debug("Successfully sent messages to Kafka")
-    if is_integer(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
+    if is_offset(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
     {_sent_messages, remaining_messages} = :queue.split(messages_sent, state.queue)
     emit_queue_telemetry(state, :queue.len(remaining_messages))
 
-    Process.send_after(self(), :send, state.send_throttle_time)
+    Process.send_after(self(), :send, state.throttle_ms)
     {:noreply, %{state | queue: remaining_messages}}
   end
 
@@ -215,7 +153,7 @@ defmodule Kafee.Producer.AsyncWorker do
   # and we try again.
   @doc false
   def handle_info({task_ref, error}, %{queue: queue, send_task: %{ref: task_ref}} = state) do
-    sent_messages = build_message_batch(queue, state.max_request_size)
+    sent_messages = build_message_batch(queue, state.max_request_bytes)
 
     state =
       case error do
@@ -225,13 +163,13 @@ defmodule Kafee.Producer.AsyncWorker do
           %{state | queue: :queue.drop(queue)}
 
         {:error, {:producer_down, {:not_retriable, {_, _, _, _, :message_too_large}}}} ->
-          new_max_request_size = max(state.max_request_size - 1024, 500_000)
+          new_max_request_bytes = max(state.max_request_bytes - 1024, 500_000)
 
           Logger.error(
-            "The configured `max_request_size` is larger than the Kafka cluster allows. Adjusting to #{new_max_request_size} bytes"
+            "The configured `max_request_bytes` is larger than the Kafka cluster allows. Adjusting to #{new_max_request_bytes} bytes"
           )
 
-          %{state | max_request_size: new_max_request_size}
+          %{state | max_request_bytes: new_max_request_bytes}
 
         {:error, {:producer_down, {:not_retriable, _}}} ->
           Logger.error(
@@ -250,7 +188,7 @@ defmodule Kafee.Producer.AsyncWorker do
           state
       end
 
-    Process.send_after(self(), :send, state.send_throttle_time)
+    Process.send_after(self(), :send, state.throttle_ms)
     {:noreply, state}
   end
 
@@ -266,7 +204,7 @@ defmodule Kafee.Producer.AsyncWorker do
   @doc false
   def handle_info({:DOWN, task_ref, :process, _pid, reason}, %{send_task: %{ref: task_ref}} = state) do
     Logger.error("Crash when sending messages to Kafka", error: inspect(reason))
-    Process.send_after(self(), :send, state.send_throttle_time)
+    Process.send_after(self(), :send, state.throttle_ms)
     {:noreply, %{state | send_task: nil}}
   end
 
@@ -294,7 +232,7 @@ defmodule Kafee.Producer.AsyncWorker do
     new_queue = :queue.join(state.queue, :queue.from_list(messages))
     emit_queue_telemetry(state, :queue.len(new_queue))
 
-    Process.send_after(self(), :send, state.send_throttle_time)
+    Process.send_after(self(), :send, state.throttle_ms)
     {:noreply, %{state | queue: new_queue}}
   end
 
@@ -322,7 +260,7 @@ defmodule Kafee.Producer.AsyncWorker do
   def terminate(reason, %{send_task: %{ref: ref}} = state) do
     receive do
       {^ref, {:ok, sent_message_count, offset}} ->
-        if is_integer(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
+        if is_offset(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
         {_sent_messages, remaining_messages} = :queue.split(sent_message_count, state.queue)
         emit_queue_telemetry(state, :queue.len(remaining_messages))
         terminate(reason, %{state | queue: remaining_messages, send_task: nil})
@@ -336,18 +274,18 @@ defmodule Kafee.Producer.AsyncWorker do
     end
   end
 
-  @spec terminate_send(t()) :: :ok
+  @spec terminate_send(State.t()) :: :ok
   defp terminate_send(state) do
     case send_messages(state) do
       {:ok, 0, offset} ->
         Logger.info("Successfully sent all remaining messages to Kafka before termination")
-        if is_integer(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
+        if is_offset(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
         emit_queue_telemetry(state, 0)
         :ok
 
       {:ok, sent_message_count, offset} ->
         Logger.debug("Successfully sent #{sent_message_count} messages to Kafka before termination")
-        if is_integer(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
+        if is_offset(offset), do: DDKafka.track_produce(state.topic, state.partition, offset)
         {_sent_messages, remaining_messages} = :queue.split(sent_message_count, state.queue)
         emit_queue_telemetry(state, :queue.len(remaining_messages))
         terminate_send(%{state | queue: remaining_messages})
@@ -376,7 +314,7 @@ defmodule Kafee.Producer.AsyncWorker do
       :ok
   end
 
-  @spec emit_queue_telemetry(t(), non_neg_integer()) :: :ok
+  @spec emit_queue_telemetry(State.t(), non_neg_integer()) :: :ok
   defp emit_queue_telemetry(state, count) do
     :telemetry.execute([:kafee, :queue], %{count: count}, %{
       topic: state.topic,
@@ -384,9 +322,9 @@ defmodule Kafee.Producer.AsyncWorker do
     })
   end
 
-  @spec send_messages(t()) :: {:ok, sent_count :: pos_integer(), offset :: integer() | nil} | term()
+  @spec send_messages(State.t()) :: {:ok, sent_count :: pos_integer(), offset :: integer() | nil} | term()
   defp send_messages(state) do
-    messages = build_message_batch(state.queue, state.max_request_size)
+    messages = build_message_batch(state.queue, state.max_request_bytes)
     messages_length = length(messages)
 
     if messages_length == 0 do
@@ -394,42 +332,62 @@ defmodule Kafee.Producer.AsyncWorker do
     else
       Logger.debug("Sending #{messages_length} messages to Kafka")
 
-      :telemetry.span(
-        [:kafee, :produce],
-        %{
-          count: messages_length,
-          topic: state.topic,
-          partition: state.partition
-        },
-        fn ->
-          with {:ok, call_ref} <-
-                 :brod.produce(state.brod_client_id, state.topic, state.partition, :undefined, messages),
-               {:ok, offset} <- :brod.sync_produce_request_offset(call_ref, state.send_timeout) do
-            {{:ok, messages_length, offset}, %{}}
-          else
-            res -> {res, %{}}
+      span_name = messages |> Enum.at(0) |> Message.get_otel_span_name()
+      span_attributes = Message.get_otel_span_attributes(messages)
+
+      Tracer.with_span span_name, %{kind: :client, attributes: span_attributes} do
+        messages = normalize_messages(messages)
+
+        :telemetry.span(
+          [:kafee, :produce],
+          %{
+            count: messages_length,
+            topic: state.topic,
+            partition: state.partition
+          },
+          fn ->
+            with {:ok, call_ref} <-
+                   :brod.produce(state.brod_client_id, state.topic, state.partition, :undefined, messages),
+                 {:ok, offset} <- :brod.sync_produce_request_offset(call_ref, state.send_timeout) do
+              {{:ok, messages_length, offset}, %{}}
+            else
+              res -> {res, %{}}
+            end
           end
-        end
-      )
+        )
+      end
     end
+  end
+
+  @spec normalize_messages([Message.t()]) :: [Message.t()]
+  defp normalize_messages(messages) do
+    messages
+    |> Enum.map(fn message ->
+      if Message.has_header?(message, @data_streams_propagator_key),
+        do: message,
+        else: Datadog.DataStreams.Integrations.Kafka.trace_produce(message)
+    end)
+    |> Enum.map(&Map.take(&1, [:key, :value, :headers]))
   end
 
   # We batch matches til we get close to the `max.request.size`
   # limit in Kafka. This ensures we send the max amount of data per
   # request without causing errors.
-  @spec build_message_batch(:queue.queue(), pos_integer()) :: [:brod.message_set()]
-  defp build_message_batch(queue, max_request_size) do
+  @spec build_message_batch(:queue.queue(), pos_integer()) :: [Message.t()]
+  defp build_message_batch(queue, max_request_bytes) do
     {batch_bytes, batch_messages} =
       queue
       |> :queue.to_list()
       |> Enum.reduce_while({0, []}, fn message, {bytes, batch} ->
         # I know that `:erlang.external_size` won't match what we actually
         # send, but it should be under the limit that would cause Kafka errors
-        case bytes + :erlang.external_size(message) do
+        kafka_message = Map.take(message, [:key, :value, :headers])
+
+        case bytes + :erlang.external_size(kafka_message) do
           total_bytes when batch == [] ->
             {:cont, {total_bytes, [message]}}
 
-          total_bytes when total_bytes <= max_request_size ->
+          total_bytes when total_bytes <= max_request_bytes ->
             {:cont, {total_bytes, [message | batch]}}
 
           _ ->

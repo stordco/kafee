@@ -44,9 +44,11 @@ defmodule Kafee.Producer.AsyncWorkerTest do
         {AsyncWorker,
          [
            brod_client_id: brod_client_id,
-           topic: topic,
+           max_request_bytes: 1_040_384,
            partition: 0,
-           send_interval: 1
+           send_timeout: :timer.seconds(10),
+           throttle_ms: 1,
+           topic: topic
          ]}
       )
 
@@ -73,6 +75,8 @@ defmodule Kafee.Producer.AsyncWorkerTest do
 
     test "spawns send task if queue is not nil", %{state: state, topic: topic} do
       messages = BrodApi.generate_producer_message_list(topic, 2)
+      brod_messages = BrodApi.to_kafka_message(messages)
+
       state = %{state | queue: :queue.from_list(messages)}
 
       assert {:noreply, new_state} = AsyncWorker.handle_info(:send, state)
@@ -80,7 +84,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
 
       Process.sleep(@wait_timeout)
 
-      assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, ^messages))
+      assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, ^brod_messages))
     end
 
     test "does not spawn a send task if one already in flight", %{state: state, topic: topic} do
@@ -131,14 +135,12 @@ defmodule Kafee.Producer.AsyncWorkerTest do
     @tag capture_log: true
     test "any single message too large gets logged and dropped from queue", %{pid: pid, topic: topic} do
       message_fixture = File.read!("test/support/example/large_message.json")
-      large_message = String.duplicate(message_fixture, 4)
+      large_message = String.duplicate(message_fixture, 10)
 
-      message = %Kafee.Producer.Message{
-        key: "something_huge_above_4mb",
-        value: large_message,
-        topic: "wms-service",
-        partition: 0
-      }
+      message =
+        topic
+        |> BrodApi.generate_producer_message()
+        |> Map.put(:value, large_message)
 
       log =
         capture_log(fn ->
@@ -146,7 +148,8 @@ defmodule Kafee.Producer.AsyncWorkerTest do
           Process.sleep(@wait_timeout)
         end)
 
-      assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, [^message]))
+      brod_message = BrodApi.to_kafka_message(message)
+      assert_called(:brod.produce(_client_id, ^topic, 0, :undefined, [^brod_message]))
       assert log =~ "Message in queue is too large"
 
       async_worker_state = pid |> Patch.Listener.target() |> :sys.get_state()
@@ -269,40 +272,48 @@ defmodule Kafee.Producer.AsyncWorkerTest do
 
     test "waits for in flight tasks to complete", %{state: state, topic: topic} do
       remaining_messages = BrodApi.generate_producer_message_list(topic, 20)
+      remaining_brod_messages = BrodApi.to_kafka_message(remaining_messages)
+
       state = %{state | queue: :queue.from_list(remaining_messages)}
 
       assert :ok = AsyncWorker.terminate(:normal, state)
-      assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, ^remaining_messages))
+      assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, ^remaining_brod_messages))
     end
 
     test "waits for in flight send and sends remaining messages", %{state: state, topic: topic} do
       remaining_messages = BrodApi.generate_producer_message_list(topic, 20)
+      remaining_brod_messages = BrodApi.to_kafka_message(remaining_messages)
+
       task = make_fake_task()
       state = %{state | queue: :queue.from_list(remaining_messages), send_task: task, send_timeout: :infinity}
 
       Process.send_after(self(), {task.ref, {:ok, 0, 0}}, 10)
       assert :ok = AsyncWorker.terminate(:normal, state)
-      assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, ^remaining_messages))
+      assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, ^remaining_brod_messages))
     end
 
     @tag capture_log: true
     test "waits for in flight error and retries sending messages", %{state: state, topic: topic} do
       remaining_messages = BrodApi.generate_producer_message_list(topic, 20)
+      remaining_brod_messages = BrodApi.to_kafka_message(remaining_messages)
+
       task = make_fake_task()
       state = %{state | queue: :queue.from_list(remaining_messages), send_task: task, send_timeout: :infinity}
 
       Process.send_after(self(), {task.ref, {:error, :internal_error}}, 10)
       assert :ok = AsyncWorker.terminate(:normal, state)
-      assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, ^remaining_messages))
+      assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, ^remaining_brod_messages))
     end
 
     test "waits for timeout and retries sending messages", %{state: state, topic: topic} do
       remaining_messages = BrodApi.generate_producer_message_list(topic, 20)
+      remaining_brod_messages = BrodApi.to_kafka_message(remaining_messages)
+
       task = make_fake_task()
       state = %{state | queue: :queue.from_list(remaining_messages), send_task: task, send_timeout: 10}
 
       assert :ok = AsyncWorker.terminate(:normal, state)
-      assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, ^remaining_messages))
+      assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, ^remaining_brod_messages))
     end
 
     test "any brod errors are logged before terminate", %{state: state, topic: topic} do
@@ -347,23 +358,23 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       messages = "topic" |> BrodApi.generate_producer_message_list(10_000) |> :queue.from_list()
       expose(AsyncWorker, build_message_batch: 2)
 
-      batch = private(AsyncWorker.build_message_batch(messages, 1000))
+      batch = private(AsyncWorker.build_message_batch(messages, 1_000))
       # This is not an exact science.
-      assert length(batch) in 4..7
+      assert length(batch) in 4..20
     end
 
     test "returns a list of messages under the max batch size" do
-      messages = "topic" |> BrodApi.generate_producer_message_list(10_000) |> :queue.from_list()
+      messages = "topic" |> BrodApi.generate_producer_message_list(20_000) |> :queue.from_list()
       expose(AsyncWorker, build_message_batch: 2)
 
       batch = private(AsyncWorker.build_message_batch(messages, 1_040_384))
-      assert length(batch) in 5000..7484
+      assert length(batch) in 10_000..15_000
 
       {_batched_messages, remaining_messages} = batch |> length() |> :queue.split(messages)
       remaining_batch = private(AsyncWorker.build_message_batch(remaining_messages, 1_040_384))
-      assert length(remaining_batch) in 2516..5000
+      assert length(remaining_batch) in 5_000..10_000
 
-      assert 10_000 = length(batch) + length(remaining_batch)
+      assert 20_000 = length(batch) + length(remaining_batch)
     end
 
     test "always returns one message if the queue exists" do

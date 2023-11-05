@@ -18,54 +18,38 @@ defmodule Kafee.Producer.Adapter do
     participant P as MyProducer
     participant B as Kafee.Producer.Adapter
 
-    P-->>+: start_link/1
+    P-->>+: start_link/2
     B-->-: {:ok, pid()}
 
-    P->>+B: get_partition/2
-    B-->>-P: {:ok, 2}
+    P->>+B: get_partitions/2
+    B-->>-P: [1, 2, 3, 4]
 
     P-->>+B: produce/2
     B-->>-P: :ok
   ```
   """
 
-  alias Kafee.Producer.{Config, Message}
+  alias Kafee.Producer
 
   @doc """
-  Child specification for the adapter process. This can result a `:supervisor.child_spec`
-  or if the adapter does not require a process to run, can return `nil`.
+  Starts the lower level library responsible for taking `t:Producer.Message.t/0` and
+  sending them to Kafka.
   """
-  @callback child_spec([Config.t()]) :: :supervisor.child_spec() | nil
+  @callback start_link(module(), Producer.options()) :: Supervisor.on_start()
 
   @doc """
-  Returns the partition number for a message. Usually relies on
-  `:brod` to get the current partition count.
+  Returns a list of valid partitions for a producer.
 
   ## Examples
 
-      iex> partition(%Config{}, %Message{})
-      {:ok, 1}
+      iex> partitions(MyProducer, [])
+      [1, 2, 3, 4]
 
   """
-  @callback partition(Config.t(), Message.t()) :: {:ok, :brod.partition()} | {:error, term()}
+  @callback partitions(module(), Producer.options()) :: [Kafee.partition()]
 
   @doc """
   Sends all of the given messages to the adapter for sending.
   """
-  @callback produce(Config.t(), [Message.t()]) :: :ok | {:error, term()}
-
-  @doc """
-  Creates a process atom name for a `Kafee.Producer` adapter.
-
-  ## Examples
-
-      iex> process_name(MyProducer)
-      MyProducer.Adapter
-
-  """
-  @spec process_name(atom()) :: Supervisor.name()
-  def process_name(producer) do
-    # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
-    Module.concat(producer, Adapter)
-  end
+  @callback produce([Producer.Message.t()], module(), Producer.options()) :: :ok | {:error, term()}
 end
