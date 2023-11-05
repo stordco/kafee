@@ -1,5 +1,38 @@
 # Changelog
 
+## [3.0.0](https://github.com/stordco/kafee/compare/v2.6.2...v3.0.0) (2023-11-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* `Kafee.Producer` configuration is done differently to match how `Kafee.Consumer` works.
+* the use of "backend" has been renamed to "adapter"
+* `Kafee.Testing` is now reworked to `Kafee.Test`
+
+### Features
+
+* [SRE-515] use testing pid for better kafka produce testing ([#58](https://github.com/stordco/kafee/issues/58)) ([cae7bce](https://github.com/stordco/kafee/commit/cae7bce4679761deace2d5ed14c064957284ab98))
+* [SRE-517] create a consumer module ([#63](https://github.com/stordco/kafee/issues/63)) ([d012734](https://github.com/stordco/kafee/commit/d01273421389f72a74a48b47ddaacdb2569e81f8))
+* [SRE-518] setup encoder decoder modules ([#62](https://github.com/stordco/kafee/issues/62)) ([b494049](https://github.com/stordco/kafee/commit/b494049ab18fba18ebeb8ce1e803d7c087bc8e5e))
+* Integrate data-streams into kafee producer ([#52](https://github.com/stordco/kafee/issues/52)) ([ffdd5da](https://github.com/stordco/kafee/commit/ffdd5da9a09b47333d3d67267addd4ce8f1f9d1b))
+* Update producer to match consumer style ([#70](https://github.com/stordco/kafee/issues/70)) ([39fc85a](https://github.com/stordco/kafee/commit/39fc85a19caac9b906a95a403dbb95c5e71a3cf5))
+
+
+### Bug Fixes
+
+* Fix consumer directory name typo ([#71](https://github.com/stordco/kafee/issues/71)) ([44de1d6](https://github.com/stordco/kafee/commit/44de1d6a139339dc8e26887733424422844c037a))
+
+
+### Miscellaneous
+
+* **deps:** Update outdated dependencies ([#59](https://github.com/stordco/kafee/issues/59)) ([5439acb](https://github.com/stordco/kafee/commit/5439acbc08ada73687d03128b0780059fa9a2370))
+* **main:** Release 3.0.0 ([#60](https://github.com/stordco/kafee/issues/60)) ([3c1b238](https://github.com/stordco/kafee/commit/3c1b2387f9b8eb35ab9e81983da2c9ad8c1231f5))
+* Sync files with stordco/common-config-elixir ([#72](https://github.com/stordco/kafee/issues/72)) ([2d458ba](https://github.com/stordco/kafee/commit/2d458ba5b2ed73eb9ba0a9b178f3986a95302e2a))
+* Update backend copy to adapter to align with Elixir more ([#69](https://github.com/stordco/kafee/issues/69)) ([1c2da6b](https://github.com/stordco/kafee/commit/1c2da6b8cc4a5b3ab5ebf4fdb09467c571170949))
+* Update codeowners ([#61](https://github.com/stordco/kafee/issues/61)) ([10f0290](https://github.com/stordco/kafee/commit/10f029031b9235d8cf3041d98b4f312c8ececd2b))
+* Update codeowners ([#65](https://github.com/stordco/kafee/issues/65)) ([e352bc6](https://github.com/stordco/kafee/commit/e352bc6d18eb53f9448c373ecb2c846df7460f40))
+* Update README code examples ([#64](https://github.com/stordco/kafee/issues/64)) ([50bed75](https://github.com/stordco/kafee/commit/50bed7537cf18d217eb33d7b767e54bdb63a0dc3))
+
 ## [2.6.2](https://github.com/stordco/kafee/compare/v2.6.1...v2.6.2) (2023-09-28)
 
 
