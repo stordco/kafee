@@ -145,4 +145,4 @@ Once that is done, to publish a message simply run:
 MyProducer.publish(:order_created, %Order{})
 ```
 
-All messages published _not_ in production will be a no-op. This means you do not need any Kafka instance setup to run in development. For testing, we recommend using the [`Kafee.Producer.AsyncAdaptor`](https://stord.hexdocs.pm/kafee/Kafee.Producer.AsyncAdaptor.html) adapter, allowing easier testing via the [`Kafee.Test`](https://stord.hexdocs.pm/kafee/Kafee.Test.html) module.
+All messages published _not_ in production will be a no-op. This means you do not need any Kafka instance setup to run in development. For testing, we recommend using the [`Kafee.Producer.TestAdapter`](https://stord.hexdocs.pm/kafee/Kafee.Producer.TestAdapter.html) adapter, allowing easier testing via the [`Kafee.Test`](https://stord.hexdocs.pm/kafee/Kafee.Test.html) module.
