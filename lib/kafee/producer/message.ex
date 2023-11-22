@@ -9,26 +9,41 @@ defmodule Kafee.Producer.Message do
 
   @derive {Jason.Encoder, except: []}
 
-  defstruct [
-    :key,
-    :value,
-    :topic,
-    :partition,
-    :partition_fun,
-    headers: []
-  ]
+  defstruct key: "",
+            value: "",
+            topic: nil,
+            partition: nil,
+            partition_fun: nil,
+            headers: []
 
   defmodule ValidationError do
     @moduledoc false
     defexception [:error_key, :kafee_message, :message]
   end
 
+  @typedoc """
+  A fully populated producer message. This does not include
+  any `nil` fields as they have all been set.
+  """
   @type t :: %Message{
           key: Kafee.key(),
           value: Kafee.value() | any(),
           topic: Kafee.topic(),
           partition: Kafee.partition(),
           partition_fun: Kafee.partition_fun(),
+          headers: Kafee.headers()
+        }
+
+  @typedoc """
+  A Kafka message producer input. This includes `nil` fields that
+  are auto populated by the producer module.
+  """
+  @type input :: %Message{
+          key: Kafee.key(),
+          value: Kafee.value() | any(),
+          topic: Kafee.topic() | nil,
+          partition: Kafee.partition() | nil,
+          partition_fun: Kafee.partition_fun() | nil,
           headers: Kafee.headers()
         }
 
@@ -47,7 +62,7 @@ defmodule Kafee.Producer.Message do
       %Message{partition_fun: :hash}
 
   """
-  @spec set_module_values(t(), module(), Kafee.Producer.options()) :: t()
+  @spec set_module_values(input(), module(), Kafee.Producer.options()) :: input()
   def set_module_values(%Message{} = message, _producer, options) do
     message
     |> replace_nil(:topic, options[:topic])
@@ -71,7 +86,7 @@ defmodule Kafee.Producer.Message do
       %Message{value: ~s({"key":"value"}), headers: [{"kafka_contentType", "application/json"}]}
 
   """
-  @spec encode(t(), module(), Kafee.Producer.options()) :: t()
+  @spec encode(input(), module(), Kafee.Producer.options()) :: input()
   def encode(%Message{} = message, _producer, options) do
     case Keyword.get(options, :encoder, nil) do
       nil ->
@@ -104,7 +119,7 @@ defmodule Kafee.Producer.Message do
       %Message{key: "key", value: "value", partition: 0, partition_fun: :random}
 
   """
-  @spec partition(t(), module(), Kafee.Producer.options()) :: t()
+  @spec partition(input(), module(), Kafee.Producer.options()) :: input()
   def partition(%Message{partition: nil} = message, producer, opts) do
     # We override the topic because messages being consumed and technically
     # be published to dynamic topics.
@@ -153,7 +168,7 @@ defmodule Kafee.Producer.Message do
       }
 
   """
-  @spec set_request_id(t(), String.t()) :: t()
+  @spec set_request_id(input(), String.t()) :: input()
   def set_request_id(%Message{} = message, request_id) do
     new_headers =
       message.headers
@@ -177,7 +192,7 @@ defmodule Kafee.Producer.Message do
       }
 
   """
-  @spec set_request_id_from_logger(t()) :: t()
+  @spec set_request_id_from_logger(input()) :: input()
   def set_request_id_from_logger(%Message{} = message) do
     case Keyword.get(Logger.metadata(), :request_id, nil) do
       request_id when is_binary(request_id) -> set_request_id(message, request_id)
@@ -188,7 +203,7 @@ defmodule Kafee.Producer.Message do
   @doc """
   Sets the `kafka_contentType` header in a message.
   """
-  @spec set_content_type(t(), binary()) :: t()
+  @spec set_content_type(input(), binary()) :: input()
   def set_content_type(%Message{} = message, content_type) do
     new_headers =
       message.headers
@@ -201,7 +216,7 @@ defmodule Kafee.Producer.Message do
   @doc """
   Checks if the given message has a header with the given key.
   """
-  @spec has_header?(t(), binary()) :: boolean()
+  @spec has_header?(input(), binary()) :: boolean()
   def has_header?(%Message{} = message, key) do
     Enum.any?(message.headers, fn {k, _v} -> k == key end)
   end
@@ -210,7 +225,7 @@ defmodule Kafee.Producer.Message do
   Validates that the requires fields in a message are set. Raises
   `Kafee.Producer.Message.ValidationError` on a missing or incorrect field.
   """
-  @spec validate!(t()) :: t()
+  @spec validate!(input()) :: t()
   def validate!(%Message{topic: nil} = message),
     do:
       raise(ValidationError,
@@ -266,7 +281,7 @@ defmodule Kafee.Producer.Message do
       "(anonymous) publish"
 
   """
-  @spec get_otel_span_name(t()) :: String.t()
+  @spec get_otel_span_name(input()) :: String.t()
   def get_otel_span_name(%Message{} = message) do
     prefix = if is_nil(message.topic), do: "(anonymous)", else: message.topic
     prefix <> " publish"
@@ -319,7 +334,7 @@ defmodule Kafee.Producer.Message do
       }
 
   """
-  @spec get_otel_span_attributes(t() | [t()]) :: map()
+  @spec get_otel_span_attributes(input() | [input()]) :: map()
   def get_otel_span_attributes([message | _] = messages) when is_list(messages) do
     message
     |> get_otel_span_attributes()

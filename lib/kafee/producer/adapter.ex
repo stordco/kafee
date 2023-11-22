@@ -51,5 +51,5 @@ defmodule Kafee.Producer.Adapter do
   @doc """
   Sends all of the given messages to the adapter for sending.
   """
-  @callback produce([Producer.Message.t()], module(), Producer.options()) :: :ok | {:error, term()}
+  @callback produce([Producer.Message.input()], module(), Producer.options()) :: :ok | {:error, term()}
 end

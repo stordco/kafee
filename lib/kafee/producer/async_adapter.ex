@@ -234,7 +234,7 @@ defmodule Kafee.Producer.AsyncAdapter do
   to be sent to Kafka in the future.
   """
   @impl Kafee.Producer.Adapter
-  @spec produce([Message.t()], module(), Kafee.Producer.options()) :: :ok | {:error, term()}
+  @spec produce([Message.input()], module(), Kafee.Producer.options()) :: :ok | {:error, term()}
   def produce(messages, producer, options) do
     message_groups =
       messages
