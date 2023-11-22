@@ -326,6 +326,7 @@ defmodule Kafee.Producer.Message do
       }
 
       iex> get_otel_span_attributes(%Message{
+      ...>   key: nil,
       ...>   value: "message value"
       ...> })
       %{
