@@ -225,9 +225,10 @@ defmodule Kafee.Producer do
       Sends a single message to the configured adapter to be
       sent to Kafka.
       """
-      @spec produce(Kafee.Producer.Message.t() | [Kafee.Producer.Message.t()]) :: :ok | {:error, term()}
-      def produce(%Kafee.Producer.Message{} = message),
-        do: produce([message])
+      @spec produce(Kafee.Producer.Message.input() | [Kafee.Producer.Message.input()]) :: :ok | {:error, term()}
+      def produce(%Kafee.Producer.Message{} = message) do
+        Kafee.Producer.produce(__MODULE__, [message])
+      end
 
       @doc """
       Sends a list of messages to the configured adapter to be
@@ -260,7 +261,7 @@ defmodule Kafee.Producer do
   @doc """
   Produces a list of messages via the given `Kafee.Producer` module.
   """
-  @spec produce(module(), [Kafee.Producer.Message.t()]) :: :ok | {:error, term()}
+  @spec produce(module(), [Kafee.Producer.Message.input()]) :: :ok | {:error, term()}
   def produce(producer, messages) do
     options = :ets.lookup_element(:kafee_config, producer, 2)
 
