@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.1](https://github.com/stordco/kafee/compare/v3.0.0...v3.0.1) (2023-11-22)
+
+
+### Bug Fixes
+
+* Update dialyzer types for producer module ([#74](https://github.com/stordco/kafee/issues/74)) ([f1fa928](https://github.com/stordco/kafee/commit/f1fa9288d9be4a38320793614966ea59a238541c))
+
 ## [3.0.0](https://github.com/stordco/kafee/compare/v2.6.2...v3.0.0) (2023-11-05)
 
 
