@@ -63,7 +63,7 @@ defmodule Kafee.Producer.TestAdapter do
   Adds messages to the internal memory.
   """
   @impl Kafee.Producer.Adapter
-  @spec produce([Message.t()], module(), Kafee.Producer.options()) :: :ok | {:error, term()}
+  @spec produce([Message.input()], module(), Kafee.Producer.options()) :: :ok | {:error, term()}
   def produce(messages, producer, options) do
     pid = Application.get_env(:kafee, :test_process, self())
 

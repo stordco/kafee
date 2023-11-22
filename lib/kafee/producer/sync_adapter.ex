@@ -132,7 +132,7 @@ defmodule Kafee.Producer.SyncAdapter do
   Calls the `:brod.produce_sync/5` function.
   """
   @impl Kafee.Producer.Adapter
-  @spec produce([Message.t()], module(), Kafee.Producer.options()) :: :ok | {:error, term()}
+  @spec produce([Message.input()], module(), Kafee.Producer.options()) :: :ok | {:error, term()}
   def produce(messages, producer, options) do
     for message <- messages do
       message =
