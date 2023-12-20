@@ -5,6 +5,7 @@ defmodule Kafee.Producer.AsyncAdapterTest do
 
   defmodule MyProducer do
     use Kafee.Producer,
+      otp_app: :kafee,
       adapter: Kafee.Producer.AsyncAdapter,
       encoder: Kafee.JasonEncoderDecoder,
       partition_fun: :random

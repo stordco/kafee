@@ -18,6 +18,7 @@ defmodule Kafee.Producer.TestAdapter do
 
       defmodule MyProducer do
         use Kafee.Producer,
+          otp_app: :my_app,
           adapter: Kafee.Producer.TestAdapter,
           encoder: Kafee.JasonEncoderDecoder
 

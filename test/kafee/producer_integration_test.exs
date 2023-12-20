@@ -8,6 +8,7 @@ defmodule Kafee.ProducerIntegrationTest do
 
   defmodule MyProducer do
     use Kafee.Producer,
+      otp_app: :kafee,
       adapter: Kafee.Producer.AsyncAdapter,
       partition_fun: :random
   end
