@@ -52,7 +52,7 @@ defmodule Kafee.Consumer do
                       and password. For example, to use plain username and password
                       authentication you'd set this to `{:plain, "username", "password"}`.
                       """,
-                      type: {:tuple, [:string, :string, :string]}
+                      type: {:tuple, [:atom, :string, :string]}
                     ],
                     ssl: [
                       default: false,
