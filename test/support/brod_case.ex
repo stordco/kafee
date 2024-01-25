@@ -1,23 +1,19 @@
-defmodule Kafee.KafkaCase do
+defmodule Kafee.BrodCase do
   @moduledoc """
-  A ExUnit that will setup a Kafka topic for you.
+  A ExUnit that will setup some `:brod` data for you. This is usually
+  used with `Patch` to mock `:brod` calls.
 
   ## Examples
 
       def MyTest do
-        use Kafee.KafkaCase
+        use Kafee.BrodCase
 
-        test "my test", %{brod_client_id: brod_client_id} do
+        test "my test", %{brod_client_id: brod_client_id, topic: topic} do
           # ...
         end
 
         @tag topic: "my-test-topic"
         test "my test on a specific topic", %{brod_client_id: brod_client_id} do
-          # ...
-        end
-
-        @tag partitions: 4
-        test "my test with a specific partition count", %{brod_client_id: brod_client_id} do
           # ...
         end
       end
@@ -42,22 +38,6 @@ defmodule Kafee.KafkaCase do
 
   setup context do
     {:ok, %{topic: Map.get(context, :topic, KafkaApi.generate_topic())}}
-  end
-
-  setup context do
-    {:ok, %{partitions: Map.get(context, :partitions, 1)}}
-  end
-
-  setup %{brod_client_id: brod_client_id, topic: topic, partitions: partitions} do
-    :ok = KafkaApi.create_topic(topic, partitions)
-
-    on_exit(fn ->
-      KafkaApi.delete_topic(topic)
-    end)
-
-    BrodApi.client!(brod_client_id)
-
-    :ok
   end
 
   setup do

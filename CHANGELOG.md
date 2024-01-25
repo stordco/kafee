@@ -1,5 +1,112 @@
 # Changelog
 
+## [3.0.2](https://github.com/stordco/kafee/compare/v3.0.1...v3.0.2) (2023-12-26)
+
+
+### Bug Fixes
+
+* Update tuple types for sasl option ([#78](https://github.com/stordco/kafee/issues/78)) ([2860d8b](https://github.com/stordco/kafee/commit/2860d8bc0cf4eb8796545db69b6765f0fc2e0b22))
+
+
+### Miscellaneous
+
+* Set main branch for release please ([c8764b0](https://github.com/stordco/kafee/commit/c8764b0dc05fac56b1c596a4350f1287c3e1e45a))
+
+## [3.0.1](https://github.com/stordco/kafee/compare/v3.0.0...v3.0.1) (2023-11-22)
+
+
+### Bug Fixes
+
+* Update dialyzer types for producer module ([#74](https://github.com/stordco/kafee/issues/74)) ([f1fa928](https://github.com/stordco/kafee/commit/f1fa9288d9be4a38320793614966ea59a238541c))
+
+## [3.0.0](https://github.com/stordco/kafee/compare/v2.6.2...v3.0.0) (2023-11-05)
+
+
+### ⚠ BREAKING CHANGES
+
+* `Kafee.Producer` configuration is done differently to match how `Kafee.Consumer` works.
+* the use of "backend" has been renamed to "adapter"
+* `Kafee.Testing` is now reworked to `Kafee.Test`
+
+### Features
+
+* [SRE-515] use testing pid for better kafka produce testing ([#58](https://github.com/stordco/kafee/issues/58)) ([cae7bce](https://github.com/stordco/kafee/commit/cae7bce4679761deace2d5ed14c064957284ab98))
+* [SRE-517] create a consumer module ([#63](https://github.com/stordco/kafee/issues/63)) ([d012734](https://github.com/stordco/kafee/commit/d01273421389f72a74a48b47ddaacdb2569e81f8))
+* [SRE-518] setup encoder decoder modules ([#62](https://github.com/stordco/kafee/issues/62)) ([b494049](https://github.com/stordco/kafee/commit/b494049ab18fba18ebeb8ce1e803d7c087bc8e5e))
+* Integrate data-streams into kafee producer ([#52](https://github.com/stordco/kafee/issues/52)) ([ffdd5da](https://github.com/stordco/kafee/commit/ffdd5da9a09b47333d3d67267addd4ce8f1f9d1b))
+* Update producer to match consumer style ([#70](https://github.com/stordco/kafee/issues/70)) ([39fc85a](https://github.com/stordco/kafee/commit/39fc85a19caac9b906a95a403dbb95c5e71a3cf5))
+
+
+### Bug Fixes
+
+* Fix consumer directory name typo ([#71](https://github.com/stordco/kafee/issues/71)) ([44de1d6](https://github.com/stordco/kafee/commit/44de1d6a139339dc8e26887733424422844c037a))
+
+
+### Miscellaneous
+
+* **deps:** Update outdated dependencies ([#59](https://github.com/stordco/kafee/issues/59)) ([5439acb](https://github.com/stordco/kafee/commit/5439acbc08ada73687d03128b0780059fa9a2370))
+* **main:** Release 3.0.0 ([#60](https://github.com/stordco/kafee/issues/60)) ([3c1b238](https://github.com/stordco/kafee/commit/3c1b2387f9b8eb35ab9e81983da2c9ad8c1231f5))
+* Sync files with stordco/common-config-elixir ([#72](https://github.com/stordco/kafee/issues/72)) ([2d458ba](https://github.com/stordco/kafee/commit/2d458ba5b2ed73eb9ba0a9b178f3986a95302e2a))
+* Update backend copy to adapter to align with Elixir more ([#69](https://github.com/stordco/kafee/issues/69)) ([1c2da6b](https://github.com/stordco/kafee/commit/1c2da6b8cc4a5b3ab5ebf4fdb09467c571170949))
+* Update codeowners ([#61](https://github.com/stordco/kafee/issues/61)) ([10f0290](https://github.com/stordco/kafee/commit/10f029031b9235d8cf3041d98b4f312c8ececd2b))
+* Update codeowners ([#65](https://github.com/stordco/kafee/issues/65)) ([e352bc6](https://github.com/stordco/kafee/commit/e352bc6d18eb53f9448c373ecb2c846df7460f40))
+* Update README code examples ([#64](https://github.com/stordco/kafee/issues/64)) ([50bed75](https://github.com/stordco/kafee/commit/50bed7537cf18d217eb33d7b767e54bdb63a0dc3))
+
+## [2.6.2](https://github.com/stordco/kafee/compare/v2.6.1...v2.6.2) (2023-09-28)
+
+
+### Bug Fixes
+
+* Update CI to include kafka service ([#57](https://github.com/stordco/kafee/issues/57)) ([d297248](https://github.com/stordco/kafee/commit/d2972489ffccc9c196073061e410a9538bfd37b2))
+
+
+### Miscellaneous
+
+* Add common-config-elixir workflow ([#53](https://github.com/stordco/kafee/issues/53)) ([4771f6f](https://github.com/stordco/kafee/commit/4771f6f5194a048477ff59bf28b21f1c8c817811))
+* Sync files with stordco/common-config-elixir ([#54](https://github.com/stordco/kafee/issues/54)) ([5753ed7](https://github.com/stordco/kafee/commit/5753ed7cac42823ed02e05c4dceb59ee91079537))
+* Sync files with stordco/common-config-elixir ([#56](https://github.com/stordco/kafee/issues/56)) ([c283269](https://github.com/stordco/kafee/commit/c2832692183f31520ac474687e84545ce3509e1f))
+
+## [2.6.1](https://github.com/stordco/kafee/compare/v2.6.0...v2.6.1) (2023-05-24)
+
+
+### Bug Fixes
+
+* add edge case testing around large messages ([#49](https://github.com/stordco/kafee/issues/49)) ([cb79607](https://github.com/stordco/kafee/commit/cb79607825cc7eb7630087e0bc3db7d6b910a0d1))
+
+## [2.6.0](https://github.com/stordco/kafee/compare/v2.5.0...v2.6.0) (2023-05-08)
+
+
+### Features
+
+* allow configurable max request size for async worker ([#46](https://github.com/stordco/kafee/issues/46)) ([7ae4738](https://github.com/stordco/kafee/commit/7ae473809ee9848e212bc07353ebd4e3c99461fe))
+
+
+### Bug Fixes
+
+* handle not retriable error cases ([#48](https://github.com/stordco/kafee/issues/48)) ([84f8807](https://github.com/stordco/kafee/commit/84f88078b46e988c08f201805965963523ee351d))
+
+## [2.5.0](https://github.com/stordco/kafee/compare/v2.4.0...v2.5.0) (2023-04-04)
+
+
+### Features
+
+* remove send_interval references, document new async worker options ([#44](https://github.com/stordco/kafee/issues/44)) ([3811516](https://github.com/stordco/kafee/commit/3811516431ac15d7b839e034ba8fbc7c843e7839))
+* use new async queue system for faster sending ([#41](https://github.com/stordco/kafee/issues/41)) ([9f9e105](https://github.com/stordco/kafee/commit/9f9e105b63fef4fd36326f6760977e0e3a69ed2c))
+
+## [2.4.0](https://github.com/stordco/kafee/compare/v2.3.1...v2.4.0) (2023-03-17)
+
+
+### Features
+
+* refute_producer_message/2 ([#39](https://github.com/stordco/kafee/issues/39)) ([a322541](https://github.com/stordco/kafee/commit/a3225416c12bfe9e24edd5e1d3fe825cc54013b0))
+
+## [2.3.1](https://github.com/stordco/kafee/compare/v2.3.0...v2.3.1) (2023-03-10)
+
+
+### Bug Fixes
+
+* send whole message with sync_backend ([#37](https://github.com/stordco/kafee/issues/37)) ([1dde3fb](https://github.com/stordco/kafee/commit/1dde3fbd801bda4b4ce45babff6331c999df68d6))
+
 ## [2.3.0](https://github.com/stordco/kafee/compare/v2.2.3...v2.3.0) (2023-02-08)
 
 

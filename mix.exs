@@ -6,7 +6,7 @@ defmodule Kafee.MixProject do
       app: :kafee,
       name: "Kafee",
       description: "Let's get energized with Kafka!",
-      version: "2.3.0",
+      version: "3.0.2",
       elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
@@ -14,7 +14,14 @@ defmodule Kafee.MixProject do
       docs: docs(),
       package: package(),
       source_url: "https://github.com/stordco/kafee",
-      dialyzer: [plt_add_apps: [:jason]]
+      dialyzer: [plt_add_apps: [:jason]],
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.html": :test,
+        "coveralls.circle": :test
+      ]
     ]
   end
 
@@ -33,17 +40,26 @@ defmodule Kafee.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:brod, "~> 3.16.2"},
-      {:jason, ">= 1.0.0"},
+      {:broadway_kafka, "~> 0.3"},
+      {:brod, "~> 3.17.0"},
+      {:data_streams, ">= 1.2.0"},
+      {:jason, ">= 1.0.0", optional: true},
+      {:nimble_options, ">= 1.0.0"},
+      {:opentelemetry_api, ">= 1.0.0"},
+      {:protobuf, ">= 0.10.0", optional: true},
       {:telemetry, ">= 1.0.0"},
 
       # Dev & Test dependencies
       {:benchee, "~> 1.0", only: [:dev, :test]},
-      {:credo, "~> 1.6", only: [:dev, :test], runtime: false},
-      {:dialyxir, "~> 1.1", only: [:dev, :test], runtime: false},
-      {:doctor, "~> 0.19.0", only: [:dev, :test], runtime: false},
-      {:ex_doc, "~> 0.28", only: [:dev, :test], runtime: false},
-      {:mox, "~> 1.0", only: [:dev, :test]}
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:dialyxir, "~> 1.4", only: [:dev, :test], runtime: false},
+      {:doctor, "~> 0.21", only: [:dev, :test], runtime: false},
+      {:excoveralls, "~> 0.17.1", only: :test},
+      {:ex_doc, "~> 0.30", only: [:dev, :test], runtime: false},
+      {:faker, "~> 0.17", only: [:dev, :test]},
+      {:opentelemetry, "~> 1.3", only: [:dev, :test]},
+      {:opentelemetry_exporter, "~> 1.3", only: [:dev, :test]},
+      {:patch, "~> 0.12.0", only: [:dev, :test]}
     ]
   end
 
@@ -63,6 +79,11 @@ defmodule Kafee.MixProject do
     [
       before_closing_body_tag: &before_closing_body_tag/1,
       extras: ["README.md", "CHANGELOG.md", "CONTRIBUTING.md"],
+      groups_for_modules: [
+        Consumer: [~r/Consumer/],
+        Producer: [~r/Producer/],
+        "Encoding & Decoding": [~r/EncoderDecoder/]
+      ],
       main: "readme"
     ]
   end
