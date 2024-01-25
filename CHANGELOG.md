@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.0.2](https://github.com/stordco/kafee/compare/v3.0.1...v3.0.2) (2023-12-26)
+
+
+### Bug Fixes
+
+* Update tuple types for sasl option ([#78](https://github.com/stordco/kafee/issues/78)) ([2860d8b](https://github.com/stordco/kafee/commit/2860d8bc0cf4eb8796545db69b6765f0fc2e0b22))
+
+
+### Miscellaneous
+
+* Set main branch for release please ([c8764b0](https://github.com/stordco/kafee/commit/c8764b0dc05fac56b1c596a4350f1287c3e1e45a))
+
+## [3.0.1](https://github.com/stordco/kafee/compare/v3.0.0...v3.0.1) (2023-11-22)
+
+
+### Bug Fixes
+
+* Update dialyzer types for producer module ([#74](https://github.com/stordco/kafee/issues/74)) ([f1fa928](https://github.com/stordco/kafee/commit/f1fa9288d9be4a38320793614966ea59a238541c))
+
 ## [3.0.0](https://github.com/stordco/kafee/compare/v2.6.2...v3.0.0) (2023-11-05)
 
 
