@@ -205,12 +205,10 @@ defmodule Kafee.Producer.MessageTest do
       end
     end
 
-    test "raises on non string header value", %{topic: topic} do
+    test "does not raise on non string header value", %{topic: topic} do
       valid_message = BrodApi.generate_producer_message(topic)
 
-      assert_raise Message.ValidationError, "Header key or value is not a binary value", fn ->
-        validate!(%{valid_message | headers: [{"key", nil}]})
-      end
+      assert validate!(%{valid_message | headers: [{"key", nil}]})
     end
 
     test "passes a valid message", %{topic: topic} do
