@@ -70,7 +70,7 @@ defmodule Kafee.Producer do
                       doc: """
                       The Kafka topic to send messages to.
                       """,
-                      required: true,
+                      required: false,
                       type: :string,
                       type_doc: "`Kafee.topic()`"
                     ],

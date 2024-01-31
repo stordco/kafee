@@ -252,7 +252,7 @@ defmodule Kafee.Producer.Message do
 
   def validate!(%Message{} = message) do
     for {key, value} <- message.headers do
-      if not (is_binary(key) and is_binary(value)) do
+      if not (is_binary(key) and allowed_value?(value)) do
         raise(ValidationError,
           error_key: :headers,
           kafee_message: message,
@@ -372,4 +372,8 @@ defmodule Kafee.Producer.Message do
       #{inspected_message}
       """
   end
+
+  defp allowed_value?(nil), do: true
+  defp allowed_value?(value) when is_binary(value), do: true
+  defp allowed_value?(_), do: false
 end
