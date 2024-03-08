@@ -1,5 +1,20 @@
 # Changelog
 
+## [3.0.3](https://github.com/stordco/kafee/compare/v3.0.2...v3.0.3) (2024-03-08)
+
+
+### Bug Fixes
+
+* Return `:commit` since `:ack` does not commit in v2 ([#84](https://github.com/stordco/kafee/issues/84)) ([15bd941](https://github.com/stordco/kafee/commit/15bd941136f386acd63115cc7264af17fc01854f))
+
+
+### Miscellaneous
+
+* PR template and checklist ([#82](https://github.com/stordco/kafee/issues/82)) ([ed71ff8](https://github.com/stordco/kafee/commit/ed71ff83a51670c1a971b0a5b1d08b2cdcba2d79))
+* Sync files with stordco/common-config-elixir ([#76](https://github.com/stordco/kafee/issues/76)) ([b23560e](https://github.com/stordco/kafee/commit/b23560ef9836acd5c3792568dfd4042cfbf0649a))
+* Sync files with stordco/common-config-elixir ([#81](https://github.com/stordco/kafee/issues/81)) ([58aba7b](https://github.com/stordco/kafee/commit/58aba7bf9da506316e37bed68dbb36bb489b302d))
+* Update readme info about producer testing ([#73](https://github.com/stordco/kafee/issues/73)) ([00b633a](https://github.com/stordco/kafee/commit/00b633a5d7121cdfd913dd96797883c33e8f67a0))
+
 ## [3.0.2](https://github.com/stordco/kafee/compare/v3.0.1...v3.0.2) (2023-12-26)
 
 
