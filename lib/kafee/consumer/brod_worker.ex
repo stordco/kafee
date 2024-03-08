@@ -27,7 +27,7 @@ defmodule Kafee.Consumer.BrodWorker do
 
   @doc false
   @impl :brod_group_subscriber_v2
-  @spec handle_message(:brod.message(), map()) :: {:ok, :ack, map()}
+  @spec handle_message(:brod.message(), map()) :: {:ok, :commit, map()}
   def handle_message(
         message,
         %{
@@ -51,6 +51,6 @@ defmodule Kafee.Consumer.BrodWorker do
       headers: message[:headers]
     })
 
-    {:ok, :ack, state}
+    {:ok, :commit, state}
   end
 end
