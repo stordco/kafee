@@ -30,7 +30,8 @@ defmodule Kafee.Producer.AsyncWorker do
       :throttle_ms,
       :send_task,
       :send_timeout,
-      :topic
+      :topic,
+      :brod_client_monitor_ref
     ]
 
     @type t :: %__MODULE__{
@@ -41,7 +42,8 @@ defmodule Kafee.Producer.AsyncWorker do
             throttle_ms: pos_integer(),
             send_task: Task.t() | nil,
             send_timeout: pos_integer(),
-            topic: Kafee.topic()
+            topic: Kafee.topic(),
+            brod_client_monitor_ref: reference()
           }
   end
 
@@ -86,6 +88,8 @@ defmodule Kafee.Producer.AsyncWorker do
     Process.flag(:trap_exit, true)
 
     brod_client_id = Keyword.fetch!(opts, :brod_client_id)
+    brod_client_monitor_ref = brod_client_monitor(brod_client_id)
+    IO.inspect(brod_client_monitor_ref, label: "MONITORRRR")
     max_request_bytes = Keyword.fetch!(opts, :max_request_bytes)
     topic = Keyword.fetch!(opts, :topic)
     partition = Keyword.fetch!(opts, :partition)
@@ -103,9 +107,12 @@ defmodule Kafee.Producer.AsyncWorker do
        throttle_ms: throttle_ms,
        send_task: nil,
        send_timeout: send_timeout,
-       topic: topic
+       topic: topic,
+       brod_client_monitor_ref: brod_client_monitor_ref
      }}
   end
+
+  defp brod_client_monitor(brod_client_id), do: Process.monitor(brod_client_id)
 
   # We ignore any send message if the queue is empty. Save us some time and
   # processing work.
@@ -126,6 +133,31 @@ defmodule Kafee.Producer.AsyncWorker do
   # do nothing and just keep on waiting.
   @doc false
   def handle_info(:send, state) do
+    {:noreply, state}
+  end
+
+  # Pattern matching to confirm the :DOWN message bubbles up from brod client monitor ref
+  def handle_info(
+        {:DOWN, brod_client_monitor_ref, :process, _pid, reason},
+        %State{
+          brod_client_monitor_ref: brod_client_monitor_ref
+        } = state
+      ) do
+    Logger.error("Brod client is down - error: #{inspect(reason)}", reason: reason)
+
+    {:noreply, state}
+  end
+
+  def handle_info(
+        {:DOWN, ref, :process, _pid, reason},
+        %State{
+          brod_client_monitor_ref: brod_client_monitor_ref
+        } = state
+      ) do
+    Logger.error("Brod client is down, diff refs - error: #{inspect(reason)}")
+    Logger.error("Brod client is down, diff refs - incoming ref: #{inspect(ref)}")
+    Logger.error("Brod client is down, diff refs - state's ref: #{inspect(brod_client_monitor_ref)}")
+
     {:noreply, state}
   end
 
@@ -162,6 +194,13 @@ defmodule Kafee.Producer.AsyncWorker do
           Logger.error("Message in queue is too large", data: sent_messages)
           %{state | queue: :queue.drop(queue)}
 
+        {:error, {:not_retriable, {:produce_response_error, _topic, _partition, _offset, :message_too_large}}}
+        when length(sent_messages) == 1 ->
+          require IEx
+          IEx.pry()
+          Logger.error("Message in queue is too largeeeeeee", data: sent_messages)
+          %{state | queue: :queue.drop(queue)}
+
         {:error, {:producer_down, {:not_retriable, {_, _, _, _, :message_too_large}}}} ->
           new_max_request_bytes = max(state.max_request_bytes - 1024, 500_000)
 
@@ -184,6 +223,8 @@ defmodule Kafee.Producer.AsyncWorker do
           state
 
         anything_else ->
+          require IEx
+          IEx.pry()
           Logger.error("Error when sending messages to Kafka", error: inspect(anything_else))
           state
       end
@@ -337,6 +378,8 @@ defmodule Kafee.Producer.AsyncWorker do
 
       Tracer.with_span span_name, %{kind: :client, attributes: span_attributes} do
         messages = normalize_messages(messages)
+        require IEx
+        IEx.pry()
 
         :telemetry.span(
           [:kafee, :produce],

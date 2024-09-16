@@ -144,7 +144,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
 
       log =
         capture_log(fn ->
-          assert :ok = AsyncWorker.queue(pid, [message])
+          assert :ok = AsyncWorker.queue(pid, [message, message])
           Process.sleep(@wait_timeout)
         end)
 
