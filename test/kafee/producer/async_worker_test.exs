@@ -351,6 +351,44 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       assert logs =~ "exception was raised trying to send the remaining messages to Kafka"
       assert 11 = logs |> String.split("Unsent Kafka message") |> length()
     end
+
+    @tag capture_log: true
+    test "any leftover messages that are large during shutdown gets logged and will not publish", %{
+      pid: pid,
+      topic: topic,
+      state: state
+    } do
+      [small_message_1, small_message_2] = BrodApi.generate_producer_message_list(topic, 2)
+      message_fixture = File.read!("test/support/example/large_message.json")
+      large_message_fixture = String.duplicate(message_fixture, 10)
+
+      # This message will skip being sent to Kafka, and only be logged
+      large_message_1 =
+        topic
+        |> BrodApi.generate_producer_message()
+        |> Map.put(:value, large_message_fixture)
+        |> Map.put(:key, "large_msg_1")
+
+      remaining_messages = [small_message_1, large_message_1, small_message_2]
+      state = %{state | queue: :queue.from_list(remaining_messages), send_timeout: :infinity}
+
+      log =
+        capture_log(fn ->
+          assert :ok = AsyncWorker.terminate(:normal, state)
+          Process.sleep(@wait_timeout)
+        end)
+
+      remaining_brod_messages = BrodApi.to_kafka_message([small_message_1, small_message_2])
+      assert_called_once(:brod.produce(_client_id, ^topic, 0, _key, ^remaining_brod_messages))
+
+      async_worker_state = pid |> Patch.Listener.target() |> :sys.get_state()
+      assert 0 == :queue.len(async_worker_state.queue)
+
+      assert log =~ "Message in queue is too large, will not push to Kafka"
+      assert log =~ "send 2 messages to Kafka before terminate"
+      refute log =~ "exception was raised trying to send the remaining messages to Kafka"
+      refute log =~ "Unsent Kafka message"
+    end
   end
 
   describe "build_message_batch/1" do
