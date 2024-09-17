@@ -400,7 +400,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       [small_message] = BrodApi.generate_producer_message_list(topic, 1)
       small_message_unit_size = kafka_message_size_bytes(small_message)
 
-      small_message_total = Kernel.ceil(max_request_bytes / small_message_unit_size)
+      small_message_total = Kernel.ceil(max_request_bytes / small_message_unit_size) * 2
       remaining_messages = BrodApi.generate_producer_message_list(topic, small_message_total)
 
       state = %{state | queue: :queue.from_list(remaining_messages), send_timeout: :infinity}
