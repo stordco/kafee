@@ -389,6 +389,38 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       refute log =~ "exception was raised trying to send the remaining messages to Kafka"
       refute log =~ "Unsent Kafka message"
     end
+
+    @tag capture_log: true
+    test "should handle leftover messages which are each small sized but have a total size exceeds max_request_bytes",
+         %{
+           pid: pid,
+           topic: topic,
+           state: %{max_request_bytes: max_request_bytes} = state
+         } do
+      [small_message] = BrodApi.generate_producer_message_list(topic, 1)
+      small_message_unit_size = kafka_message_size_bytes(small_message)
+
+      small_message_total = Kernel.ceil(max_request_bytes / small_message_unit_size)
+      remaining_messages = BrodApi.generate_producer_message_list(topic, small_message_total)
+
+      state = %{state | queue: :queue.from_list(remaining_messages), send_timeout: :infinity}
+
+      log =
+        capture_log(fn ->
+          assert :ok = AsyncWorker.terminate(:normal, state)
+          Process.sleep(@wait_timeout)
+        end)
+
+      # just asswert if called; lower level :brod code might split up the messages into more then one call
+      assert_called(:brod.produce(_client_id, ^topic, 0, _key, _messages))
+
+      async_worker_state = pid |> Patch.Listener.target() |> :sys.get_state()
+      assert 0 == :queue.len(async_worker_state.queue)
+
+      assert log =~ "send #{small_message_total} messages to Kafka before terminate"
+      refute log =~ "exception was raised trying to send the remaining messages to Kafka"
+      refute log =~ "Unsent Kafka message"
+    end
   end
 
   describe "build_message_batch/1" do
@@ -462,5 +494,11 @@ defmodule Kafee.Producer.AsyncWorkerTest do
         owner: self()
       }
     end
+  end
+
+  defp kafka_message_size_bytes(message) do
+    message
+    |> Map.take([:key, :value, :headers])
+    |> :erlang.external_size()
   end
 end
