@@ -194,8 +194,7 @@ defmodule Kafee.Producer.AsyncWorker do
           Logger.error("Message in queue is too large", data: sent_messages)
           %{state | queue: :queue.drop(queue)}
 
-        {:error, {:not_retriable, {:produce_response_error, _topic, _partition, _offset, :message_too_large}}}
-        when length(sent_messages) == 1 ->
+        {:error, {:not_retriable, {:produce_response_error, _topic, _partition, _offset, :message_too_large}}} ->
           require IEx
           IEx.pry()
           Logger.error("Message in queue is too largeeeeeee", data: sent_messages)
@@ -367,6 +366,8 @@ defmodule Kafee.Producer.AsyncWorker do
   defp send_messages(state) do
     messages = build_message_batch(state.queue, state.max_request_bytes)
     messages_length = length(messages)
+    IO.inspect(messages, label: "messages")
+    IO.inspect(messages_length, label: "messages_length")
 
     if messages_length == 0 do
       {:ok, 0, nil}
@@ -378,8 +379,6 @@ defmodule Kafee.Producer.AsyncWorker do
 
       Tracer.with_span span_name, %{kind: :client, attributes: span_attributes} do
         messages = normalize_messages(messages)
-        require IEx
-        IEx.pry()
 
         :telemetry.span(
           [:kafee, :produce],

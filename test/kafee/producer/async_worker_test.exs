@@ -144,6 +144,30 @@ defmodule Kafee.Producer.AsyncWorkerTest do
 
       log =
         capture_log(fn ->
+          assert :ok = AsyncWorker.queue(pid, [message])
+          Process.sleep(@wait_timeout)
+        end)
+
+      brod_message = BrodApi.to_kafka_message(message)
+      assert_called(:brod.produce(_client_id, ^topic, 0, :undefined, [^brod_message]))
+      assert log =~ "Message in queue is too large"
+
+      async_worker_state = pid |> Patch.Listener.target() |> :sys.get_state()
+      assert 0 == :queue.len(async_worker_state.queue)
+    end
+
+    @tag capture_log: true
+    test "more than one large messages in queue should get logged and dropped from queue", %{pid: pid, topic: topic} do
+      message_fixture = File.read!("test/support/example/large_message.json")
+      large_message = String.duplicate(message_fixture, 10)
+
+      message =
+        topic
+        |> BrodApi.generate_producer_message()
+        |> Map.put(:value, large_message)
+
+      log =
+        capture_log(fn ->
           assert :ok = AsyncWorker.queue(pid, [message, message])
           Process.sleep(@wait_timeout)
         end)
