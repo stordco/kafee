@@ -250,7 +250,6 @@ defmodule Kafee.Producer.AsyncWorker do
   # developers to handle.
   @doc false
   def terminate(_reason, %{send_task: nil} = state) do
-    count = :queue.len(state.queue)
     terminate_send(state)
   end
 
