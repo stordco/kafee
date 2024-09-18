@@ -391,7 +391,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
     end
 
     @tag capture_log: true
-    test "should handle leftover messages which are each small sized but have a total size exceeds max_request_bytes",
+    test "should handle leftover messages which are each small sized but have a total size exceeding max_request_bytes",
          %{
            pid: pid,
            topic: topic,
