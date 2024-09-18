@@ -320,26 +320,36 @@ defmodule Kafee.Producer.AsyncWorker do
     # messages_beyond_max_bytes are going to be logged and not processed,
     # as they are individually already over max_request_bytes in size.
 
-    {messages_within_max_bytes, messages_beyond_max_bytes} =
-      state.queue
-      |> :queue.to_list()
-      |> split_messages_by_max_bytes(state.max_request_bytes)
+    {messages_within_max_bytes_queue, messages_beyond_max_bytes_reversed} =
+      :queue.fold(
+        fn message, {acc_queue_messages_within_limit, acc_messages_beyond_limit} ->
+          if message_within_max_bytes?(message, state.max_request_bytes) do
+            {:queue.in(message, acc_queue_messages_within_limit), acc_messages_beyond_limit}
+          else
+            {acc_queue_messages_within_limit, [message | acc_messages_beyond_limit]}
+          end
+        end,
+        {:queue.new(), []},
+        state.queue
+      )
+
+    messages_beyond_max_bytes = Enum.reverse(messages_beyond_max_bytes_reversed)
 
     Enum.each(messages_beyond_max_bytes, fn message ->
       Logger.error("Message in queue is too large, will not push to Kafka", data: message)
     end)
 
-    count = length(messages_within_max_bytes)
+    count = :queue.len(messages_within_max_bytes_queue)
 
     if count > 0 do
       Logger.info("Attempting to send #{count} messages to Kafka before terminate")
     end
 
-    :queue.from_list(messages_within_max_bytes)
+    messages_within_max_bytes_queue
   end
 
-  defp split_messages_by_max_bytes(messages, max_request_bytes) do
-    Enum.split_with(messages, &(max_request_bytes > kafka_message_size_bytes(&1)))
+  defp message_within_max_bytes?(message, max_request_bytes) do
+    max_request_bytes > kafka_message_size_bytes(message)
   end
 
   @spec emit_queue_telemetry(State.t(), non_neg_integer()) :: :ok
