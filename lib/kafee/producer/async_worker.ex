@@ -250,6 +250,10 @@ defmodule Kafee.Producer.AsyncWorker do
   # developers to handle.
   @doc false
   def terminate(_reason, %{send_task: nil} = state) do
+    # We only focus on triaging the queue in state. If there are messages too big, we log and don't send.
+    # Update state with queue just with messages that are acceptable
+    state = %{state | queue: state_queue_without_large_messages(state)}
+
     terminate_send(state)
   end
 
@@ -274,10 +278,6 @@ defmodule Kafee.Producer.AsyncWorker do
 
   @spec terminate_send(State.t()) :: :ok
   defp terminate_send(state) do
-    # We only focus on triaging the queue in state. If there are messages too big, we log and don't send.
-    # Update state with queue just with messages that are acceptable
-    state = %{state | queue: state_queue_without_large_messages(state)}
-
     case send_messages(state) do
       {:ok, 0, offset} ->
         Logger.info("Successfully sent all remaining messages to Kafka before termination")
