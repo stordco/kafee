@@ -250,8 +250,10 @@ defmodule Kafee.Producer.AsyncWorker do
   # developers to handle.
   @doc false
   def terminate(_reason, %{send_task: nil} = state) do
-    count = :queue.len(state.queue)
-    Logger.info("Attempting to send #{count} messages to Kafka before terminate")
+    # We only focus on triaging the queue in state. If there are messages too big, we log and don't send.
+    # Update state with queue just with messages that are acceptable
+    state = %{state | queue: state_queue_without_large_messages(state)}
+
     terminate_send(state)
   end
 
@@ -312,6 +314,42 @@ defmodule Kafee.Producer.AsyncWorker do
       end
 
       :ok
+  end
+
+  defp state_queue_without_large_messages(state) do
+    # messages_beyond_max_bytes are going to be logged and not processed,
+    # as they are individually already over max_request_bytes in size.
+
+    {messages_within_max_bytes_queue, messages_beyond_max_bytes_reversed} =
+      :queue.fold(
+        fn message, {acc_queue_messages_within_limit, acc_messages_beyond_limit} ->
+          if message_within_max_bytes?(message, state.max_request_bytes) do
+            {:queue.in(message, acc_queue_messages_within_limit), acc_messages_beyond_limit}
+          else
+            {acc_queue_messages_within_limit, [message | acc_messages_beyond_limit]}
+          end
+        end,
+        {:queue.new(), []},
+        state.queue
+      )
+
+    messages_beyond_max_bytes = Enum.reverse(messages_beyond_max_bytes_reversed)
+
+    Enum.each(messages_beyond_max_bytes, fn message ->
+      Logger.error("Message in queue is too large, will not push to Kafka", data: message)
+    end)
+
+    count = :queue.len(messages_within_max_bytes_queue)
+
+    if count > 0 do
+      Logger.info("Attempting to send #{count} messages to Kafka before terminate")
+    end
+
+    messages_within_max_bytes_queue
+  end
+
+  defp message_within_max_bytes?(message, max_request_bytes) do
+    max_request_bytes > kafka_message_size_bytes(message)
   end
 
   @spec emit_queue_telemetry(State.t(), non_neg_integer()) :: :ok
@@ -379,11 +417,7 @@ defmodule Kafee.Producer.AsyncWorker do
       queue
       |> :queue.to_list()
       |> Enum.reduce_while({0, []}, fn message, {bytes, batch} ->
-        # I know that `:erlang.external_size` won't match what we actually
-        # send, but it should be under the limit that would cause Kafka errors
-        kafka_message = Map.take(message, [:key, :value, :headers])
-
-        case bytes + :erlang.external_size(kafka_message) do
+        case bytes + kafka_message_size_bytes(message) do
           total_bytes when batch == [] ->
             {:cont, {total_bytes, [message]}}
 
@@ -400,5 +434,13 @@ defmodule Kafee.Producer.AsyncWorker do
     Logger.debug("Creating batch of #{batch_bytes} bytes", data: batch_messages)
 
     batch_messages
+  end
+
+  # `:erlang.external_size` won't match what we actually
+  # send, but it should be under the limit that would cause Kafka errors
+  defp kafka_message_size_bytes(message_from_queue) do
+    message_from_queue
+    |> Map.take([:key, :value, :headers])
+    |> :erlang.external_size()
   end
 end
