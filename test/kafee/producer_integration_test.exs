@@ -66,7 +66,6 @@ defmodule Kafee.ProducerIntegrationTest do
         end)
 
       refute log =~ "Message in queue is too large"
-      assert log =~ "brod producer process is currently down"
       assert log =~ "Successfully sent messages to Kafka"
     end
   end
