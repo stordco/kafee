@@ -226,10 +226,13 @@ defmodule Kafee.Producer.AsyncWorker do
   @doc false
   def handle_info(_, state), do: {:noreply, state}
 
-  # A simple request to add more messages to the queue. Nothing fancy here.
+  # A simple request to add more messages to the queue.
+  # Note: will drop large messages and not add it to queue.
   @doc false
   def handle_cast({:queue, messages}, state) do
-    new_queue = :queue.join(state.queue, :queue.from_list(messages))
+    new_messages_queue = messages |> :queue.from_list() |> queue_without_large_messages(state.max_request_bytes)
+    new_queue = :queue.join(state.queue, new_messages_queue)
+
     emit_queue_telemetry(state, :queue.len(new_queue))
 
     Process.send_after(self(), :send, state.throttle_ms)
@@ -252,7 +255,7 @@ defmodule Kafee.Producer.AsyncWorker do
   def terminate(_reason, %{send_task: nil} = state) do
     # We only focus on triaging the queue in state. If there are messages too big, we log and don't send.
     # Update state with queue just with messages that are acceptable
-    state = %{state | queue: state_queue_without_large_messages(state)}
+    state = %{state | queue: queue_without_large_messages(state.queue, state.max_request_bytes)}
 
     terminate_send(state)
   end
@@ -316,21 +319,21 @@ defmodule Kafee.Producer.AsyncWorker do
       :ok
   end
 
-  defp state_queue_without_large_messages(state) do
+  defp queue_without_large_messages(queue, max_request_bytes) do
     # messages_beyond_max_bytes are going to be logged and not processed,
     # as they are individually already over max_request_bytes in size.
 
     {messages_within_max_bytes_queue, messages_beyond_max_bytes_reversed} =
       :queue.fold(
         fn message, {acc_queue_messages_within_limit, acc_messages_beyond_limit} ->
-          if message_within_max_bytes?(message, state.max_request_bytes) do
+          if message_within_max_bytes?(message, max_request_bytes) do
             {:queue.in(message, acc_queue_messages_within_limit), acc_messages_beyond_limit}
           else
             {acc_queue_messages_within_limit, [message | acc_messages_beyond_limit]}
           end
         end,
         {:queue.new(), []},
-        state.queue
+        queue
       )
 
     messages_beyond_max_bytes = Enum.reverse(messages_beyond_max_bytes_reversed)
