@@ -133,7 +133,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
     end
 
     @tag capture_log: true
-    test "any single message too large gets logged and dropped from queue", %{pid: pid, topic: topic} do
+    test "any single message too large gets logged and not added to queue", %{pid: pid, topic: topic} do
       message_fixture = File.read!("test/support/example/large_message.json")
       large_message = String.duplicate(message_fixture, 10)
 
@@ -149,8 +149,65 @@ defmodule Kafee.Producer.AsyncWorkerTest do
         end)
 
       brod_message = BrodApi.to_kafka_message(message)
+      refute_called(:brod.produce(_client_id, ^topic, 0, :undefined, [^brod_message]))
+      assert log =~ "Message in queue is too large, will not push to Kafka"
+
+      async_worker_state = pid |> Patch.Listener.target() |> :sys.get_state()
+      assert 0 == :queue.len(async_worker_state.queue)
+    end
+
+    @tag capture_log: true
+    test "any messages too large gets logged and dropped from queue", %{pid: pid, topic: topic} do
+      [small_message_1] = BrodApi.generate_producer_message_list(topic, 1)
+      message_fixture = File.read!("test/support/example/large_message.json")
+      large_message_fixture = String.duplicate(message_fixture, 10)
+
+      # This message will skip being sent to Kafka, and only be logged
+      large_message_1 =
+        topic
+        |> BrodApi.generate_producer_message()
+        |> Map.put(:value, large_message_fixture)
+        |> Map.put(:key, "large_msg_1")
+
+      large_message_2 =
+        topic
+        |> BrodApi.generate_producer_message()
+        |> Map.put(:value, large_message_fixture)
+        |> Map.put(:key, "large_msg_2")
+
+      # scenario: small message first in queue
+      remaining_messages = [small_message_1, large_message_1, large_message_2]
+
+      log =
+        capture_log(fn ->
+          assert :ok = AsyncWorker.queue(pid, remaining_messages)
+          Process.sleep(@wait_timeout)
+        end)
+
+      expected_large_message_error_log = "Message in queue is too large, will not push to Kafka"
+      brod_message = BrodApi.to_kafka_message(small_message_1)
       assert_called(:brod.produce(_client_id, ^topic, 0, :undefined, [^brod_message]))
-      assert log =~ "Message in queue is too large"
+
+      assert 2 == (log |> String.split(expected_large_message_error_log) |> length()) - 1
+      async_worker_state = pid |> Patch.Listener.target() |> :sys.get_state()
+
+      # all of the messages in queue are processed or dropped
+      assert 0 == :queue.len(async_worker_state.queue)
+
+      # scenario: large message first in queue
+      remaining_messages = [large_message_1, small_message_1, large_message_2]
+
+      log =
+        capture_log(fn ->
+          assert :ok = AsyncWorker.queue(pid, remaining_messages)
+          Process.sleep(@wait_timeout)
+        end)
+
+      brod_message = BrodApi.to_kafka_message(large_message_1)
+      refute_called(:brod.produce(_client_id, ^topic, 0, :undefined, [^brod_message]))
+      brod_message = BrodApi.to_kafka_message(large_message_2)
+      refute_called(:brod.produce(_client_id, ^topic, 0, :undefined, [^brod_message]))
+      assert 2 == (log |> String.split(expected_large_message_error_log) |> length()) - 1
 
       async_worker_state = pid |> Patch.Listener.target() |> :sys.get_state()
       assert 0 == :queue.len(async_worker_state.queue)
