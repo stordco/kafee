@@ -246,7 +246,13 @@ defmodule Kafee.Producer.AsyncAdapter do
         |> Message.set_request_id_from_logger()
         |> Message.validate!()
       end)
-      |> Enum.group_by(fn %{topic: topic, partition: partition} -> {topic, partition} end)
+      |> Enum.group_by(fn %{topic: topic, partition: partition} ->
+        if topic == "wms-service--firehose" do
+          IO.inspect(partition, label: "AsyncAdapter.produce - PRODUCING MESSAGE - partition:")
+        end
+
+        {topic, partition}
+      end)
 
     for {{topic, partition}, messages} <- message_groups do
       :ok = queue(producer, options, topic, partition, messages)
@@ -259,6 +265,15 @@ defmodule Kafee.Producer.AsyncAdapter do
           :ok | {:error, term()}
   defp queue(producer, options, topic, partition, messages) do
     with {:ok, pid} <- get_or_create_worker(producer, options, topic, partition) do
+      if topic == "wms-service--firehose" do
+        partitions = messages |> Enum.map(& &1.partition)
+
+        IO.inspect(%{partition_for_worker: partition, partitions: partitions, worker_pid: pid},
+          label: "AsyncAdapter.queue - passing arguments to AsyncWorker.queue",
+          charlists: false
+        )
+      end
+
       AsyncWorker.queue(pid, messages)
     end
   end
@@ -281,8 +296,27 @@ defmodule Kafee.Producer.AsyncAdapter do
       |> Keyword.put(:topic, topic)
       |> Keyword.put(:partition, partition)
 
-    with {:error, {:already_started, pid}} <- Supervisor.start_child(producer, {AsyncWorker, worker_options}) do
+    IO.inspect(partition, label: "AsyncWorker.create_worker - partition")
+    custom_child_id = "#{AsyncWorker}#{partition}"
+
+    with {:error, {:already_started, pid}} <-
+           Supervisor.start_child(producer, %{id: custom_child_id, start: {AsyncWorker, :start_link, [worker_options]}}) do
+      if topic == "wms-service--firehose" do
+        IO.inspect(%{worker_options: worker_options, worker_pid: pid},
+          label: "AsyncAdapter.create_worker - returning existing pid with given start_child request"
+        )
+      end
+
       {:ok, pid}
+    else
+      e ->
+        if topic == "wms-service--firehose" do
+          IO.inspect(%{worker_options: worker_options, creation_result: e},
+            label: "AsyncAdapter.create_worker - success creating worker pid with given options"
+          )
+        end
+
+        e
     end
   end
 
@@ -293,9 +327,24 @@ defmodule Kafee.Producer.AsyncAdapter do
       |> brod_client()
       |> AsyncWorker.process_name(topic, partition)
 
+    if topic == "wms-service--firehose" do
+      IO.inspect(registry_key, label: "AsyncWorker.get_worker - registry_key")
+    end
+
     case Registry.lookup(registry_name, registry_key) do
-      [{pid, _value}] -> {:ok, pid}
-      [] -> {:error, :not_found}
+      [{pid, _value}] ->
+        if topic == "wms-service--firehose" do
+          IO.inspect(partition, label: "AsyncWorker.get_worker - got the pid for partition")
+        end
+
+        {:ok, pid}
+
+      [] ->
+        if topic == "wms-service--firehose" do
+          IO.inspect(partition, label: "AsyncWorker.get_worker - NO FOUND!")
+        end
+
+        {:error, :not_found}
     end
   end
 
@@ -303,6 +352,10 @@ defmodule Kafee.Producer.AsyncAdapter do
           {:ok, pid()} | {:error, term()}
   defp get_or_create_worker(producer, options, topic, partition) do
     with {:error, :not_found} <- get_worker(producer, topic, partition) do
+      if topic == "wms-service--firehose" do
+        IO.inspect(%{options: options, partition: partition}, label: "AsyncAdapter.get_or_create_worker() arguments")
+      end
+
       create_worker(producer, options, topic, partition)
     end
   end
