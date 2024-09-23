@@ -91,10 +91,8 @@ defmodule Kafee.Producer.AsyncAdapterTest do
 
     @tag capture_log: true
     test "uses different async worker processes for different partitions", %{topic: topic} do
-      # Send original messages to start the worker
-      messages = BrodApi.generate_producer_message_list(topic, 5)
-      # change partitions
-      messages = messages |> Enum.with_index(1) |> Enum.map(fn {message, idx} -> %{message | partition: idx} end)
+      # messages list with all unique partitions
+      messages = BrodApi.generate_producer_partitioned_message_list(topic, 5, 5)
 
       capture_log(fn ->
         assert :ok = MyProducer.produce(messages)
@@ -103,7 +101,7 @@ defmodule Kafee.Producer.AsyncAdapterTest do
       assert_called(AsyncWorker.queue(_pid, _messages), 5)
 
       worker_pids =
-        for x <- 1..5 do
+        for x <- 0..4 do
           {:via, Registry, {registry_name, registry_key}} = AsyncWorker.process_name(MyProducer.BrodClient, topic, x)
           assert [{pid, _value}] = Registry.lookup(registry_name, registry_key)
           assert is_pid(pid)
@@ -122,7 +120,7 @@ defmodule Kafee.Producer.AsyncAdapterTest do
 
       # Assert no new worker processes got created
       worker_pids_2 =
-        for x <- 1..5 do
+        for x <- 0..4 do
           {:via, Registry, {registry_name, registry_key}} = AsyncWorker.process_name(MyProducer.BrodClient, topic, x)
           assert [{pid, _value}] = Registry.lookup(registry_name, registry_key)
           assert is_pid(pid)

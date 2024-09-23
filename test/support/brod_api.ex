@@ -94,6 +94,34 @@ defmodule Kafee.BrodApi do
   end
 
   @doc """
+  Generates a list of messages that tries to spread evenly across the given number of partitions.
+  Returns error if number of partitions is greater than number of messages to create.
+  """
+  def generate_producer_partitioned_message_list(topic, number_of_messages, partitions \\ 1)
+
+  def generate_producer_partitioned_message_list(topic, number_of_messages, partitions)
+      when length(number_of_messages) < length(partitions) do
+    {:error, "number of partitions is greather than number of messages"}
+  end
+
+  def generate_producer_partitioned_message_list(topic, number_of_messages, partitions) do
+    messages = generate_producer_message_list(topic, number_of_messages)
+    chunk_every = Kernel.floor(number_of_messages / partitions)
+
+    messages
+    |> Enum.chunk_every(chunk_every)
+    |> Enum.with_index()
+    |> Enum.flat_map(fn {chunked_messages, idx} ->
+      Enum.map(chunked_messages, fn message ->
+        %{message | partition: idx}
+      end)
+    end)
+
+    # # change partitions
+    # messages = messages |> Enum.with_index(1) |> Enum.map(fn {message, idx} -> %{message | partition: idx} end)
+  end
+
+  @doc """
   Returns a simple map of all of the message fields we send to brod and Kafka.
   """
   @spec to_kafka_message(value) :: value when value: Message.t() | [Message.t()]
