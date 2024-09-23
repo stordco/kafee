@@ -281,7 +281,8 @@ defmodule Kafee.Producer.AsyncAdapter do
       |> Keyword.put(:topic, topic)
       |> Keyword.put(:partition, partition)
 
-    custom_child_id = "#{AsyncWorker}#{partition}"
+    brod_client_name = brod_client(producer)
+    custom_child_id = "#{brod_client_name}-AsyncWorker-#{topic}-#{partition}"
 
     with {:error, {:already_started, pid}} <-
            Supervisor.start_child(producer, %{id: custom_child_id, start: {AsyncWorker, :start_link, [worker_options]}}) do
