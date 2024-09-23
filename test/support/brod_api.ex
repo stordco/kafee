@@ -99,7 +99,7 @@ defmodule Kafee.BrodApi do
   """
   def generate_producer_partitioned_message_list(topic, number_of_messages, partitions \\ 1)
 
-  def generate_producer_partitioned_message_list(topic, number_of_messages, partitions)
+  def generate_producer_partitioned_message_list(_topic, number_of_messages, partitions)
       when length(number_of_messages) < length(partitions) do
     {:error, "number of partitions is greather than number of messages"}
   end
