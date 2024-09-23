@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.1](https://github.com/stordco/kafee/compare/v3.1.0...v3.1.1) (2024-09-23)
+
+
+### Bug Fixes
+
+* SIGNAL-7090 UPDATE async worker id setting per partition ([#97](https://github.com/stordco/kafee/issues/97)) ([060dbd7](https://github.com/stordco/kafee/commit/060dbd78534238a3de0f67d625ec9e0c821d0f95))
+
 ## [3.1.0](https://github.com/stordco/kafee/compare/v3.0.3...v3.1.0) (2024-09-19)
 
 
