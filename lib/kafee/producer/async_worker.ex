@@ -257,6 +257,12 @@ defmodule Kafee.Producer.AsyncWorker do
     # Update state with queue just with messages that are acceptable
     state = %{state | queue: queue_without_large_messages(state.queue, state.max_request_bytes)}
 
+    count = :queue.len(state.queue)
+
+    if count > 0 do
+      Logger.info("Attempting to send #{count} messages to Kafka before terminate")
+    end
+
     terminate_send(state)
   end
 
@@ -341,12 +347,6 @@ defmodule Kafee.Producer.AsyncWorker do
     Enum.each(messages_beyond_max_bytes, fn message ->
       Logger.error("Message in queue is too large, will not push to Kafka", data: message)
     end)
-
-    count = :queue.len(messages_within_max_bytes_queue)
-
-    if count > 0 do
-      Logger.info("Attempting to send #{count} messages to Kafka before terminate")
-    end
 
     messages_within_max_bytes_queue
   end
