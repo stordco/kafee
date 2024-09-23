@@ -346,6 +346,7 @@ defmodule Kafee.Producer.AsyncWorker do
 
     Enum.each(messages_beyond_max_bytes, fn message ->
       Logger.error("Message in queue is too large, will not push to Kafka", data: message)
+      IO.inspect(kafka_message_size_bytes(message) / (1024 * 1024), label: "MESSAGE SIZE (MB)")
     end)
 
     messages_within_max_bytes_queue
