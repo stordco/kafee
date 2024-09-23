@@ -110,10 +110,8 @@ defmodule Kafee.Producer.AsyncAdapterTest do
 
       assert 5 == worker_pids |> Enum.uniq() |> length()
 
-      # Send more messages
-      messages = BrodApi.generate_producer_message_list(topic, 5)
-      # change partitions
-      messages = messages |> Enum.with_index(1) |> Enum.map(fn {message, idx} -> %{message | partition: idx} end)
+      # Send more messages through same 5 partitions
+      messages = BrodApi.generate_producer_partitioned_message_list(topic, 5, 5)
 
       assert :ok = MyProducer.produce(messages)
       assert_called(AsyncWorker.queue(_pid, _messages), 10)
