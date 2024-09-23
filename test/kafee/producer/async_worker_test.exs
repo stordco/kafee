@@ -411,7 +411,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
           Process.sleep(@wait_timeout)
         end)
 
-      # just asswert if called; lower level :brod code might split up the messages into more then one call
+      # just assert if called; lower level :brod code might split up the messages into more then one call
       assert_called(:brod.produce(_client_id, ^topic, 0, _key, _messages))
 
       async_worker_state = pid |> Patch.Listener.target() |> :sys.get_state()

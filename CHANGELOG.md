@@ -1,5 +1,24 @@
 # Changelog
 
+## [3.1.0](https://github.com/stordco/kafee/compare/v3.0.3...v3.1.0) (2024-09-19)
+
+
+### Features
+
+* SIGNAL-7060 filter out large messages during termination instead of sending to Kafka ([#95](https://github.com/stordco/kafee/issues/95)) ([3bf5f81](https://github.com/stordco/kafee/commit/3bf5f812e6ef87f9597646ed20ae7c751c01b255))
+
+
+### Miscellaneous
+
+* Sync files with stordco/common-config-elixir ([#85](https://github.com/stordco/kafee/issues/85)) ([c377a8e](https://github.com/stordco/kafee/commit/c377a8e6654d11557d5ccb8d1b750f2c3d1614c4))
+* Sync files with stordco/common-config-elixir ([#87](https://github.com/stordco/kafee/issues/87)) ([5dcc51d](https://github.com/stordco/kafee/commit/5dcc51d9392a32cf2b33d23cb31b45541ecc4909))
+* Sync files with stordco/common-config-elixir ([#88](https://github.com/stordco/kafee/issues/88)) ([51f6add](https://github.com/stordco/kafee/commit/51f6adddc5fdcb7e01d402fff910a7ee708813b6))
+* Sync files with stordco/common-config-elixir ([#89](https://github.com/stordco/kafee/issues/89)) ([f6b8668](https://github.com/stordco/kafee/commit/f6b8668ecd9bc0d2e99ec640f98a86545746cbc8))
+* Sync files with stordco/common-config-elixir ([#90](https://github.com/stordco/kafee/issues/90)) ([ba97bf3](https://github.com/stordco/kafee/commit/ba97bf3cb2398430dfa473deca181f669802832b))
+* Sync files with stordco/common-config-elixir ([#91](https://github.com/stordco/kafee/issues/91)) ([2c013fe](https://github.com/stordco/kafee/commit/2c013fe7efe1b67e1030b4727a0f5ad6b5933e9b))
+* Sync files with stordco/common-config-elixir ([#92](https://github.com/stordco/kafee/issues/92)) ([5da1a94](https://github.com/stordco/kafee/commit/5da1a9468c198d1866030fab03cbb50a152d399a))
+* Sync files with stordco/common-config-elixir ([#94](https://github.com/stordco/kafee/issues/94)) ([33ed4d8](https://github.com/stordco/kafee/commit/33ed4d8c2bc757cd2ef5e5bffe656418be13d588))
+
 ## [3.0.3](https://github.com/stordco/kafee/compare/v3.0.2...v3.0.3) (2024-03-08)
 
 
