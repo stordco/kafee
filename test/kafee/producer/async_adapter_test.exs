@@ -46,6 +46,15 @@ defmodule Kafee.Producer.AsyncAdapterTest do
   end
 
   describe "produce/2" do
+    defp assert_registry_lookup_pid(brod_client, topic, partition) do
+      {:via, Registry, {registry_name, registry_key}} =
+        AsyncWorker.process_name(brod_client, topic, partition)
+
+      [{pid, _value}] = Registry.lookup(registry_name, registry_key)
+      assert is_pid(pid)
+      pid
+    end
+
     test "queues messages to the async worker", %{topic: topic} do
       messages = BrodApi.generate_producer_message_list(topic, 5)
 
@@ -74,9 +83,7 @@ defmodule Kafee.Producer.AsyncAdapterTest do
       assert :ok = MyProducer.produce(messages)
       assert_called_once(AsyncWorker.queue(_pid, _messages))
 
-      {:via, Registry, {registry_name, registry_key}} = AsyncWorker.process_name(MyProducer.BrodClient, topic, 0)
-      assert [{pid, _value}] = Registry.lookup(registry_name, registry_key)
-      assert is_pid(pid)
+      assert_registry_lookup_pid(MyProducer.BrodClient, topic, 0)
 
       # Send more messages
       messages = BrodApi.generate_producer_message_list(topic, 5)
@@ -84,9 +91,7 @@ defmodule Kafee.Producer.AsyncAdapterTest do
       assert_called(AsyncWorker.queue(_pid, _messages), 2)
 
       # Assert there is still only a single async worker process
-      {:via, Registry, {registry_name, registry_key}} = AsyncWorker.process_name(MyProducer.BrodClient, topic, 0)
-      assert [{pid, _value}] = Registry.lookup(registry_name, registry_key)
-      assert is_pid(pid)
+      assert_registry_lookup_pid(MyProducer.BrodClient, topic, 0)
     end
 
     @tag capture_log: true
@@ -102,10 +107,7 @@ defmodule Kafee.Producer.AsyncAdapterTest do
 
       worker_pids =
         for x <- 0..4 do
-          {:via, Registry, {registry_name, registry_key}} = AsyncWorker.process_name(MyProducer.BrodClient, topic, x)
-          assert [{pid, _value}] = Registry.lookup(registry_name, registry_key)
-          assert is_pid(pid)
-          pid
+          assert_registry_lookup_pid(MyProducer.BrodClient, topic, x)
         end
 
       assert 5 == worker_pids |> Enum.uniq() |> length()
@@ -119,10 +121,7 @@ defmodule Kafee.Producer.AsyncAdapterTest do
       # Assert no new worker processes got created
       worker_pids_2 =
         for x <- 0..4 do
-          {:via, Registry, {registry_name, registry_key}} = AsyncWorker.process_name(MyProducer.BrodClient, topic, x)
-          assert [{pid, _value}] = Registry.lookup(registry_name, registry_key)
-          assert is_pid(pid)
-          pid
+          assert_registry_lookup_pid(MyProducer.BrodClient, topic, x)
         end
 
       assert worker_pids_2 |> MapSet.new() |> MapSet.equal?(MapSet.new(worker_pids))
