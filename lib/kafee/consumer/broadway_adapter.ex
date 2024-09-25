@@ -26,6 +26,38 @@ defmodule Kafee.Consumer.BroadwayAdapter do
                       Broadway default, which is `System.schedulers_online() * 2`.
                       """,
                       type: :non_neg_integer
+                    ],
+                    default_batch_config: [
+                      required: false,
+                      doc: """
+                      Optional.
+                      Options for setting `batches` in Broadway, for the :default batcher key.
+                      See its [documentation](https://hexdocs.pm/broadway/Broadway.html#module-the-default-batcher).
+
+                      Also, note that only the `:default` batcher key is supported.
+
+                      On top of this, there's an optional `run_batch_in_async` option,
+                      where it will run `Kafee.Consumer.Adapter.push_message` asynchronously across all messages in that batch.
+                      """,
+                      type: :non_empty_keyword_list,
+                      keys: [
+                        concurrency: [
+                          required: true,
+                          type: :non_neg_integer
+                        ],
+                        batch_size: [
+                          required: true,
+                          type: :non_neg_integer
+                        ],
+                        batch_timeout: [
+                          default: 1_000,
+                          type: :non_neg_integer
+                        ],
+                        run_batch_in_async: [
+                          default: false,
+                          type: :boolean
+                        ]
+                      ]
                     ]
                   )
 
@@ -54,6 +86,15 @@ defmodule Kafee.Consumer.BroadwayAdapter do
   @impl Kafee.Consumer.Adapter
   @spec start_link(module(), Kafee.Consumer.options()) :: Supervisor.on_start()
   def start_link(consumer, options) do
+    with {:ok, adapter_options} <- validate_adapter_options(options) do
+      Broadway.start_link(
+        __MODULE__,
+        broadway_config(consumer, options, adapter_options)
+      )
+    end
+  end
+
+  defp validate_adapter_options(options) do
     adapter_options =
       case options[:adapter] do
         nil -> []
@@ -61,31 +102,49 @@ defmodule Kafee.Consumer.BroadwayAdapter do
         {_adapter, adapter_options} -> adapter_options
       end
 
-    with {:ok, adapter_options} <- NimbleOptions.validate(adapter_options, @options_schema) do
-      Broadway.start_link(__MODULE__,
-        name: consumer,
-        context: %{
-          consumer: consumer,
-          consumer_group: options[:consumer_group_id],
-          options: options
-        },
-        producer: [
-          module:
-            {BroadwayKafka.Producer,
-             [
-               hosts: [{options[:host], options[:port]}],
-               group_id: options[:consumer_group_id],
-               topics: [options[:topic]],
-               client_config: client_config(options)
-             ]},
-          concurrency: adapter_options[:consumer_concurrency]
-        ],
-        processors: [
-          default: [
-            concurrency: processor_concurrency(adapter_options)
-          ]
+    NimbleOptions.validate(adapter_options, @options_schema)
+  end
+
+  defp broadway_config(consumer, options, adapter_options) do
+    base_config = [
+      name: consumer,
+      context: %{
+        consumer: consumer,
+        consumer_group: options[:consumer_group_id],
+        options: options
+      },
+      producer: [
+        module:
+          {BroadwayKafka.Producer,
+           [
+             hosts: [{options[:host], options[:port]}],
+             group_id: options[:consumer_group_id],
+             topics: [options[:topic]],
+             client_config: client_config(options)
+           ]},
+        concurrency: adapter_options[:consumer_concurrency]
+      ],
+      processors: [
+        default: [
+          concurrency: processor_concurrency(adapter_options)
         ]
-      )
+      ]
+    ]
+
+    case Keyword.fetch(adapter_options, :default_batch_config) do
+      {:ok, default_batch_config} ->
+        Keyword.merge(base_config,
+          batchers: [
+            default: [
+              concurrency: default_batch_config[:concurrency],
+              batch_size: default_batch_config[:batch_size],
+              batch_timeout: default_batch_config[:batch_timeout]
+            ]
+          ]
+        )
+
+      :error ->
+        base_config
     end
   end
 
@@ -100,22 +159,56 @@ defmodule Kafee.Consumer.BroadwayAdapter do
 
   @doc false
   @impl Broadway
-  def handle_message(:default, %Broadway.Message{data: value, metadata: metadata} = message, %{
+  def handle_message(:default, %Broadway.Message{metadata: metadata} = message, %{
         consumer: consumer,
         options: options
       }) do
-    Kafee.Consumer.Adapter.push_message(consumer, options, %Kafee.Consumer.Message{
-      key: metadata.key,
-      value: value,
-      topic: metadata.topic,
-      partition: metadata.partition,
-      offset: metadata.offset,
-      consumer_group: options[:consumer_group_id],
-      timestamp: DateTime.from_unix!(metadata.ts, :millisecond),
-      headers: metadata.headers
-    })
+    hydrated_message = %{message | metadata: metadata |> Map.put(:consumer, consumer) |> Map.put(:options, options)}
+    {:ok, adapter_options} = validate_adapter_options(options)
+    batch_config = adapter_options[:default_batch_config]
 
-    message
+    if batch_config do
+      hydrated_message
+    else
+      do_consumer_work(hydrated_message)
+      message
+    end
+  end
+
+  @impl Broadway
+  def handle_batch(:default, messages, _batch_info, context) do
+    {:ok, adapter_options} = validate_adapter_options(context[:options])
+    batch_config = adapter_options[:default_batch_config]
+
+    if batch_config[:run_batch_in_async] do
+      tasks = Enum.map(messages, &Task.async(fn -> do_consumer_work(&1) end))
+
+      Task.await_many(tasks)
+    else
+      Enum.each(messages, &do_consumer_work/1)
+    end
+
+    messages
+  end
+
+  defp do_consumer_work(%Broadway.Message{
+         data: value,
+         metadata: %{consumer: consumer, options: options} = metadata
+       }) do
+    Kafee.Consumer.Adapter.push_message(
+      consumer,
+      options,
+      %Kafee.Consumer.Message{
+        key: metadata.key,
+        value: value,
+        topic: metadata.topic,
+        partition: metadata.partition,
+        offset: metadata.offset,
+        consumer_group: options[:consumer_group_id],
+        timestamp: DateTime.from_unix!(metadata.ts, :millisecond),
+        headers: metadata.headers
+      }
+    )
   end
 
   @doc false
