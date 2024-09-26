@@ -213,14 +213,14 @@ defmodule Kafee.Consumer.BroadwayAdapter do
 
   @doc false
   @impl Broadway
-  def handle_failed(message, %{consumer: consumer}) do
+  def handle_failed(messages, %{consumer: consumer}) do
     # This error only occurs when there is an issue with the `handle_message/2`
     # function above because `Kafee.Consumer.Adapter.push_message/2` will catch any
     # errors.
 
     error = %RuntimeError{message: "Error converting a Broadway message to Kafee.Consumer.Message"}
-    consumer.handle_failure(error, message)
+    consumer.handle_failure(error, messages)
 
-    message
+    messages
   end
 end
