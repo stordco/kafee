@@ -1,10 +1,28 @@
 defmodule Kafee.Producer.AsyncWorker do
-  # A simple GenServer for every topic * partition in Kafka. It holds an
-  # erlang `:queue` and sends messages every so often. On process close, we
-  # attempt to send all messages to Kafka, and in the unlikely event we can't
-  # we write all messages to the logs.
+  @moduledoc """
+  A simple GenServer for every topic * partition in Kafka. It holds an
+  erlang `:queue` and sends messages every so often.
 
-  @moduledoc false
+  ## Note on termination
+
+  On process close, we attempt to send all messages to Kafka,
+  and in the unlikely event we can't, we write all messages to the logs.
+
+  ## When message is larger than what Kafka allows
+
+  ### Configuration of `max_request_bytes` option in `Kafee.Producer.AsyncAdapter`
+
+  Although you'd set the max size of messages over at Kafka's cloud settings,
+  it is actually the `state.max_request_bytes` that should be set correctly in order for any
+  size based triaging can happen. Therefore setting that is critical for large message handling.
+
+  ### During message queuing
+
+  Note that at `handle_cast({:queue, messages}, state)`, code will drop large messages so they don't actually get into the queue.
+  These dropped messsages will show up in logs - please see the defp `queue_without_large_messages/2`.
+  The messages should be picked up from the logs and should be triaged accordingly.
+
+  """
 
   use GenServer,
     shutdown: :timer.seconds(25)
