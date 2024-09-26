@@ -27,16 +27,16 @@ defmodule Kafee.Consumer.BroadwayAdapter do
                       """,
                       type: :non_neg_integer
                     ],
-                    default_batch_config: [
+                    batching: [
                       required: false,
                       doc: """
                       Optional.
-                      Options for setting `batches` in Broadway, for the :default batcher key.
+                      Options for setting `batches` in Broadway.
                       See its [documentation](https://hexdocs.pm/broadway/Broadway.html#module-the-default-batcher).
 
                       Also, note that only the `:default` batcher key is supported.
 
-                      On top of this, there's an optional `run_batch_in_async` option,
+                      On top of this, there's an optional `async_run` option,
                       where it will run `Kafee.Consumer.Adapter.push_message` asynchronously across all messages in that batch.
                       """,
                       type: :non_empty_keyword_list,
@@ -45,15 +45,15 @@ defmodule Kafee.Consumer.BroadwayAdapter do
                           required: true,
                           type: :non_neg_integer
                         ],
-                        batch_size: [
+                        size: [
                           required: true,
                           type: :non_neg_integer
                         ],
-                        batch_timeout: [
+                        timeout: [
                           default: 1_000,
                           type: :non_neg_integer
                         ],
-                        run_batch_in_async: [
+                        async_run: [
                           default: false,
                           type: :boolean
                         ]
