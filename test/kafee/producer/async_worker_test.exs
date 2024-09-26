@@ -59,7 +59,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
   end
 
   describe "queue/2" do
-    setup do
+    setup(%{topic: topic}) do
       [small_message] = BrodApi.generate_producer_message_list(topic, 1)
       message_fixture = File.read!("test/support/example/large_message.json")
       large_message_fixture = String.duplicate(message_fixture, 10)
