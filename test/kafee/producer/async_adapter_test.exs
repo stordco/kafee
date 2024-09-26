@@ -128,9 +128,7 @@ defmodule Kafee.Producer.AsyncAdapterTest do
 
       # clean up because kafka in test only has one partition, so errors happen
       capture_log(fn ->
-        for pid <- worker_pids do
-          GenServer.stop(pid)
-        end
+        stop_supervised(MyProducer)
       end)
     end
   end
