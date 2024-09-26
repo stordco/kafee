@@ -94,7 +94,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       large_message_1: large_message_1,
       large_message_2: large_message_2
     } do
-      messages = [small_message_1, large_message_1, large_message_2]
+      messages = [small_message, large_message_1, large_message_2]
 
       log =
         capture_log(fn ->
@@ -103,7 +103,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
         end)
 
       expected_large_message_error_log = "Message in queue is too large, will not push to Kafka"
-      brod_message = BrodApi.to_kafka_message(small_message_1)
+      brod_message = BrodApi.to_kafka_message(small_message)
       assert_called(:brod.produce(_client_id, ^topic, 0, :undefined, [^brod_message]))
 
       assert 2 == (log |> String.split(expected_large_message_error_log) |> length()) - 1
@@ -121,7 +121,7 @@ defmodule Kafee.Producer.AsyncWorkerTest do
       large_message_1: large_message_1,
       large_message_2: large_message_2
     } do
-      messages = [large_message_1, small_message_1, large_message_2]
+      messages = [large_message_1, small_message, large_message_2]
 
       log =
         capture_log(fn ->
