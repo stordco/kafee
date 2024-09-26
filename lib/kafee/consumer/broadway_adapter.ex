@@ -131,14 +131,14 @@ defmodule Kafee.Consumer.BroadwayAdapter do
       ]
     ]
 
-    case Keyword.fetch(adapter_options, :default_batch_config) do
-      {:ok, default_batch_config} ->
+    case Keyword.fetch(adapter_options, :batching) do
+      {:ok, batching} ->
         Keyword.merge(base_config,
           batchers: [
             default: [
-              concurrency: default_batch_config[:concurrency],
-              batch_size: default_batch_config[:batch_size],
-              batch_timeout: default_batch_config[:batch_timeout]
+              concurrency: batching[:concurrency],
+              batch_size: batching[:size],
+              batch_timeout: batching[:timeout]
             ]
           ]
         )
@@ -165,7 +165,7 @@ defmodule Kafee.Consumer.BroadwayAdapter do
       }) do
     hydrated_message = %{message | metadata: metadata |> Map.put(:consumer, consumer) |> Map.put(:options, options)}
     {:ok, adapter_options} = validate_adapter_options(options)
-    batch_config = adapter_options[:default_batch_config]
+    batch_config = adapter_options[:batching]
 
     if batch_config do
       hydrated_message
@@ -178,9 +178,9 @@ defmodule Kafee.Consumer.BroadwayAdapter do
   @impl Broadway
   def handle_batch(:default, messages, _batch_info, context) do
     {:ok, adapter_options} = validate_adapter_options(context[:options])
-    batch_config = adapter_options[:default_batch_config]
+    batch_config = adapter_options[:batching]
 
-    if batch_config[:run_batch_in_async] do
+    if batch_config[:async_run] do
       tasks = Enum.map(messages, &Task.async(fn -> do_consumer_work(&1) end))
 
       Task.await_many(tasks)
