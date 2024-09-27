@@ -107,7 +107,10 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
       assert 100 == task_pids |> Enum.uniq() |> length
     end
 
-    test "it handles errors and bubbles errors up to the consumer handle_failure", %{brod_client_id: brod, topic: topic} do
+    test "it handles errors and bubbles just the messages with errors up to the consumer handle_failure", %{
+      brod_client_id: brod,
+      topic: topic
+    } do
       # key with 101 will trigger an error
       for i <- 101..200 do
         :ok = :brod.produce_sync(brod, topic, :hash, "key-#{i}", "test value")
