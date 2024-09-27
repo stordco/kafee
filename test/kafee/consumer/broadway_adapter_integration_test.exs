@@ -30,60 +30,70 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
     end
   end
 
-  setup %{topic: topic} do
-    Application.put_env(:kafee, :test_pid, self())
+  describe "consumer without batching" do
+    setup %{topic: topic} do
+      Application.put_env(:kafee, :test_pid, self())
 
-    start_supervised!(
-      {MyConsumer,
-       [
-         host: KafkaApi.host(),
-         port: KafkaApi.port(),
-         topic: topic,
-         consumer_group_id: KafkaApi.generate_consumer_group_id()
-       ]}
-    )
+      start_supervised!(
+        {MyConsumer,
+         [
+           host: KafkaApi.host(),
+           port: KafkaApi.port(),
+           topic: topic,
+           consumer_group_id: KafkaApi.generate_consumer_group_id()
+         ]}
+      )
 
-    start_supervised!(
-      {MyConsumerBatched,
-       [
-         host: KafkaApi.host(),
-         port: KafkaApi.port(),
-         topic: topic,
-         consumer_group_id: KafkaApi.generate_consumer_group_id()
-       ]}
-    )
+      Process.sleep(10_000)
 
-    Process.sleep(10_000)
-
-    :ok
-  end
-
-  test "it processes messages", %{brod_client_id: brod, topic: topic} do
-    for i <- 1..100 do
-      :ok = :brod.produce_sync(brod, topic, :hash, "key-#{i}", "test value")
+      :ok
     end
 
-    for i <- 1..100 do
-      key = "key-#{i}"
-      assert_receive {:consume_message, %Kafee.Consumer.Message{key: ^key}}
-    end
-  end
-
-  # credo:disable-for-lines:2 Credo.Check.Readability.StrictModuleLayout
-  @tag topic: "my-test-topic-for-batch"
-  test "it processes messages asynchronously in batches", %{brod_client_id: brod, topic: topic} do
-    for i <- 1..100 do
-      :ok = :brod.produce_sync(brod, topic, :hash, "key-#{i}", "test value")
-    end
-
-    task_pids =
+    test "it processes messages", %{brod_client_id: brod, topic: topic} do
       for i <- 1..100 do
-        key = "key-#{i}"
-        assert_receive {:consume_message, %Kafee.Consumer.Message{key: ^key}, from_pid}
-        from_pid
+        :ok = :brod.produce_sync(brod, topic, :hash, "key-#{i}", "test value")
       end
 
-    # assert they were done asynchronously
-    assert 100 == task_pids |> Enum.uniq() |> length
+      for i <- 1..100 do
+        key = "key-#{i}"
+        assert_receive {:consume_message, %Kafee.Consumer.Message{key: ^key}}
+      end
+    end
+  end
+
+  describe "consumer with batching" do
+    setup %{topic: topic} do
+      Application.put_env(:kafee, :test_pid, self())
+
+      start_supervised!(
+        {MyConsumerBatched,
+         [
+           host: KafkaApi.host(),
+           port: KafkaApi.port(),
+           topic: topic,
+           consumer_group_id: KafkaApi.generate_consumer_group_id()
+         ]}
+      )
+
+      Process.sleep(10_000)
+
+      :ok
+    end
+
+    test "it processes messages asynchronously in batches", %{brod_client_id: brod, topic: topic} do
+      for i <- 1..100 do
+        :ok = :brod.produce_sync(brod, topic, :hash, "key-#{i}", "test value")
+      end
+
+      task_pids =
+        for i <- 1..100 do
+          key = "key-#{i}"
+          assert_receive {:consume_message, %Kafee.Consumer.Message{key: ^key}, from_pid}
+          from_pid
+        end
+
+      # assert they were done asynchronously
+      assert 100 == task_pids |> Enum.uniq() |> length
+    end
   end
 end
