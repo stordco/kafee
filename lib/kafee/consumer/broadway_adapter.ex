@@ -78,7 +78,6 @@ defmodule Kafee.Consumer.BroadwayAdapter do
   @behaviour Kafee.Consumer.Adapter
 
   require Logger
-  alias Kafee.Consumer.BroadwayAdapter
 
   @typedoc "All available options for a Kafee.Consumer.BroadwayAdapter module"
   @type options() :: [unquote(NimbleOptions.option_typespec(@options_schema))]
@@ -182,13 +181,9 @@ defmodule Kafee.Consumer.BroadwayAdapter do
     batch_config = adapter_options[:batching]
 
     if batch_config[:async_run] do
-      tasks =
-        Enum.map(
-          messages,
-          &Task.Supervisor.async_nolink(BroadwayAdapter.TaskSupervisor, fn -> do_consumer_work(&1) end)
-        )
-
-      Task.await_many(tasks)
+      # No need for Task.Supervisor as it is not running under a GenServer,
+      # and Kafee.Consumer.Adapter.push_message does already have error handling.
+      Enum.each(messages, &Task.async(fn -> do_consumer_work(&1) end))
     else
       Enum.each(messages, &do_consumer_work/1)
     end
