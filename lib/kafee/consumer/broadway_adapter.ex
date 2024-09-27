@@ -196,9 +196,7 @@ defmodule Kafee.Consumer.BroadwayAdapter do
       tasks =
         Enum.map(
           messages,
-          &Task.Supervisor.async_nolink({:via, PartitionSupervisor, {BroadwayAdapter.TaskSupervisors, self()}}, fn ->
-            do_consumer_work(&1)
-          end)
+          &Task.Supervisor.async_nolink(BroadwayAdapter.TaskSupervisor, fn -> do_consumer_work(&1) end)
         )
 
       Task.await_many(tasks)

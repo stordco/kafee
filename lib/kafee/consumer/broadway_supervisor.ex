@@ -19,9 +19,7 @@ defmodule Kafee.Consumer.BroadwaySupervisor do
   def init({consumer, options}) do
     children = [
       {BroadwayAdapter, [consumer, options]},
-      # Using PartitionSupervisor to protect against Task.Supervisor being the bottleneck.
-      # See: https://hexdocs.pm/elixir/1.15.6/Task.Supervisor.html#module-scalability-and-partitioning
-      {PartitionSupervisor, child_spec: Task.Supervisor, name: BroadwayAdapter.TaskSupervisors}
+      {Task.Supervisor, name: BroadwayAdapter.TaskSupervisor}
     ]
 
     Supervisor.init(children, strategy: :one_for_one)
