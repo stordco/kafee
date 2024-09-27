@@ -80,8 +80,6 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
     end
   end
 
-  # credo:disable-for-lines:2 Credo.Check.Readability.StrictModuleLayout
-  @tag topic: "my-test-topic-for-batch"
   test "it processes messages asynchronously in batches", %{brod_client_id: brod, topic: topic} do
     for i <- 1..100 do
       :ok = :brod.produce_sync(brod, topic, :hash, "key-#{i}", "test value")
