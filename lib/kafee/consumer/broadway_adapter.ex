@@ -84,17 +84,6 @@ defmodule Kafee.Consumer.BroadwayAdapter do
   @type options() :: [unquote(NimbleOptions.option_typespec(@options_schema))]
 
   @doc false
-  def child_spec(ini_args) do
-    default = %{
-      id: __MODULE__,
-      start: {__MODULE__, :start_link, ini_args},
-      type: :supervisor
-    }
-
-    Supervisor.child_spec(default, [])
-  end
-
-  @doc false
   @impl Kafee.Consumer.Adapter
   @spec start_link(module(), Kafee.Consumer.options()) :: Supervisor.on_start()
   def start_link(consumer, options) do

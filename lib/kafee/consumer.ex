@@ -179,7 +179,6 @@ defmodule Kafee.Consumer do
   [dsx]: https://github.com/stordco/data-streams-ex
   [tel-span]: https://hexdocs.pm/telemetry/telemetry.html#span/3
   """
-  alias Kafee.Consumer.{BroadwayAdapter, BroadwaySupervisor}
 
   @typedoc "All available options for a Kafee.Consumer module"
   @type options() :: [unquote(NimbleOptions.option_typespec(@options_schema))]
@@ -259,8 +258,6 @@ defmodule Kafee.Consumer do
     with {:ok, options} <- NimbleOptions.validate(options, @options_schema) do
       case options[:adapter] do
         nil -> :ignore
-        {BroadwayAdapter, __options} -> BroadwaySupervisor.start_link(consumer, options)
-        BroadwayAdapter -> BroadwaySupervisor.start_link(consumer, options)
         adapter when is_atom(adapter) -> adapter.start_link(consumer, options)
         {adapter, __options} -> adapter.start_link(consumer, options)
       end
