@@ -177,10 +177,10 @@ defmodule Kafee.Consumer.BroadwayAdapter do
   @impl Broadway
   def handle_message(:default, %Broadway.Message{metadata: metadata} = message, %{
         consumer: consumer,
-        options: options
+        options: options,
+        adapter_options: adapter_options
       }) do
     hydrated_message = %{message | metadata: metadata |> Map.put(:consumer, consumer) |> Map.put(:options, options)}
-    {:ok, adapter_options} = validate_adapter_options(options)
     batch_config = adapter_options[:batching]
 
     if batch_config do
