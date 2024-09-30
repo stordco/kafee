@@ -27,7 +27,7 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
     def handle_message(%Kafee.Consumer.Message{} = message) do
       test_pid = Application.fetch_env!(:kafee, :test_pid)
 
-      if message.key == "key-101" or message.key == "key-102" do
+      if String.starts_with?(message.key, "key-fail") do
         raise "Error handling a message for #{message.key}"
       end
 
@@ -100,24 +100,26 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
     brod_client_id: brod,
     topic: topic
   } do
-    # key with 101 will trigger an error
-    for i <- 101..200 do
+    :ok = :brod.produce_sync(brod, topic, :hash, "key-fail-1", "test value 1")
+    :ok = :brod.produce_sync(brod, topic, :hash, "key-fail-2", "test value 2")
+
+    for i <- 1..100 do
       :ok = :brod.produce_sync(brod, topic, :hash, "key-#{i}", "test value")
     end
 
     task_pids =
-      for i <- 103..200 do
+      for i <- 1..100 do
         key = "key-#{i}"
         assert_receive {:consume_message, %Kafee.Consumer.Message{key: ^key}, from_pid}
         from_pid
       end
 
     # assert they were done asynchronously
-    assert 98 == task_pids |> Enum.uniq() |> length
+    assert 100 == task_pids |> Enum.uniq() |> length
 
-    assert_receive {:error_reason, "%RuntimeError{message: \"Error handling a message for key-101\"}"}
-    assert_receive {:error_reason, "%RuntimeError{message: \"Error handling a message for key-102\"}"}
-    assert_receive {:error_messages, %Kafee.Consumer.Message{key: "key-101"}}
-    assert_receive {:error_messages, %Kafee.Consumer.Message{key: "key-102"}}
+    assert_receive {:error_reason, "%RuntimeError{message: \"Error handling a message for key-fail-1\"}"}
+    assert_receive {:error_reason, "%RuntimeError{message: \"Error handling a message for key-fail-2\"}"}
+    assert_receive {:consume_message, %Kafee.Consumer.Message{key: "key-1"}}
+    assert_receive {:consume_message, %Kafee.Consumer.Message{key: "key-100"}}
   end
 end
