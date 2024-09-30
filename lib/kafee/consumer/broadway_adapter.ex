@@ -192,8 +192,14 @@ defmodule Kafee.Consumer.BroadwayAdapter do
   end
 
   @impl Broadway
-  def handle_batch(:default, messages, _batch_info, context) do
-    {:ok, adapter_options} = validate_adapter_options(context[:options])
+  def handle_batch(
+        :default,
+        messages,
+        _batch_info,
+        %{
+          adapter_options: adapter_options
+        } = _context
+      ) do
     batch_config = adapter_options[:batching]
 
     if batch_config[:async_run] do
