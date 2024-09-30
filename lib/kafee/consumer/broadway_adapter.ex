@@ -43,19 +43,34 @@ defmodule Kafee.Consumer.BroadwayAdapter do
                       keys: [
                         concurrency: [
                           required: true,
-                          type: :non_neg_integer
+                          type: :non_neg_integer,
+                          doc: """
+                          Set concurrency for batches.
+                          Note that typically due to the limitation of Kafka a single processes will be assigned per partition.
+                          For example, for a 12 partition topic, assigning 50 concurrent batches to run will only end up
+                          using around 12 processes. Rest of the concurrency capacity will be not used.
+                          """
                         ],
                         size: [
                           required: true,
-                          type: :non_neg_integer
+                          type: :non_neg_integer,
+                          doc: """
+                          Max number of messages to have per batch.
+                          """
                         ],
                         timeout: [
                           default: 1_000,
-                          type: :non_neg_integer
+                          type: :non_neg_integer,
+                          doc: """
+                          Max time allowed to wait for adding messages into batch until batch starts processing.
+                          """
                         ],
                         async_run: [
                           default: false,
-                          type: :boolean
+                          type: :boolean,
+                          doc: """
+                          Flag that decides batch processing will be done asynchronously.
+                          """
                         ]
                       ]
                     ]
