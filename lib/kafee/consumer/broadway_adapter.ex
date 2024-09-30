@@ -241,7 +241,7 @@ defmodule Kafee.Consumer.BroadwayAdapter do
     # errors.
 
     error = %RuntimeError{message: "Error converting a Broadway message to Kafee.Consumer.Message"}
-    consumer.handle_failure(error, messages)
+    messages |> List.wrap() |> Enum.each(&consumer.handle_failure(error, &1))
 
     messages
   end
