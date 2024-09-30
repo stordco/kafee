@@ -188,8 +188,6 @@ defmodule Kafee.Consumer do
 
   @doc "Handles an error while processing a Kafka message"
   @callback handle_failure(any(), Kafee.Consumer.Message.t()) :: :ok
-  # Note for BroadwayAdapater, it will always be a list of messages
-  @callback handle_failure(any(), [Kafee.Consumer.Message.t()]) :: :ok
 
   @doc false
   defmacro __using__(opts \\ []) do
@@ -228,8 +226,8 @@ defmodule Kafee.Consumer do
       end
 
       @impl Kafee.Consumer
-      def handle_failure(error, message_or_messages) do
-        inspected_message = inspect(message_or_messages)
+      def handle_failure(error, %Kafee.Consumer.Message{} = message) do
+        inspected_message = inspect(message)
         inspected_error = inspect(error)
 
         raise RuntimeError,
