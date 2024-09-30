@@ -126,7 +126,8 @@ defmodule Kafee.Consumer.BroadwayAdapter do
       context: %{
         consumer: consumer,
         consumer_group: options[:consumer_group_id],
-        options: options
+        options: options,
+        adapter_options: adapter_options
       },
       producer: [
         module:
