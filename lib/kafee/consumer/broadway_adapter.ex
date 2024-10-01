@@ -1,4 +1,8 @@
 defmodule Kafee.Consumer.BroadwayAdapter do
+  @batching_default_options [
+    concurrency: System.schedulers_online() * 2,
+    batch_size: 1
+  ]
   @options_schema NimbleOptions.new!(
                     connect_timeout: [
                       default: :timer.seconds(10),
@@ -31,13 +35,16 @@ defmodule Kafee.Consumer.BroadwayAdapter do
                       required: false,
                       doc: """
                       Optional.
-                      Options for setting `batches` in Broadway.
+                      Options for `batches` configuration in Broadway.
+
                       See its [documentation](https://hexdocs.pm/broadway/Broadway.html#module-the-default-batcher).
 
-                      Also, note that only the `:default` batcher key is supported.
+                      ## Notes
+                      1. Batching is _always turned on_, with a size of 1.
+                      2. Only the `:default` batcher key is supported.
+                      3. On top of this, there's an optional `async_run` option,
+                         where it will run `Kafee.Consumer.Adapter.push_message` asynchronously across all messages in that batch.
 
-                      On top of this, there's an optional `async_run` option,
-                      where it will run `Kafee.Consumer.Adapter.push_message` asynchronously across all messages in that batch.
                       """,
                       type: :non_empty_keyword_list,
                       keys: [
@@ -49,6 +56,8 @@ defmodule Kafee.Consumer.BroadwayAdapter do
                           Note that typically due to the limitation of Kafka a single processes will be assigned per partition.
                           For example, for a 12 partition topic, assigning 50 concurrent batches to run will only end up
                           using around 12 processes. Rest of the concurrency capacity will be not used.
+
+                          Default is System.schedulers_online() * 2, which is recommended by BroadwayKafka.
                           """
                         ],
                         size: [
@@ -56,6 +65,8 @@ defmodule Kafee.Consumer.BroadwayAdapter do
                           type: :non_neg_integer,
                           doc: """
                           Max number of messages to have per batch.
+
+                          Default size is 1.
                           """
                         ],
                         timeout: [
@@ -87,6 +98,13 @@ defmodule Kafee.Consumer.BroadwayAdapter do
   ## Options
 
   #{NimbleOptions.docs(@options_schema)}
+
+  ## Note that batching is always turned on
+  To simplify the options and logic paths on the configuration, we took a pragmatic approach.
+
+  [Batching](https://hexdocs.pm/broadway_kafka/BroadwayKafka.Producer.html#module-concurrency-and-partitioning)
+  is always turned on, and default size will be 1 unless increased.
+
   """
 
   @behaviour Broadway
@@ -160,7 +178,11 @@ defmodule Kafee.Consumer.BroadwayAdapter do
         )
 
       :error ->
-        base_config
+        Keyword.merge(base_config,
+          batchers: [
+            default: @batching_default_options
+          ]
+        )
     end
   end
 
@@ -177,18 +199,9 @@ defmodule Kafee.Consumer.BroadwayAdapter do
   @impl Broadway
   def handle_message(:default, %Broadway.Message{metadata: metadata} = message, %{
         consumer: consumer,
-        options: options,
-        adapter_options: adapter_options
+        options: options
       }) do
-    hydrated_message = %{message | metadata: metadata |> Map.put(:consumer, consumer) |> Map.put(:options, options)}
-    batch_config = adapter_options[:batching]
-
-    if batch_config do
-      hydrated_message
-    else
-      do_consumer_work(hydrated_message)
-      message
-    end
+    %{message | metadata: metadata |> Map.put(:consumer, consumer) |> Map.put(:options, options)}
   end
 
   @impl Broadway
