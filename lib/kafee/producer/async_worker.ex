@@ -1,10 +1,28 @@
 defmodule Kafee.Producer.AsyncWorker do
-  # A simple GenServer for every topic * partition in Kafka. It holds an
-  # erlang `:queue` and sends messages every so often. On process close, we
-  # attempt to send all messages to Kafka, and in the unlikely event we can't
-  # we write all messages to the logs.
+  @moduledoc """
+  A simple GenServer for every topic * partition in Kafka. It holds an
+  erlang `:queue` and sends messages every so often.
 
-  @moduledoc false
+  ## Note on termination
+
+  On process close, we attempt to send all messages to Kafka,
+  and in the unlikely event we can't, we write all messages to the logs.
+
+  ## When message is larger than what Kafka allows
+
+  ### Configuration of `max_request_bytes` option in `Kafee.Producer.AsyncAdapter`
+
+  Although you'd set the max size of messages over at Kafka's cloud settings,
+  it is actually the `state.max_request_bytes` that should be set correctly in order for any
+  size based triaging can happen. Therefore setting that is critical for large message handling.
+
+  ### During message queuing
+
+  Note that at `handle_cast({:queue, messages}, state)`, code will drop large messages so they don't actually get into the queue.
+  These dropped messsages will show up in logs - please see the defp `queue_without_large_messages/2`.
+  The messages should be picked up from the logs and should be triaged accordingly.
+
+  """
 
   use GenServer,
     shutdown: :timer.seconds(25)
@@ -226,10 +244,13 @@ defmodule Kafee.Producer.AsyncWorker do
   @doc false
   def handle_info(_, state), do: {:noreply, state}
 
-  # A simple request to add more messages to the queue. Nothing fancy here.
+  # A simple request to add more messages to the queue.
+  # Note: will drop large messages and not add it to queue.
   @doc false
   def handle_cast({:queue, messages}, state) do
-    new_queue = :queue.join(state.queue, :queue.from_list(messages))
+    new_messages_queue = messages |> :queue.from_list() |> queue_without_large_messages(state.max_request_bytes)
+    new_queue = :queue.join(state.queue, new_messages_queue)
+
     emit_queue_telemetry(state, :queue.len(new_queue))
 
     Process.send_after(self(), :send, state.throttle_ms)
@@ -252,7 +273,13 @@ defmodule Kafee.Producer.AsyncWorker do
   def terminate(_reason, %{send_task: nil} = state) do
     # We only focus on triaging the queue in state. If there are messages too big, we log and don't send.
     # Update state with queue just with messages that are acceptable
-    state = %{state | queue: state_queue_without_large_messages(state)}
+    state = %{state | queue: queue_without_large_messages(state.queue, state.max_request_bytes)}
+
+    count = :queue.len(state.queue)
+
+    if count > 0 do
+      Logger.info("Attempting to send #{count} messages to Kafka before terminate")
+    end
 
     terminate_send(state)
   end
@@ -316,21 +343,21 @@ defmodule Kafee.Producer.AsyncWorker do
       :ok
   end
 
-  defp state_queue_without_large_messages(state) do
+  defp queue_without_large_messages(queue, max_request_bytes) do
     # messages_beyond_max_bytes are going to be logged and not processed,
     # as they are individually already over max_request_bytes in size.
 
     {messages_within_max_bytes_queue, messages_beyond_max_bytes_reversed} =
       :queue.fold(
         fn message, {acc_queue_messages_within_limit, acc_messages_beyond_limit} ->
-          if message_within_max_bytes?(message, state.max_request_bytes) do
+          if message_within_max_bytes?(message, max_request_bytes) do
             {:queue.in(message, acc_queue_messages_within_limit), acc_messages_beyond_limit}
           else
             {acc_queue_messages_within_limit, [message | acc_messages_beyond_limit]}
           end
         end,
         {:queue.new(), []},
-        state.queue
+        queue
       )
 
     messages_beyond_max_bytes = Enum.reverse(messages_beyond_max_bytes_reversed)
@@ -338,12 +365,6 @@ defmodule Kafee.Producer.AsyncWorker do
     Enum.each(messages_beyond_max_bytes, fn message ->
       Logger.error("Message in queue is too large, will not push to Kafka", data: message)
     end)
-
-    count = :queue.len(messages_within_max_bytes_queue)
-
-    if count > 0 do
-      Logger.info("Attempting to send #{count} messages to Kafka before terminate")
-    end
 
     messages_within_max_bytes_queue
   end
