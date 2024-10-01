@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.1.2](https://github.com/stordco/kafee/compare/v3.1.1...v3.1.2) (2024-09-26)
+
+
+### Bug Fixes
+
+* Flaky test ([#104](https://github.com/stordco/kafee/issues/104)) ([ec5b2fb](https://github.com/stordco/kafee/commit/ec5b2fb51bc3c809adf313e77a4393c7e3e9b6e0))
+
+
+### Miscellaneous
+
+* Sync files with stordco/common-config-elixir ([#98](https://github.com/stordco/kafee/issues/98)) ([0ba2a00](https://github.com/stordco/kafee/commit/0ba2a003a4bd9fa7c60fee87e7178578568e2be7))
+
 ## [3.1.1](https://github.com/stordco/kafee/compare/v3.1.0...v3.1.1) (2024-09-23)
 
 
