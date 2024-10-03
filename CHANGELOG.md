@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.0](https://github.com/stordco/kafee/compare/v3.1.2...v3.2.0) (2024-10-01)
+
+
+### Features
+
+* SIGNAL-7060 preemtively drop large messages from queue ([#101](https://github.com/stordco/kafee/issues/101)) ([0baeae8](https://github.com/stordco/kafee/commit/0baeae8d0bfef5ff33412287113275f8228b50ca))
+
 ## [3.1.2](https://github.com/stordco/kafee/compare/v3.1.1...v3.1.2) (2024-09-26)
 
 
