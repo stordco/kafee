@@ -197,11 +197,9 @@ defmodule Kafee.Consumer.BroadwayAdapter do
 
   @doc false
   @impl Broadway
-  def handle_message(:default, %Broadway.Message{metadata: metadata} = message, %{
-        consumer: consumer,
-        options: options
-      }) do
-    %{message | metadata: metadata |> Map.put(:consumer, consumer) |> Map.put(:options, options)}
+  def handle_message(:default, %Broadway.Message{} = message, _context) do
+    # %{message | metadata: metadata |> Map.put(:consumer, consumer) |> Map.put(:options, options)}
+    message
   end
 
   @impl Broadway
@@ -210,7 +208,9 @@ defmodule Kafee.Consumer.BroadwayAdapter do
         messages,
         _batch_info,
         %{
-          adapter_options: adapter_options
+          adapter_options: adapter_options,
+          consumer: consumer,
+          options: options
         } = _context
       ) do
     batch_config = adapter_options[:batching]
@@ -218,18 +218,22 @@ defmodule Kafee.Consumer.BroadwayAdapter do
     if batch_config[:async_run] do
       # No need for Task.Supervisor as it is not running under a GenServer,
       # and Kafee.Consumer.Adapter.push_message does already have error handling.
-      Enum.each(messages, &Task.async(fn -> do_consumer_work(&1) end))
+      Enum.each(messages, &Task.async(fn -> do_consumer_work(&1, consumer, options) end))
     else
-      Enum.each(messages, &do_consumer_work/1)
+      Enum.each(messages, fn message -> do_consumer_work(message, consumer, options) end)
     end
 
     messages
   end
 
-  defp do_consumer_work(%Broadway.Message{
-         data: value,
-         metadata: %{consumer: consumer, options: options} = metadata
-       }) do
+  defp do_consumer_work(
+         %Broadway.Message{
+           data: value,
+           metadata: metadata
+         },
+         consumer,
+         options
+       ) do
     Kafee.Consumer.Adapter.push_message(
       consumer,
       options,
