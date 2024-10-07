@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.0](https://github.com/stordco/kafee/compare/v3.2.0...v3.3.0) (2024-10-07)
+
+
+### Features
+
+* Additional options to allow for batching and asynchronous batch handling for BroadwayAdapter ([#103](https://github.com/stordco/kafee/issues/103)) ([f003f0b](https://github.com/stordco/kafee/commit/f003f0bf990b60343e09df0e8fd95f21ae290560))
+
 ## [3.2.0](https://github.com/stordco/kafee/compare/v3.1.2...v3.2.0) (2024-10-01)
 
 
