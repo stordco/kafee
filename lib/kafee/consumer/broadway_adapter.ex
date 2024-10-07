@@ -198,7 +198,6 @@ defmodule Kafee.Consumer.BroadwayAdapter do
   @doc false
   @impl Broadway
   def handle_message(:default, %Broadway.Message{} = message, _context) do
-    # %{message | metadata: metadata |> Map.put(:consumer, consumer) |> Map.put(:options, options)}
     message
   end
 
