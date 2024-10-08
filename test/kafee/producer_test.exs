@@ -14,6 +14,7 @@ defmodule Kafee.ProducerTest do
     test "allows setting config via using macro" do
       defmodule MyTestProducer do
         use Kafee.Producer,
+          otp_app: :kafee,
           adapter: Kafee.Producer.TestAdapter,
           topic: "my super-amazing-test-topic",
           partition_fun: :random
