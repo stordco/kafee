@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.1](https://github.com/stordco/kafee/compare/v3.3.0...v3.3.1) (2024-10-17)
+
+
+### Bug Fixes
+
+* UPDATE: kafee async worker to log only the headers + topic for large message error instead of the payload as it can go over the datadog limit ([#108](https://github.com/stordco/kafee/issues/108)) ([1d98363](https://github.com/stordco/kafee/commit/1d98363f8970dad7ce355fff1734e76caddd388e))
+
 ## [3.3.0](https://github.com/stordco/kafee/compare/v3.2.0...v3.3.0) (2024-10-07)
 
 
