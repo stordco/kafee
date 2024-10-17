@@ -177,7 +177,7 @@ defmodule Kafee.Producer.AsyncWorker do
       case error do
         {:error, {:producer_down, {:not_retriable, {_, _, _, _, :message_too_large}}}}
         when length(sent_messages) == 1 ->
-          Logger.error("Message in queue is too large", data: sent_messages)
+          Logger.error("Message in queue is too large", data: data_to_log_for_large_message_error(sent_messages))
           %{state | queue: :queue.drop(queue)}
 
         {:error, {:producer_down, {:not_retriable, {_, _, _, _, :message_too_large}}}} ->
@@ -363,7 +363,9 @@ defmodule Kafee.Producer.AsyncWorker do
     messages_beyond_max_bytes = Enum.reverse(messages_beyond_max_bytes_reversed)
 
     Enum.each(messages_beyond_max_bytes, fn message ->
-      Logger.error("Message in queue is too large, will not push to Kafka", data: message)
+      Logger.error("Message in queue is too large, will not push to Kafka",
+        data: data_to_log_for_large_message_error(message)
+      )
     end)
 
     messages_within_max_bytes_queue
@@ -371,6 +373,14 @@ defmodule Kafee.Producer.AsyncWorker do
 
   defp message_within_max_bytes?(message, max_request_bytes) do
     max_request_bytes > kafka_message_size_bytes(message)
+  end
+
+  defp data_to_log_for_large_message_error(%Kafee.Producer.Message{} = message) do
+    message.headers |> Enum.into(%{}) |> Map.put(:topic, message.topic)
+  end
+
+  defp data_to_log_for_large_message_error([%Kafee.Producer.Message{} = message]) do
+    data_to_log_for_large_message_error(message)
   end
 
   @spec emit_queue_telemetry(State.t(), non_neg_integer()) :: :ok
