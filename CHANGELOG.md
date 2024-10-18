@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.4.0](https://github.com/stordco/kafee/compare/v3.3.1...v3.4.0) (2024-10-18)
+
+
+### Features
+
+* SIGNAL-7190 Task.await_many for batch operations ([#110](https://github.com/stordco/kafee/issues/110)) ([79c9f42](https://github.com/stordco/kafee/commit/79c9f42d2c307139d0f7e784d020be7ab3686682))
+
 ## [3.3.1](https://github.com/stordco/kafee/compare/v3.3.0...v3.3.1) (2024-10-17)
 
 
