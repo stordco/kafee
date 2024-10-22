@@ -81,6 +81,7 @@ defmodule Kafee.Consumer.BroadwayAdapter do
                           type: :boolean,
                           doc: """
                           Flag that decides batch processing will be done asynchronously.
+                          The async operations run through Task.await_many/2 with a max timeout of 120_000 msec.
                           """
                         ]
                       ]
@@ -218,7 +219,7 @@ defmodule Kafee.Consumer.BroadwayAdapter do
       # No need for Task.Supervisor as it is not running under a GenServer,
       # and Kafee.Consumer.Adapter.push_message does already have error handling.
       tasks = Enum.map(messages, &Task.async(fn -> do_consumer_work(&1, consumer, options) end))
-      Task.await_many(tasks)
+      Task.await_many(tasks, 120_000)
     else
       Enum.each(messages, fn message -> do_consumer_work(message, consumer, options) end)
     end
