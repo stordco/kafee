@@ -81,7 +81,7 @@ defmodule Kafee.Consumer.BroadwayAdapter do
                           type: :boolean,
                           doc: """
                           Flag that decides batch processing will be done asynchronously.
-                          The async operations run through Task.await_many/2 with a max timeout of 120_000 msec.
+                          The async operations run through Task.await_many/2 with an infinity timeout.
                           """
                         ]
                       ]
