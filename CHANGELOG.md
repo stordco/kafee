@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.4.2](https://github.com/stordco/kafee/compare/v3.4.1...v3.4.2) (2024-10-23)
+
+
+### Miscellaneous
+
+* Update documentation ([#114](https://github.com/stordco/kafee/issues/114)) ([7c9947d](https://github.com/stordco/kafee/commit/7c9947d716367a2a267f47a859388b22c2051fa8))
+
 ## [3.4.1](https://github.com/stordco/kafee/compare/v3.4.0...v3.4.1) (2024-10-23)
 
 
