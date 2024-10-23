@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.4.1](https://github.com/stordco/kafee/compare/v3.4.0...v3.4.1) (2024-10-23)
+
+
+### Miscellaneous
+
+* SIGNAL-7217 increase timeout for Task.await_many to account for 15 sec DB timeouts + buffer ([#112](https://github.com/stordco/kafee/issues/112)) ([38ab6fc](https://github.com/stordco/kafee/commit/38ab6fcaeeee8796444cf9e5d0105588cfb76276))
+
 ## [3.4.0](https://github.com/stordco/kafee/compare/v3.3.1...v3.4.0) (2024-10-18)
 
 
