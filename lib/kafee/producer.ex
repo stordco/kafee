@@ -204,7 +204,7 @@ defmodule Kafee.Producer do
 
   """
 
-  @typedoc "All available options for a Kafee.Consumer module"
+  @typedoc "All available options for a Kafee.Producer module"
   @type options() :: [unquote(NimbleOptions.option_typespec(@options_schema))]
 
   @doc false
