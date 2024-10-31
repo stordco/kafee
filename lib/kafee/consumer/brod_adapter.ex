@@ -46,7 +46,7 @@ defmodule Kafee.Consumer.BrodAdapter do
 
   require Logger
 
-  @typedoc "All available options for a Kafee.Consumer.BroadwayAdapter module"
+  @typedoc "All available options for a Kafee.Consumer.BrodAdapter module"
   @type options() :: [unquote(NimbleOptions.option_typespec(@options_schema))]
 
   @doc false
