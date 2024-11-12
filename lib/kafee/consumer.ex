@@ -232,7 +232,8 @@ defmodule Kafee.Consumer do
         inspected_message = inspect(message)
         inspected_error = inspect(error)
 
-        Logger.error("""
+        Logger.error(
+          """
           An error has been raised while processing a Kafka message.
 
           Message:
@@ -240,7 +241,10 @@ defmodule Kafee.Consumer do
 
           Error:
           #{inspected_error}
-        """, kafee_message: message, error: error)
+          """,
+          kafee_message: message,
+          error: error
+        )
       end
 
       defoverridable child_spec: 1, handle_message: 1, handle_failure: 2
