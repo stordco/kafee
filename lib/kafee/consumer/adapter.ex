@@ -46,7 +46,7 @@ defmodule Kafee.Consumer.Adapter do
   """
   @spec push_message(atom(), Kafee.Consumer.options(), Message.t()) :: :ok
   def push_message(consumer, options, %Message{} = message) do
-    Message.set_logger_request_id(message)
+    Message.set_logger_metadata(message)
 
     span_name = Message.get_otel_span_name(message)
     span_attributes = Message.get_otel_span_attributes(message)
