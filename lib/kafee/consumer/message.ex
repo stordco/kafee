@@ -166,7 +166,7 @@ defmodule Kafee.Consumer.Message do
       :partition,
       :offset
     ]
-    |> Enum.map(fn key -> {key, Map.get(message, key)})
+    |> Enum.map(fn key -> {key, Map.get(message, key)} end)
     |> Logger.metadata()
   end
 end
