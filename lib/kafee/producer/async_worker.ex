@@ -177,7 +177,10 @@ defmodule Kafee.Producer.AsyncWorker do
       case error do
         {:error, {:producer_down, {:not_retriable, {_, _, _, _, :message_too_large}}}}
         when length(sent_messages) == 1 ->
-          Logger.error("Message in queue is too large", data: data_to_log_for_large_message_error(sent_messages))
+          Logger.error("Message in queue is too large",
+            large_message_metadata: data_to_log_for_large_message_error(sent_messages)
+          )
+
           %{state | queue: :queue.drop(queue)}
 
         {:error, {:producer_down, {:not_retriable, {_, _, _, _, :message_too_large}}}} ->
@@ -364,7 +367,7 @@ defmodule Kafee.Producer.AsyncWorker do
 
     Enum.each(messages_beyond_max_bytes, fn message ->
       Logger.error("Message in queue is too large, will not push to Kafka",
-        data: data_to_log_for_large_message_error(message)
+        large_message_metadata: data_to_log_for_large_message_error(message)
       )
     end)
 
