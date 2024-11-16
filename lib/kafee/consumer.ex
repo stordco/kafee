@@ -229,20 +229,13 @@ defmodule Kafee.Consumer do
 
       @impl Kafee.Consumer
       def handle_failure(error, %Kafee.Consumer.Message{} = message) do
-        inspected_message = inspect(message)
-        inspected_error = inspect(error)
-
         Logger.error(
           """
           An error has been raised while processing a Kafka message.
 
-          Message:
-          #{inspected_message}
-
           Error:
-          #{inspected_error}
+          #{inspect(error)}
           """,
-          kafee_message: message,
           error: error
         )
       end
