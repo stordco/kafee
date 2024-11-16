@@ -154,19 +154,14 @@ defmodule Kafee.Consumer.Message do
   @doc false
   @spec set_logger_metadata(t()) :: no_return()
   def set_logger_metadata(%Message{} = message) do
-    if request_id = get_request_id(message) do
-      Logger.metadata(request_id: request_id)
-    else
-      Logger.metadata(request_id: nil)
-    end
-
-    [
-      :key,
-      :topic,
-      :partition,
-      :offset
-    ]
-    |> Enum.map(fn key -> {key, Map.get(message, key)} end)
-    |> Logger.metadata()
+    Logger.metadata([
+      {:"messaging.system", "kafka"},
+      {:"messaging.source.name", message.topic},
+      {:"messaging.kafka.message.key", message.key},
+      {:"messaging.kafka.consumer.group", message.consumer_group},
+      {:"messaging.kafka.partition", message.partition},
+      {:"messaging.kafka.message.offset", message.offset},
+      {:request_id, get_request_id(message)}
+    ])
   end
 end
