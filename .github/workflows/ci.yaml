@@ -264,4 +264,5 @@ jobs:
           scan-type: fs
           slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_SECURITY_ALERTS }}
+          update-db: false
 
