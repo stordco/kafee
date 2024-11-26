@@ -6,7 +6,7 @@ defmodule Kafee.MixProject do
       app: :kafee,
       name: "Kafee",
       description: "Let's get energized with Kafka!",
-      version: "3.4.1",
+      version: "3.5.0",
       elixir: "~> 1.11",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,

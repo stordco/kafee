@@ -1,5 +1,21 @@
 # Changelog
 
+## [3.5.0](https://github.com/stordco/kafee/compare/v3.4.1...v3.5.0) (2024-11-21)
+
+
+### Features
+
+* Set more consumer metadata on message processing ([#120](https://github.com/stordco/kafee/issues/120)) ([9f42529](https://github.com/stordco/kafee/commit/9f42529c6eaf3f8b48e11850d549531c9775cfe7))
+
+
+### Miscellaneous
+
+* A few grammar updates ([#121](https://github.com/stordco/kafee/issues/121)) ([1a01b52](https://github.com/stordco/kafee/commit/1a01b52f16cc67e1ed68ecb9741546797a59df2b))
+* Fix typo in BrodAdapter ([#118](https://github.com/stordco/kafee/issues/118)) ([8ddc754](https://github.com/stordco/kafee/commit/8ddc754e0c288e2d130855c9e6e5b73d7f48d84c))
+* Sync files with stordco/common-config-elixir ([#116](https://github.com/stordco/kafee/issues/116)) ([37bd7ff](https://github.com/stordco/kafee/commit/37bd7ff3052af41689281bba7020f949e1e2c7e4))
+* Update documentation ([#114](https://github.com/stordco/kafee/issues/114)) ([7c9947d](https://github.com/stordco/kafee/commit/7c9947d716367a2a267f47a859388b22c2051fa8))
+* Update typo in producer docs ([#117](https://github.com/stordco/kafee/issues/117)) ([ebea101](https://github.com/stordco/kafee/commit/ebea1019a325e4ed8bb943b04a0e50ea1810fa12))
+
 ## [3.4.1](https://github.com/stordco/kafee/compare/v3.4.0...v3.4.1) (2024-10-23)
 
 
