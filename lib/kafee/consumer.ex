@@ -76,6 +76,17 @@ defmodule Kafee.Consumer do
                       """,
                       required: true,
                       type: :string
+                    ],
+                    client_id: [
+                      doc: """
+                      A custom client id to use for the Kafka consumer.
+
+                      By default it will use the name of the module.
+
+                      This is useful when observing the stream lineage.
+                      """,
+                      required: false,
+                      type: :string
                     ]
                   )
 
@@ -200,7 +211,7 @@ defmodule Kafee.Consumer do
         full_opts = Keyword.merge(unquote(Macro.escape(opts)), args)
 
         %{
-          id: __MODULE__,
+          id: Keyword.get(full_opts, :client_id, inspect(__MODULE__)),
           start: {Kafee.Consumer, :start_link, [__MODULE__, full_opts]}
         }
       end

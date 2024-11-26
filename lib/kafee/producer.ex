@@ -89,6 +89,17 @@ defmodule Kafee.Producer do
                       required: true,
                       type: {:or, [:atom, {:fun, 4}]},
                       type_doc: "`Kafee.partition_fun()`"
+                    ],
+                    client_id: [
+                      doc: """
+                      A custom client id to use for the Kafka producer.
+
+                      By default it will use the name of the module.
+
+                      This is useful when observing the stream lineage.
+                      """,
+                      required: false,
+                      type: :string
                     ]
                   )
 
@@ -216,7 +227,7 @@ defmodule Kafee.Producer do
         full_opts = Keyword.merge(unquote(Macro.escape(opts)), args)
 
         %{
-          id: __MODULE__,
+          id: Keyword.get(full_opts, :client_id, inspect(__MODULE__)),
           start: {Kafee.Producer, :start_link, [__MODULE__, full_opts]}
         }
       end
