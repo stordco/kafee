@@ -192,6 +192,8 @@ defmodule Kafee.Consumer do
   @doc false
   defmacro __using__(opts \\ []) do
     quote location: :keep, bind_quoted: [opts: opts, module: __CALLER__.module] do
+      require Logger
+
       @behaviour Kafee.Consumer
 
       @doc false
@@ -227,19 +229,15 @@ defmodule Kafee.Consumer do
 
       @impl Kafee.Consumer
       def handle_failure(error, %Kafee.Consumer.Message{} = message) do
-        inspected_message = inspect(message)
-        inspected_error = inspect(error)
-
-        raise RuntimeError,
-          message: """
+        Logger.error(
+          """
           An error has been raised while processing a Kafka message.
 
-          Message:
-          #{inspected_message}
-
           Error:
-          #{inspected_error}
-          """
+          #{inspect(error)}
+          """,
+          error: error
+        )
       end
 
       defoverridable child_spec: 1, handle_message: 1, handle_failure: 2
