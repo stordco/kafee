@@ -153,7 +153,12 @@ defmodule Kafee.Producer.AsyncAdapter do
   @impl Kafee.Producer.Adapter
   @spec start_link(module(), Kafee.Producer.options()) :: Supervisor.on_start()
   def start_link(producer, options) do
-    Supervisor.start_link(__MODULE__, {producer, options}, name: producer)
+    Kafee.BrodSupervisor.start_link(producer, options)
+  end
+
+  @doc false
+  def start_brod_client(producer, options) do
+    Supervisor.start_link(__MODULE__, {producer, options})
   end
 
   @doc false

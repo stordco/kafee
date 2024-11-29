@@ -53,6 +53,11 @@ defmodule Kafee.Consumer.BrodAdapter do
   @impl Kafee.Consumer.Adapter
   @spec start_link(module(), Kafee.Consumer.options()) :: Supervisor.on_start()
   def start_link(consumer, options) do
+    Kafee.BrodSupervisor.start_link(consumer, options)
+  end
+
+  @doc false
+  def start_brod_client(consumer, options) do
     Supervisor.start_link(__MODULE__, {consumer, options})
   end
 
