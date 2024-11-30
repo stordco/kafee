@@ -34,6 +34,13 @@ defmodule Kafee.BrodRetryManager do
     end
   end
 
+  # Handle process exits
+  def handle_info({:DOWN, _ref, :process, _pid, _reason}, state = {_supervisor, module, _options}) do
+    Logger.info("Kafka client for #{inspect(module)} went down, scheduling retry")
+    schedule_retry()
+    {:noreply, state}
+  end
+
   defp schedule_retry do
     Process.send_after(self(), :retry, @min_backoff)
   end
