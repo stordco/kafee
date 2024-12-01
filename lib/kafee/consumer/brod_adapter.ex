@@ -53,12 +53,7 @@ defmodule Kafee.Consumer.BrodAdapter do
   @impl Kafee.Consumer.Adapter
   @spec start_link(module(), Kafee.Consumer.options()) :: Supervisor.on_start()
   def start_link(consumer, options) do
-    Kafee.BrodSupervisor.start_link(consumer, options)
-  end
-
-  @doc false
-  def start_brod_client(consumer, options) do
-    Supervisor.start_link(__MODULE__, {consumer, options})
+    Supervisor.start_link(__MODULE__, {consumer, options}, name: Module.concat(consumer, "Supervisor"))
   end
 
   @doc false
@@ -88,19 +83,21 @@ defmodule Kafee.Consumer.BrodAdapter do
       brod_client = Module.concat(consumer, "BrodClient")
 
       children = [
-        %{
-          id: brod_client,
-          start:
-            {:brod_client, :start_link,
-             [
-               [{options[:host], options[:port]}],
-               brod_client,
-               client_config(options, adapter_options)
-             ]},
-          type: :worker,
-          restart: :permanent,
-          shutdown: 500
-        },
+        {Kafee.ProcessManager,
+         %{
+           id: brod_client,
+           start:
+             {:brod_client, :start_link,
+              [
+                [{options[:host], options[:port]}],
+                brod_client,
+                client_config(options, adapter_options)
+              ]},
+           type: :worker,
+           restart: :temporary,
+           supervisor: Module.concat(consumer, "Supervisor"),
+           shutdown: 500
+         }},
         %{
           id: consumer,
           start:
