@@ -67,6 +67,7 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
           raise "Error handling a message for #{message.key}"
 
         String.starts_with?(message.key, "timeout-fail") ->
+          # simulating Buffy using its Horde.DynamicSupervisor to start children
           TestDynamicSupervisor.start_child({5000, message.key})
 
         true ->
