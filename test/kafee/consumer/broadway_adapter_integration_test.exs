@@ -3,6 +3,7 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
 
   defmodule MyConsumer do
     use Kafee.Consumer,
+      otp_app: :kafee,
       adapter: {Kafee.Consumer.BroadwayAdapter, []}
 
     def handle_message(%Kafee.Consumer.Message{} = message) do
