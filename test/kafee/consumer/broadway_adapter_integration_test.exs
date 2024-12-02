@@ -62,10 +62,6 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
     def handle_message(%Kafee.Consumer.Message{} = message) do
       test_pid = Application.fetch_env!(:kafee, :test_pid)
 
-      # if String.starts_with?(message.key, "key-fail") do
-      #   raise "Error handling a message for #{message.key}"
-      # end
-
       cond do
         String.starts_with?(message.key, "key-fail") ->
           raise "Error handling a message for #{message.key}"
