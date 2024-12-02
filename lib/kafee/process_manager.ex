@@ -1,7 +1,7 @@
 defmodule Kafee.ProcessManager do
   @moduledoc """
   Runs in a supervisor and manages restarting a process
-  when is crashes. This is mainly used for the `:brod_client`
+  when it crashes. This is mainly used for the `:brod_client`
   process which will crash when it is unable to connect.
 
   ## What's different than the built in Supervisor?
@@ -12,8 +12,11 @@ defmodule Kafee.ProcessManager do
   """
 
   use GenServer
-
   require Logger
+
+  # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls
+  @log_prefix "#{inspect(__MODULE__)}]"
+  @restart_delay Application.compile_env(:kafee, :process_manager_restart_delay, :timer.seconds(10))
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts)
@@ -32,44 +35,43 @@ defmodule Kafee.ProcessManager do
        monitor_ref: nil,
        supervisor: supervisor
      }, {:continue, :start_child}}
-    |> IO.inspect(label: "result")
   end
 
-  @doc false
   @impl GenServer
-  def handle_continue(:start_child, %{supervisor: supervisor} = state) do
-    IO.inspect(state, label: "state")
-    IO.inspect(Process.whereis(supervisor), label: "supervisor response")
+  def handle_continue(:start_child, state) do
+    case start_child(state) do
+      {:ok, new_state} ->
+        {:noreply, new_state}
 
-    if supervisor |> Process.whereis() |> is_nil() do
-      Logger.debug("Waiting for supervisor to start")
-      Process.sleep(100)
-      handle_continue(:start_child, state)
-    end
+      {:error, reason} ->
+        Logger.info("#{@log_prefix} Failed to start child. Restarting in #{@restart_delay}ms...",
+          reason: reason
+        )
 
-    Logger.debug("Starting child")
-
-    with {:ok, state} <- start_child(state) do
-      {:noreply, state}
+        Process.sleep(@restart_delay)
+        {:noreply, state, {:continue, :start_child}}
     end
   end
 
-  @doc false
   @impl GenServer
-  def handle_info({:DOWN, ref, :process, pid, _reason}, %{monitor_ref: ref, child_pid: pid} = state) do
-    Logger.info("Child down. Restarting")
+  def handle_info({:DOWN, ref, :process, pid, reason}, %{monitor_ref: ref, child_pid: pid} = state) do
+    Logger.info("#{@log_prefix} Child process down. Restarting in #{@restart_delay}ms...",
+      reason: reason
+    )
 
-    Process.sleep(:timer.seconds(10))
-
-    with {:ok, state} <- start_child(state) do
-      {:noreply, state}
-    end
+    Process.sleep(@restart_delay)
+    {:noreply, state, {:continue, :start_child}}
   end
 
   defp start_child(%{child_spec: child_spec, supervisor: supervisor} = state) do
-    with {:ok, child_pid} <- Supervisor.start_child(supervisor, child_spec) |> IO.inspect(label: "supervisor start"),
-         monitor_ref = Process.monitor(child_pid) do
-      {:ok, %{state | child_pid: child_pid, monitor_ref: monitor_ref}}
+    case Supervisor.start_child(supervisor, child_spec) do
+      {:ok, child_pid} ->
+        monitor_ref = Process.monitor(child_pid)
+        {:ok, %{state | child_pid: child_pid, monitor_ref: monitor_ref}}
+
+      {:error, error_message} = error ->
+        Logger.error("#{@log_prefix} Failed to start child: #{inspect(error_message)}")
+        error
     end
   end
 end

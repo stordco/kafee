@@ -53,7 +53,7 @@ defmodule Kafee.Consumer.BrodAdapter do
   @impl Kafee.Consumer.Adapter
   @spec start_link(module(), Kafee.Consumer.options()) :: Supervisor.on_start()
   def start_link(consumer, options) do
-    Supervisor.start_link(__MODULE__, {consumer, options}, name: Module.concat(consumer, "Supervisor"))
+    Supervisor.start_link(__MODULE__, {consumer, options}, name: supervisor_name(consumer))
   end
 
   @doc false
@@ -79,8 +79,7 @@ defmodule Kafee.Consumer.BrodAdapter do
       end
 
     with {:ok, adapter_options} <- NimbleOptions.validate(adapter_options, @options_schema) do
-      # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
-      brod_client = Module.concat(consumer, "BrodClient")
+      brod_client = brod_client(consumer)
 
       children = [
         {Kafee.ProcessManager,
@@ -95,7 +94,7 @@ defmodule Kafee.Consumer.BrodAdapter do
               ]},
            type: :worker,
            restart: :temporary,
-           supervisor: Module.concat(consumer, "Supervisor"),
+           supervisor: supervisor_name(consumer),
            shutdown: 500
          }},
         %{
@@ -132,5 +131,17 @@ defmodule Kafee.Consumer.BrodAdapter do
     (options ++ adapter_options)
     |> Keyword.take([:connect_timeout, :max_retries, :retry_backoff_ms, :sasl, :ssl])
     |> Keyword.reject(fn {_k, v} -> is_nil(v) end)
+  end
+
+  @spec brod_client(module()) :: module()
+  defp brod_client(module) do
+    # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
+    Module.concat(module, "BrodClient")
+  end
+
+  @spec supervisor_name(module()) :: module()
+  defp supervisor_name(module) do
+    # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
+    Module.concat(module, "Supervisor")
   end
 end
