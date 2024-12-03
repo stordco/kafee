@@ -92,7 +92,7 @@ defmodule Kafee.Producer.SyncAdapter do
                 client_config(options, adapter_options)
               ]},
            type: :worker,
-           restart: :permanent,
+           restart: :temporary,
            shutdown: 500,
            supervisor: supervisor_name(producer)
          }}
@@ -179,13 +179,11 @@ defmodule Kafee.Producer.SyncAdapter do
 
   @spec brod_client(module()) :: module()
   defp brod_client(producer) do
-    # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
-    Module.concat(producer, "BrodClient")
+    Module.safe_concat(producer, BrodClient)
   end
 
   @spec supervisor_name(module()) :: module()
   defp supervisor_name(module) do
-    # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
-    Module.concat(module, "Supervisor")
+    Module.safe_concat(module, Supervisor)
   end
 end
