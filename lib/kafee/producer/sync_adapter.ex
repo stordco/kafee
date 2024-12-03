@@ -179,11 +179,13 @@ defmodule Kafee.Producer.SyncAdapter do
 
   @spec brod_client(module()) :: module()
   defp brod_client(producer) do
-    Module.safe_concat(producer, BrodClient)
+    # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
+    Module.concat(producer, BrodClient)
   end
 
   @spec supervisor_name(module()) :: module()
   defp supervisor_name(module) do
-    Module.safe_concat(module, Supervisor)
+    # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
+    Module.concat(module, Supervisor)
   end
 end
