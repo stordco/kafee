@@ -12,6 +12,7 @@ defmodule Kafee.ProcessManager do
   """
 
   use GenServer
+
   require Logger
 
   # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls
@@ -37,11 +38,20 @@ defmodule Kafee.ProcessManager do
      }, {:continue, :start_child}}
   end
 
+  @doc false
   @impl GenServer
-  def handle_continue(:start_child, state) do
-    case start_child(state) do
-      {:ok, new_state} ->
-        {:noreply, new_state}
+  def handle_continue(:start_child, %{child_spec: child_spec, supervisor: supervisor} = state) do
+    case Supervisor.start_child(supervisor, child_spec) do
+      {:ok, child_pid} when is_pid(child_pid) ->
+        monitor_ref = Process.monitor(child_pid)
+        {:noreply, %{state | child_pid: child_pid, monitor_ref: monitor_ref}}
+
+      {:ok, :undefined} ->
+        {:stop, :normal, state}
+
+      {:error, {:already_started, child_pid}} when is_pid(child_pid) ->
+        monitor_ref = Process.monitor(child_pid)
+        {:noreply, %{state | child_pid: child_pid, monitor_ref: monitor_ref}}
 
       {:error, reason} ->
         Logger.info("#{@log_prefix} Failed to start child. Restarting in #{@restart_delay}ms...",
@@ -53,6 +63,7 @@ defmodule Kafee.ProcessManager do
     end
   end
 
+  @doc false
   @impl GenServer
   def handle_info({:DOWN, ref, :process, pid, reason}, %{monitor_ref: ref, child_pid: pid} = state) do
     Logger.info("#{@log_prefix} Child process down. Restarting in #{@restart_delay}ms...",
@@ -63,15 +74,7 @@ defmodule Kafee.ProcessManager do
     {:noreply, state, {:continue, :start_child}}
   end
 
-  defp start_child(%{child_spec: child_spec, supervisor: supervisor} = state) do
-    case Supervisor.start_child(supervisor, child_spec) do
-      {:ok, child_pid} ->
-        monitor_ref = Process.monitor(child_pid)
-        {:ok, %{state | child_pid: child_pid, monitor_ref: monitor_ref}}
-
-      {:error, error_message} = error ->
-        Logger.error("#{@log_prefix} Failed to start child: #{inspect(error_message)}")
-        error
-    end
+  def handle_info(_req, state) do
+    {:noreply, state}
   end
 end
