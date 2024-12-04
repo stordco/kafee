@@ -15,17 +15,22 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
     use GenServer
 
     def start_link(args) do
-      GenServer.start_link(__MODULE__, args)
+      with {:error, {:already_started, pid}} <- GenServer.start_link(__MODULE__, args, name: __MODULE__) do
+        {:ok, pid}
+      end
     end
 
-    def init([timeout, message]) do
-      Process.send_after(self(), :timeout, timeout)
-      {:ok, %{timeout: timeout, message: message}}
+    def call({test_pid, {:consume_message, message}}) do
+      GenServer.call(FakeBuffy, {:call, {test_pid, {:consume_message, message}}})
     end
 
-    def handle_info(:timeout, %{message: message} = state) do
-      raise("Error - timeout for #{message}")
-      {:noreply, state}
+    def init([message]) do
+      {:ok, %{message: message}}
+    end
+
+    def handle_call({:call, {test_pid, {:consume_message, message}}}, _from, state) do
+      send(test_pid, {:consume_message, message})
+      {:reply, state, state}
     end
   end
 
@@ -40,8 +45,9 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
       DynamicSupervisor.init(strategy: :one_for_one)
     end
 
-    def start_child({timeout, message}) do
-      spec = {FakeBuffy, [timeout, message]}
+    def start_child(message) do
+      spec = {FakeBuffy, [message]}
+
       DynamicSupervisor.start_child(__MODULE__, spec)
     end
   end
@@ -66,15 +72,15 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
         String.starts_with?(message.key, "key-fail") ->
           raise "Error handling a message for #{message.key}"
 
-        String.starts_with?(message.key, "timeout-fail") ->
-          # simulating Buffy using its Horde.DynamicSupervisor to start children
-          TestDynamicSupervisor.start_child({100, message.key})
+        String.starts_with?(message.key, "async-") ->
+          Process.whereis(FakeBuffy) |> IO.inspect(label: "the process is")
+          FakeBuffy.call({test_pid, {:consume_message, message}})
 
         true ->
-          nil
+          send(test_pid, {:consume_message, message})
       end
 
-      send(test_pid, {:consume_message, message, self()})
+      message
     end
 
     def handle_failure(error, message) do
@@ -183,20 +189,20 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
       brod_client_id: brod,
       topic: topic
     } do
-      :ok = :brod.produce_sync(brod, topic, :hash, "timeout-fail-1", "test value 1")
-      :ok = :brod.produce_sync(brod, topic, :hash, "timeout-fail-2", "test value 2")
-
-      Process.sleep(1000)
-
       bpid =
         Process.whereis(
           Kafee.Consumer.BroadwayAdapterIntegrationTest.MyConsumerBatched.Broadway.BatchProcessor_default_0
         )
 
-      assert Process.alive?(bpid)
+      {:ok, buffy_pid} = TestDynamicSupervisor.start_child("async-1")
+      :ok = :brod.produce_sync(brod, topic, :hash, "async-1", "test value 1")
+      assert_receive {:consume_message, %Kafee.Consumer.Message{key: "async-1"}}
+      # simulate buffy and its parent killed
+      DynamicSupervisor.stop(TestDynamicSupervisor)
+      :ok = :brod.produce_sync(brod, topic, :hash, "async-2", "test value 2")
 
-      assert_receive {:error_reason, "%RuntimeError{message: \"Error - timeout for timeout-fail-1\"}"}
-      assert_receive {:error_reason, "%RuntimeError{message: \"Error - timeout for timeout-fail-2\"}"}
+      assert Process.alive?(bpid)
+      assert_receive {:error_reason, "%RuntimeError{message: \"Error - timeout for async-2\"}"}
     end
   end
 end
