@@ -11,6 +11,41 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
     end
   end
 
+  defmodule FakeBuffy do
+    use GenServer
+
+    def start_link(args) do
+      GenServer.start_link(__MODULE__, args)
+    end
+
+    def init([timeout, message]) do
+      Process.send_after(self(), :timeout, timeout)
+      {:ok, %{timeout: timeout, message: message}}
+    end
+
+    def handle_info(:timeout, %{message: message} = state) do
+      raise("Error - timeout for #{message.key}")
+      {:noreply, state}
+    end
+  end
+
+  defmodule TestDynamicSupervisor do
+    use DynamicSupervisor
+
+    def start_link(_) do
+      DynamicSupervisor.start_link(__MODULE__, [], name: __MODULE__)
+    end
+
+    def init(_) do
+      DynamicSupervisor.init(strategy: :one_for_one)
+    end
+
+    def start_child({timeout, message}) do
+      spec = {FakeBuffy, [timeout, message]}
+      DynamicSupervisor.start_child(__MODULE__, spec)
+    end
+  end
+
   defmodule MyConsumerBatched do
     use Kafee.Consumer,
       adapter:
@@ -27,8 +62,16 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
     def handle_message(%Kafee.Consumer.Message{} = message) do
       test_pid = Application.fetch_env!(:kafee, :test_pid)
 
-      if String.starts_with?(message.key, "key-fail") do
-        raise "Error handling a message for #{message.key}"
+      cond do
+        String.starts_with?(message.key, "key-fail") ->
+          raise "Error handling a message for #{message.key}"
+
+        String.starts_with?(message.key, "timeout-fail") ->
+          # simulating Buffy using its Horde.DynamicSupervisor to start children
+          TestDynamicSupervisor.start_child({5000, message.key})
+
+        true ->
+          nil
       end
 
       send(test_pid, {:consume_message, message, self()})
@@ -46,6 +89,7 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
       Application.put_env(:kafee, :test_pid, self())
 
       start_supervised!(
+        TestDynamicSupervisor,
         {MyConsumer,
          [
            host: KafkaApi.host(),
@@ -130,6 +174,39 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
 
       assert_receive {:error_reason, "%RuntimeError{message: \"Error handling a message for key-fail-1\"}"}
       assert_receive {:error_reason, "%RuntimeError{message: \"Error handling a message for key-fail-2\"}"}
+    end
+
+    test "it handles asynchronous failures for concurrent process chains", %{
+      brod_client_id: brod,
+      topic: topic
+    } do
+      :ok = :brod.produce_sync(brod, topic, :hash, "timeout-fail-1", "test value 1")
+      :ok = :brod.produce_sync(brod, topic, :hash, "timeout-fail-2", "test value 2")
+
+      for i <- 1..100 do
+        :ok = :brod.produce_sync(brod, topic, :hash, "key-#{i}", "test value")
+      end
+
+      task_pids =
+        for i <- 1..100 do
+          key = "key-#{i}"
+          assert_receive {:consume_message, %Kafee.Consumer.Message{key: ^key}, from_pid}
+          from_pid
+        end
+
+      Process.sleep(10_000)
+
+      bpid =
+        Process.whereis(
+          Kafee.Consumer.BroadwayAdapterIntegrationTest.MyConsumerBatched.Broadway.BatchProcessor_default_0
+        )
+
+      assert Process.alive?(bpid)
+      # assert they were done asynchronously
+      assert 100 == task_pids |> Enum.uniq() |> length
+
+      assert_receive {:error_reason, "%RuntimeError{message: \"Error - timeout for timeout-fail-1\"}"}
+      assert_receive {:error_reason, "%RuntimeError{message: \"Error - timeout for timeout-fail-2\"}"}
     end
   end
 end
