@@ -232,8 +232,17 @@ defmodule Kafee.Consumer.BroadwayAdapter do
     if batch_config[:async_run] do
       # No need for Task.Supervisor as it is not running under a GenServer,
       # and Kafee.Consumer.Adapter.push_message does already have error handling.
-      tasks = Enum.map(messages, &Task.async(fn -> do_consumer_work(&1, consumer, options) end))
-      Task.await_many(tasks, :infinity)
+
+      Kafee.Consumer.BroadwayAdapter.TaskSupervisor
+      |> Task.Supervisor.async_stream_nolink(messages, fn m -> do_consumer_work(m, consumer, options) end,
+        on_timeout: :kill_task,
+        timeout: 15_000,
+        shutdown: 15_000
+      )
+      |> Enum.each(fn
+        {:ok, _} -> :ok
+        {:exit, reason} -> Logger.error("Task exited: #{Exception.format_exit(reason)}")
+      end)
     else
       Enum.each(messages, fn message -> do_consumer_work(message, consumer, options) end)
     end
