@@ -190,7 +190,7 @@ defmodule Kafee.Producer do
 
   The recommended collection of these metrics can be done via:
 
-      summary("kafee.produce.stop.count",
+      counter("kafee.produce.start.count",
         tags: [:topic, :partition]
       ),
       summary("kafee.produce.stop.duration",
