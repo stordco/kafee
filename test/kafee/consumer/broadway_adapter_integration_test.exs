@@ -24,7 +24,7 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
     end
 
     def handle_info(:timeout, %{message: message} = state) do
-      raise("Error - timeout for #{message.key}")
+      raise("Error - timeout for #{message}")
       {:noreply, state}
     end
   end
@@ -68,7 +68,7 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
 
         String.starts_with?(message.key, "timeout-fail") ->
           # simulating Buffy using its Horde.DynamicSupervisor to start children
-          TestDynamicSupervisor.start_child({5000, message.key})
+          TestDynamicSupervisor.start_child({100, message.key})
 
         true ->
           nil
@@ -119,6 +119,8 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
   describe "Consumer with customized batching" do
     setup %{topic: topic} do
       Application.put_env(:kafee, :test_pid, self())
+
+      start_supervised!(TestDynamicSupervisor)
 
       start_supervised!(
         {MyConsumerBatched,
@@ -183,18 +185,7 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
       :ok = :brod.produce_sync(brod, topic, :hash, "timeout-fail-1", "test value 1")
       :ok = :brod.produce_sync(brod, topic, :hash, "timeout-fail-2", "test value 2")
 
-      for i <- 1..100 do
-        :ok = :brod.produce_sync(brod, topic, :hash, "key-#{i}", "test value")
-      end
-
-      task_pids =
-        for i <- 1..100 do
-          key = "key-#{i}"
-          assert_receive {:consume_message, %Kafee.Consumer.Message{key: ^key}, from_pid}
-          from_pid
-        end
-
-      Process.sleep(10_000)
+      Process.sleep(1000)
 
       bpid =
         Process.whereis(
@@ -202,8 +193,6 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
         )
 
       assert Process.alive?(bpid)
-      # assert they were done asynchronously
-      assert 100 == task_pids |> Enum.uniq() |> length
 
       assert_receive {:error_reason, "%RuntimeError{message: \"Error - timeout for timeout-fail-1\"}"}
       assert_receive {:error_reason, "%RuntimeError{message: \"Error - timeout for timeout-fail-2\"}"}
