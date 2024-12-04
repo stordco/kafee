@@ -121,11 +121,25 @@ defmodule Kafee.Consumer.BroadwayAdapter do
   @spec start_link(module(), Kafee.Consumer.options()) :: Supervisor.on_start()
   def start_link(consumer, options) do
     with {:ok, adapter_options} <- validate_adapter_options(options) do
-      Broadway.start_link(
-        __MODULE__,
-        broadway_config(consumer, options, adapter_options)
-      )
+      start_supervisor(consumer, options, adapter_options)
     end
+  end
+
+  def start_supervisor(consumer, options, adapter_options) do
+    children = [
+      # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
+      {Task.Supervisor, name: Module.concat(__MODULE__, "TaskSupervisor")},
+      %{
+        id: __MODULE__,
+        start: {Broadway, :start_link, [__MODULE__, broadway_config(consumer, options, adapter_options)]}
+      }
+    ]
+
+    Supervisor.start_link(children,
+      strategy: :one_for_all,
+      # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
+      name: Module.concat(__MODULE__, "Supervisor")
+    )
   end
 
   defp validate_adapter_options(options) do
