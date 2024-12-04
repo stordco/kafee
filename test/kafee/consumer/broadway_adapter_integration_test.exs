@@ -88,8 +88,9 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
     setup %{topic: topic} do
       Application.put_env(:kafee, :test_pid, self())
 
+      start_supervised!(TestDynamicSupervisor)
+
       start_supervised!(
-        TestDynamicSupervisor,
         {MyConsumer,
          [
            host: KafkaApi.host(),
