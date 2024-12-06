@@ -244,7 +244,7 @@ defmodule Kafee.Consumer.BroadwayAdapter do
          %Broadway.Message{
            data: value,
            metadata: metadata
-         },
+         } = message,
          consumer,
          options
        ) do
