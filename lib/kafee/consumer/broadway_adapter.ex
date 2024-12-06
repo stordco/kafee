@@ -224,6 +224,17 @@ defmodule Kafee.Consumer.BroadwayAdapter do
       Enum.each(messages, fn message -> do_consumer_work(message, consumer, options) end)
       messages
     end
+  catch
+    kind, reason ->
+      Logger.error(
+        "Caught #{kind} attempting to handle batch - exception likely from Task.await_many/2 : #{Exception.format(kind, reason, __STACKTRACE__)}",
+        kind: kind,
+        reason: reason,
+        consumer: consumer,
+        message: message
+      )
+
+      Enum.map(messages, &Broadway.Message.failed(&1, reason))
   end
 
   defp do_batch_consumer_work(message, consumer, options) do
@@ -248,20 +259,21 @@ defmodule Kafee.Consumer.BroadwayAdapter do
          consumer,
          options
        ) do
-    result = Kafee.Consumer.Adapter.push_message(
-      consumer,
-      options,
-      %Kafee.Consumer.Message{
-        key: metadata.key,
-        value: value,
-        topic: metadata.topic,
-        partition: metadata.partition,
-        offset: metadata.offset,
-        consumer_group: options[:consumer_group_id],
-        timestamp: DateTime.from_unix!(metadata.ts, :millisecond),
-        headers: metadata.headers
-      }
-    )
+    result =
+      Kafee.Consumer.Adapter.push_message(
+        consumer,
+        options,
+        %Kafee.Consumer.Message{
+          key: metadata.key,
+          value: value,
+          topic: metadata.topic,
+          partition: metadata.partition,
+          offset: metadata.offset,
+          consumer_group: options[:consumer_group_id],
+          timestamp: DateTime.from_unix!(metadata.ts, :millisecond),
+          headers: metadata.headers
+        }
+      )
 
     with :ok <- result do
       message
