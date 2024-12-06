@@ -222,9 +222,22 @@ defmodule Kafee.Consumer.BroadwayAdapter do
       Task.await_many(tasks, :infinity)
     else
       Enum.each(messages, fn message -> do_consumer_work(message, consumer, options) end)
+      messages
     end
+  end
 
-    messages
+  defp do_batch_consumer_work(message, consumer, options) do
+    do_consumer_work(message, consumer, options)
+  catch
+    kind, reason ->
+      Logger.error("Caught #{kind} attempting to process message: #{Exception.format(kind, reason, __STACKTRACE__)}",
+        kind: kind,
+        reason: reason,
+        consumer: consumer,
+        message: message
+      )
+
+      Broadway.Message.failed(message, reason)
   end
 
   defp do_consumer_work(
@@ -235,7 +248,7 @@ defmodule Kafee.Consumer.BroadwayAdapter do
          consumer,
          options
        ) do
-    Kafee.Consumer.Adapter.push_message(
+    result = Kafee.Consumer.Adapter.push_message(
       consumer,
       options,
       %Kafee.Consumer.Message{
@@ -249,6 +262,13 @@ defmodule Kafee.Consumer.BroadwayAdapter do
         headers: metadata.headers
       }
     )
+
+    with :ok <- result do
+      message
+    else
+      error ->
+        Broadway.Message.failed(message, error)
+    end
   end
 
   @doc false
