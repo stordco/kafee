@@ -155,7 +155,8 @@ defmodule Kafee.Consumer.BroadwayAdapter do
              hosts: [{options[:host], options[:port]}],
              group_id: options[:consumer_group_id],
              topics: [options[:topic]],
-             client_config: client_config(options)
+             client_config: client_config(options),
+             shared_client: true
            ]},
         concurrency: adapter_options[:consumer_concurrency]
       ],
