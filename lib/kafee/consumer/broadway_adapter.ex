@@ -231,7 +231,7 @@ defmodule Kafee.Consumer.BroadwayAdapter do
         kind: kind,
         reason: reason,
         consumer: consumer,
-        message: message
+        messages: messages
       )
 
       Enum.map(messages, &Broadway.Message.failed(&1, reason))
