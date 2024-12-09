@@ -218,37 +218,24 @@ defmodule Kafee.Consumer.BroadwayAdapter do
     if batch_config[:async_run] do
       # No need for Task.Supervisor as it is not running under a GenServer,
       # and Kafee.Consumer.Adapter.push_message does already have error handling.
-      tasks = Enum.map(messages, &Task.async(fn -> do_batch_consumer_work(&1, consumer, options) end))
+      tasks = Enum.map(messages, &Task.async(fn -> do_consumer_work(&1, consumer, options) end))
       Task.await_many(tasks, :infinity)
     else
-      Enum.each(messages, fn message -> do_consumer_work(message, consumer, options) end)
-      messages
+      Enum.map(messages, fn message -> do_consumer_work(message, consumer, options) end)
     end
   catch
     kind, reason ->
       Logger.error(
-        "Caught #{kind} attempting to handle batch - exception likely from Task.await_many/2 : #{Exception.format(kind, reason, __STACKTRACE__)}",
+        "Caught #{kind} attempting to handle batch : #{Exception.format(kind, reason, __STACKTRACE__)}",
         kind: kind,
         reason: reason,
         consumer: consumer,
         messages: messages
       )
 
+      # If we catch at this stage we have no way of knowing which messages successfully processed
+      # So we will mark all messages as failed.
       Enum.map(messages, &Broadway.Message.failed(&1, reason))
-  end
-
-  defp do_batch_consumer_work(message, consumer, options) do
-    do_consumer_work(message, consumer, options)
-  catch
-    kind, reason ->
-      Logger.error("Caught #{kind} attempting to process message: #{Exception.format(kind, reason, __STACKTRACE__)}",
-        kind: kind,
-        reason: reason,
-        consumer: consumer,
-        message: message
-      )
-
-      Broadway.Message.failed(message, reason)
   end
 
   defp do_consumer_work(
@@ -281,6 +268,16 @@ defmodule Kafee.Consumer.BroadwayAdapter do
       error ->
         Broadway.Message.failed(message, error)
     end
+  catch
+    kind, reason ->
+      Logger.error("Caught #{kind} attempting to process message: #{Exception.format(kind, reason, __STACKTRACE__)}",
+        kind: kind,
+        reason: reason,
+        consumer: consumer,
+        message: message
+      )
+
+      Broadway.Message.failed(message, reason)
   end
 
   @doc false

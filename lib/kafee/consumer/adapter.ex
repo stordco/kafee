@@ -79,7 +79,6 @@ defmodule Kafee.Consumer.Adapter do
     :ok
   rescue
     error ->
-      consumer.handle_failure(error, message)
       {:error, error}
   end
 end
