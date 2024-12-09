@@ -221,34 +221,63 @@ defmodule Kafee.Consumer.BroadwayAdapter do
       tasks = Enum.map(messages, &Task.async(fn -> do_consumer_work(&1, consumer, options) end))
       Task.await_many(tasks, :infinity)
     else
-      Enum.each(messages, fn message -> do_consumer_work(message, consumer, options) end)
+      Enum.map(messages, fn message -> do_consumer_work(message, consumer, options) end)
     end
+  catch
+    kind, reason ->
+      Logger.error(
+        "Caught #{kind} attempting to handle batch : #{Exception.format(kind, reason, __STACKTRACE__)}",
+        kind: kind,
+        reason: reason,
+        consumer: consumer,
+        messages: messages
+      )
 
-    messages
+      # If we catch at this stage we have no way of knowing which messages successfully processed
+      # So we will mark all messages as failed.
+      Enum.map(messages, &Broadway.Message.failed(&1, reason))
   end
 
   defp do_consumer_work(
          %Broadway.Message{
            data: value,
            metadata: metadata
-         },
+         } = message,
          consumer,
          options
        ) do
-    Kafee.Consumer.Adapter.push_message(
-      consumer,
-      options,
-      %Kafee.Consumer.Message{
-        key: metadata.key,
-        value: value,
-        topic: metadata.topic,
-        partition: metadata.partition,
-        offset: metadata.offset,
-        consumer_group: options[:consumer_group_id],
-        timestamp: DateTime.from_unix!(metadata.ts, :millisecond),
-        headers: metadata.headers
-      }
-    )
+    result =
+      Kafee.Consumer.Adapter.push_message(
+        consumer,
+        options,
+        %Kafee.Consumer.Message{
+          key: metadata.key,
+          value: value,
+          topic: metadata.topic,
+          partition: metadata.partition,
+          offset: metadata.offset,
+          consumer_group: options[:consumer_group_id],
+          timestamp: DateTime.from_unix!(metadata.ts, :millisecond),
+          headers: metadata.headers
+        }
+      )
+
+    with :ok <- result do
+      message
+    else
+      error ->
+        Broadway.Message.failed(message, error)
+    end
+  catch
+    kind, reason ->
+      Logger.error("Caught #{kind} attempting to process message: #{Exception.format(kind, reason, __STACKTRACE__)}",
+        kind: kind,
+        reason: reason,
+        consumer: consumer,
+        message: message
+      )
+
+      Broadway.Message.failed(message, reason)
   end
 
   @doc false
