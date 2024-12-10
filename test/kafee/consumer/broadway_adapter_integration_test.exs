@@ -129,10 +129,10 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
       assert 100 == task_pids |> Enum.uniq() |> length
 
       assert_receive {:error_reason,
-                      "%{:failed, {:error, %RuntimeError{message: \\\"Error handling a message for key-fail-1\\\"}}}\"}"}
+                      "{:failed, {:error, %RuntimeError{message: \"Error handling a message for key-fail-1\"}}}"}
 
       assert_receive {:error_reason,
-                      "{:failed, {:error, %RuntimeError{message: \\\"Error handling a message for key-fail-2\\\"}}}}"}
+                      "{:failed, {:error, %RuntimeError{message: \"Error handling a message for key-fail-2\"}}}"}
     end
   end
 end
