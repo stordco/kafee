@@ -291,8 +291,7 @@ defmodule Kafee.Consumer.BroadwayAdapter do
     messages
     |> List.wrap()
     |> Enum.each(fn message ->
-      error = %RuntimeError{message: "Error occurred processing a message - #{inspect(message.status)}"}
-      consumer.handle_failure(error, message)
+      consumer.handle_failure(message.status, message)
     end)
 
     messages
