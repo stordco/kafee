@@ -20,15 +20,21 @@ defmodule Kafee.Consumer.AdapterTest do
   end
 
   describe "push_message/2" do
-    test "catches any error raised and returns :ok" do
+    test "returns ok when the message processes correctly" do
+      message = Kafee.BrodApi.generate_consumer_message()
+
+      patch(MyConsumer, :handle_message, fn _ -> :ok end)
+
+      assert :ok = Adapter.push_message(MyConsumer, @consumer_options, message)
+    end
+
+    test "catches any error raised and returns and error" do
       message = Kafee.BrodApi.generate_consumer_message()
       error = %RuntimeError{message: "testing error handling"}
 
       patch(MyConsumer, :handle_message, fn _ -> raise error end)
 
-      assert :ok = Adapter.push_message(MyConsumer, @consumer_options, message)
-      # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls
-      assert_called MyConsumer.handle_failure(^error, ^message)
+      assert {:error, ^error} = Adapter.push_message(MyConsumer, @consumer_options, message)
     end
 
     test "calls Datadog.DataStreams.Integration.Kafka.trace_consume/2" do
