@@ -288,8 +288,12 @@ defmodule Kafee.Consumer.BroadwayAdapter do
     # function above because `Kafee.Consumer.Adapter.push_message/2` will catch any
     # errors.
 
-    error = %RuntimeError{message: "Error converting a Broadway message to Kafee.Consumer.Message"}
-    messages |> List.wrap() |> Enum.each(&consumer.handle_failure(error, &1))
+    messages
+    |> List.wrap()
+    |> Enum.each(fn message ->
+      error = %RuntimeError{message: "Error occurred processing a message - #{inspect(message.status)}"}
+      consumer.handle_failure(error, message)
+    end)
 
     messages
   end

@@ -130,7 +130,9 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
 
       assert_receive message
       IO.inspect(message)
-      assert_receive {:error_reason, "%RuntimeError{message: \"Error handling a message for key-fail-2\"}"}
+
+      assert_receive {:error_reason,
+                      "%RuntimeError{message: \"Error converting a Broadway message to Kafee.Consumer.Message\"}"}
     end
   end
 end
