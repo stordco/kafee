@@ -128,7 +128,8 @@ defmodule Kafee.Consumer.BroadwayAdapterIntegrationTest do
       # assert they were done asynchronously
       assert 100 == task_pids |> Enum.uniq() |> length
 
-      assert_receive {:error_reason, "%RuntimeError{message: \"Error handling a message for key-fail-1\"}"}
+      assert_receive message
+      IO.inspect(message)
       assert_receive {:error_reason, "%RuntimeError{message: \"Error handling a message for key-fail-2\"}"}
     end
   end

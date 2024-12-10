@@ -238,6 +238,9 @@ defmodule Kafee.Consumer.BroadwayAdapter do
       Enum.map(messages, &Broadway.Message.failed(&1, reason))
   end
 
+  # Dialyzer can't recognize that :ok is a valid return type for this function
+  # due to the rescue clause in push_message/3
+  @dialyzer {:nowarn_function, do_consumer_work: 3}
   defp do_consumer_work(
          %Broadway.Message{
            data: value,
@@ -262,11 +265,9 @@ defmodule Kafee.Consumer.BroadwayAdapter do
         }
       )
 
-    with :ok <- result do
-      message
-    else
-      error ->
-        Broadway.Message.failed(message, error)
+    case result do
+      :ok -> message
+      error -> Broadway.Message.failed(message, error)
     end
   catch
     kind, reason ->

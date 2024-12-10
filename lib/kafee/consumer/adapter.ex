@@ -44,7 +44,7 @@ defmodule Kafee.Consumer.Adapter do
       end
 
   """
-  @spec push_message(atom(), Kafee.Consumer.options(), Message.t()) :: :ok | {:error, any()}
+  @spec push_message(atom(), Kafee.Consumer.options(), Message.t()) :: :ok | {:error, Exception.t()}
   def push_message(consumer, options, %Message{} = message) do
     Message.set_logger_metadata(message)
 
