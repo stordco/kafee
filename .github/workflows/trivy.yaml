@@ -28,5 +28,5 @@ jobs:
       - name: Cache DBs
         uses: actions/cache/save@v4
         with:
-          path: $/.cache/trivy
-          key: cache-trivy-$
+          path: ${{ github.workspace }}/.cache/trivy
+          key: cache-trivy-${{ steps.date.outputs.date }}
