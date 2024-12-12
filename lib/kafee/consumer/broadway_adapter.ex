@@ -227,10 +227,8 @@ defmodule Kafee.Consumer.BroadwayAdapter do
     kind, reason ->
       Logger.error(
         "Caught #{kind} attempting to handle batch : #{Exception.format(kind, reason, __STACKTRACE__)}",
-        kind: kind,
-        reason: reason,
-        consumer: consumer,
-        messages: messages
+        consumer: inspect(consumer),
+        messages: inspect(messages)
       )
 
       # If we catch at this stage we have no way of knowing which messages successfully processed
@@ -272,10 +270,8 @@ defmodule Kafee.Consumer.BroadwayAdapter do
   catch
     kind, reason ->
       Logger.error("Caught #{kind} attempting to process message: #{Exception.format(kind, reason, __STACKTRACE__)}",
-        kind: kind,
-        reason: reason,
-        consumer: consumer,
-        message: message
+        consumer: inspect(consumer),
+        message: inspect(message)
       )
 
       Broadway.Message.failed(message, reason)
