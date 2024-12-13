@@ -1,5 +1,19 @@
 # Changelog
 
+## [3.5.1](https://github.com/stordco/kafee/compare/v3.5.0...v3.5.1) (2024-12-13)
+
+
+### Bug Fixes
+
+* Improve Kafee exception handling ([#126](https://github.com/stordco/kafee/issues/126)) ([fa5bd44](https://github.com/stordco/kafee/commit/fa5bd443b48c48d551427485cc9ec5b671d6dbea))
+* Update kafee consumer handle_failure/2 fn ([#119](https://github.com/stordco/kafee/issues/119)) ([4c12df7](https://github.com/stordco/kafee/commit/4c12df78ca8b4466879c140a0acdd04c1c4fff7f))
+
+
+### Miscellaneous
+
+* Correct documentation to include start.count metric ([#125](https://github.com/stordco/kafee/issues/125)) ([3ab284c](https://github.com/stordco/kafee/commit/3ab284cd1f55a633b4584c4cc430fe85d9f6cb8d))
+* Sync files with stordco/common-config-elixir ([#128](https://github.com/stordco/kafee/issues/128)) ([3adffb8](https://github.com/stordco/kafee/commit/3adffb84415424aa8e493b3408500c9d19ec27a3))
+
 ## [3.5.0](https://github.com/stordco/kafee/compare/v3.4.1...v3.5.0) (2024-11-21)
 
 
