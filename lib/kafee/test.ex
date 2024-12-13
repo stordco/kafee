@@ -4,7 +4,7 @@ defmodule Kafee.Test do
 
   ## Note on sending from other processes
 
-  If you are sending emails from another process (for example,
+  If you are sending messages from another process (for example,
   from inside a `Task` or `GenServer`) you may need to use
   the shared mode. See the docs on `__using__/1` for more
   information.
@@ -53,8 +53,8 @@ defmodule Kafee.Test do
   Sometimes messages don't show up when asserting because you can send messages
   from a _different_ process than the test process. When that happens,
   turn on the shared mode. This will tell `Kafee.Producer.TestAdapter` to always
-  send the to the test process. This means that you cannot use shared mode with
-  async tests.
+  send the messages to the test process. This means that you cannot use shared
+  mode with async tests.
 
   Try to use this first:
 
@@ -139,7 +139,7 @@ defmodule Kafee.Test do
   end
 
   @doc """
-  Returns a list of messages that has been produced during
+  Returns a list of messages that have been produced during
   the test. We do _not_ recommend using this function as it
   can change between tests very easily.
 

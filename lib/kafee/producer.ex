@@ -169,7 +169,7 @@ defmodule Kafee.Producer do
   were sent in your code. See `Kafee.Producer.TestAdapter` and
   `Kafee.Testing` for more information.
 
-  > #### OPT 26+ {: .info}
+  > #### OTP 26+ {: .info}
   >
   > If you are using OTP 26 or later, maps are no longer sorted in a consistent
   > way. This means if you are testing JSON formatted messages, there is a good
@@ -190,7 +190,7 @@ defmodule Kafee.Producer do
 
   The recommended collection of these metrics can be done via:
 
-      summary("kafee.produce.stop.count",
+      counter("kafee.produce.start.count",
         tags: [:topic, :partition]
       ),
       summary("kafee.produce.stop.duration",
