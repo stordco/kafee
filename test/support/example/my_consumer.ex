@@ -4,6 +4,7 @@ defmodule MyConsumer do
   """
 
   use Kafee.Consumer,
+    otp_app: :kafee,
     adapter: nil,
     host: "localhost",
     consumer_group_id: "test",
