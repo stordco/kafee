@@ -58,7 +58,7 @@ defmodule Kafee.Consumer.BrodMonitorTest do
       assert :ok =
                MyProducer.publish(:some_type, [
                  %Kafee.Producer.Message{
-                   key: "something_huge_above_4mb",
+                   key: "some_key",
                    value: %{"some" => "message", "test_pid" => inspect(self())} |> Jason.encode!(),
                    topic: topic,
                    partition: 0
