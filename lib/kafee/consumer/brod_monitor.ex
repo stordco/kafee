@@ -1,9 +1,8 @@
-defmodule Kafee.Consumer.BroadwayMonitor do
+defmodule Kafee.Consumer.BrodMonitor do
   @moduledoc """
   Utility module for monitoring Broadway - covering consumer lags
 
-  On top of the [telemetry](https://hexdocs.pm/broadway_kafka/BroadwayKafka.Producer.html#module-telemetry) that BroadwayKafka gives us,
-  it is highly beneficial to track the consumer lag as well.
+  In addition to existing telemetry data, it is highly beneficial to track the consumer lag as well.
 
   As a refresher, a “consumer lag” equals the latest message offset that has reached
   the broker (i.e. last message published) minus last message
