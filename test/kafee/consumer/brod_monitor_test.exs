@@ -18,6 +18,7 @@ defmodule Kafee.Consumer.BrodMonitorTest do
 
     def handle_message(%Kafee.Consumer.Message{} = message) do
       test_pid = Application.get_env(:kafee, :test_pid, self())
+      # Each message processing is slow
       Process.sleep(100)
       send(test_pid, {:consume_message, message})
     end
@@ -90,6 +91,8 @@ defmodule Kafee.Consumer.BrodMonitorTest do
       partitions: partitions,
       consumer_group_id: consumer_group_id
     } do
+      # producing 100 messages
+      # since LaggyConsumer takes some time to process each message, we'll see lags
       for i <- 1..100 do
         :ok = :brod.produce_sync(brod_client_id, topic, :hash, "key-#{i}", "test value")
       end
@@ -102,7 +105,6 @@ defmodule Kafee.Consumer.BrodMonitorTest do
       # wait a bit for consumer lag to build up
       Process.sleep(100)
 
-      # since LaggyConsumer takes some time to process each message, we'll see lags
       assert {:ok, %{0 => lag}} =
                BrodMonitor.get_consumer_lag(brod_client_id, Kafee.BrodApi.endpoints(), topic, consumer_group_id)
 
