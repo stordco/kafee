@@ -19,7 +19,7 @@ defmodule Kafee.Consumer.BrodMonitor do
     latest_offsets = get_latest_offsets(endpoints, topic, partitions, options)
     # Step 2: Get committed offsets and filter to current node
     {:ok, committed_offsets} = get_committed_offsets(client_id, consumer_group_id)
-    topic_offsets_map = Enum.find(committed_offsets, &(&1.name == topic))
+    topic_offsets_map = Enum.find(committed_offsets, %{partitions: []}, &(&1.name == topic))
     node_name = Atom.to_string(Node.self())
 
     filtered_committed_offsets =
