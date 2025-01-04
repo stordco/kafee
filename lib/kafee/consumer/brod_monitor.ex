@@ -118,10 +118,19 @@ defmodule Kafee.Consumer.BrodMonitor do
 
     partition_to_latest_offsets_map = Enum.into(latest_offsets, %{})
 
+    common_map_keys =
+      partition_to_latest_offsets_map
+      |> Map.keys()
+      |> MapSet.new()
+      |> MapSet.intersection(MapSet.new(Map.keys(partition_to_committed_offsets_map)))
+      |> MapSet.to_list()
+
     lags_map =
-      Map.intersect(partition_to_latest_offsets_map, partition_to_committed_offsets_map, fn _k, latest, committed ->
+      partition_to_latest_offsets_map
+      |> Map.merge(partition_to_committed_offsets_map, fn _k, latest, committed ->
         latest - committed
       end)
+      |> Map.take(common_map_keys)
 
     {:ok, lags_map}
   end
