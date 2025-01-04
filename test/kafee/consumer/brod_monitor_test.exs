@@ -37,9 +37,8 @@ defmodule Kafee.Consumer.BrodMonitorTest do
     [topic: topic]
   end
 
-  setup %{topic: topic} do
+  setup do
     consumer_group_id = KafkaApi.generate_consumer_group_id()
-
     [consumer_group_id: consumer_group_id]
   end
 
@@ -58,6 +57,7 @@ defmodule Kafee.Consumer.BrodMonitorTest do
            ]}
         )
 
+      # takes some time to start up the consumer
       Process.sleep(10_000)
       [consumer_pid: consumer_pid]
     end
