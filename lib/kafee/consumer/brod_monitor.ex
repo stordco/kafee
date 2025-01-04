@@ -118,11 +118,13 @@ defmodule Kafee.Consumer.BrodMonitor do
 
     partition_to_latest_offsets_map = Enum.into(latest_offsets, %{})
 
+    committed_offsets_keys_mapset = partition_to_committed_offsets_map |> Map.keys() |> MapSet.new()
+
     common_map_keys =
       partition_to_latest_offsets_map
       |> Map.keys()
       |> MapSet.new()
-      |> MapSet.intersection(MapSet.new(Map.keys(partition_to_committed_offsets_map)))
+      |> MapSet.intersection(committed_offsets_keys_mapset)
       |> MapSet.to_list()
 
     lags_map =
