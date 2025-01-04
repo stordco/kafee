@@ -72,7 +72,7 @@ defmodule Kafee.Consumer.BrodMonitorTest do
                MyProducer.publish(:some_type, [
                  %Kafee.Producer.Message{
                    key: "some_key",
-                   value: %{"some" => "message", "test_pid" => inspect(self())} |> Jason.encode!(),
+                   value: Jason.encode!(%{"some" => "message", "test_pid" => inspect(self())}),
                    topic: topic,
                    partition: 0
                  }
