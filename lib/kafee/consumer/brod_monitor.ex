@@ -1,6 +1,6 @@
 defmodule Kafee.Consumer.BrodMonitor do
   @moduledoc """
-  Utility module for monitoring Broadway - covering consumer lags
+  Utility module for monitoring consumer lag
 
   In addition to existing telemetry data, it is highly beneficial to track the consumer lag as well.
 
