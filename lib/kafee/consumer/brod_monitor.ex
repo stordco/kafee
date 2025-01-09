@@ -58,7 +58,7 @@ defmodule Kafee.Consumer.BrodMonitor do
   """
   @spec get_consumer_lag(
           client_id :: pid(),
-          endpoints :: [{host :: binary(), port :: integer()}],
+          endpoints :: [:brod.endpoint()],
           topic :: binary(),
           consumer_group_id :: binary(),
           :brod.conn_config()
@@ -78,6 +78,8 @@ defmodule Kafee.Consumer.BrodMonitor do
     calculate_lag(latest_offsets, topic_offsets_map)
   end
 
+  @spec get_committed_offsets(client_id :: pid(), consumer_group_id :: binary()) ::
+          {:ok, [:kpro.struct()]} | {:error, any()}
   def get_committed_offsets(client_id, consumer_group_id) do
     :brod.fetch_committed_offsets(client_id, consumer_group_id)
   end
@@ -92,6 +94,13 @@ defmodule Kafee.Consumer.BrodMonitor do
     end
   end
 
+  @spec get_latest_offsets(
+          endpoints :: [:brod.endpoint()],
+          topic :: binary(),
+          partitions :: list(integer()),
+          :brod.conn_config()
+        ) ::
+          list({partition :: integer(), offset :: integer()})
   def get_latest_offsets(endpoints, topic, partitions, options) do
     Enum.map(partitions, fn partition ->
       case :brod.resolve_offset(endpoints, topic, partition, :latest, options) do
