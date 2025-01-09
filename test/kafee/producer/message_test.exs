@@ -66,6 +66,9 @@ defmodule Kafee.Producer.MessageTest do
          ]}
       )
 
+      # Need to give the supervisor a moment to start the process manager which starts the brod client
+      Process.sleep(10)
+
       :ok
     end
 

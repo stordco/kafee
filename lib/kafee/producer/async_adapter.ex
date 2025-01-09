@@ -153,7 +153,7 @@ defmodule Kafee.Producer.AsyncAdapter do
   @impl Kafee.Producer.Adapter
   @spec start_link(module(), Kafee.Producer.options()) :: Supervisor.on_start()
   def start_link(producer, options) do
-    Supervisor.start_link(__MODULE__, {producer, options}, name: producer)
+    Supervisor.start_link(__MODULE__, {producer, options}, name: supervisor_name(producer))
   end
 
   @doc false
@@ -179,20 +179,24 @@ defmodule Kafee.Producer.AsyncAdapter do
       end
 
     with {:ok, adapter_options} <- NimbleOptions.validate(adapter_options, @options_schema) do
+      brod_client = brod_client(producer)
+
       children = [
-        %{
-          id: brod_client(producer),
-          start:
-            {:brod_client, :start_link,
-             [
-               [{options[:host], options[:port]}],
-               brod_client(producer),
-               client_config(options, adapter_options)
-             ]},
-          type: :worker,
-          restart: :permanent,
-          shutdown: 500
-        }
+        {Kafee.ProcessManager,
+         %{
+           id: brod_client,
+           start:
+             {:brod_client, :start_link,
+              [
+                [{options[:host], options[:port]}],
+                brod_client,
+                client_config(options, adapter_options)
+              ]},
+           type: :worker,
+           restart: :temporary,
+           shutdown: 500,
+           supervisor: supervisor_name(producer)
+         }}
       ]
 
       Supervisor.init(children, strategy: :one_for_one)
@@ -284,8 +288,13 @@ defmodule Kafee.Producer.AsyncAdapter do
     brod_client_name = brod_client(producer)
     custom_child_id = "#{brod_client_name}-AsyncWorker-#{topic}-#{partition}"
 
+    supervisor_name = supervisor_name(producer)
+
     with {:error, {:already_started, pid}} <-
-           Supervisor.start_child(producer, %{id: custom_child_id, start: {AsyncWorker, :start_link, [worker_options]}}) do
+           Supervisor.start_child(supervisor_name, %{
+             id: custom_child_id,
+             start: {AsyncWorker, :start_link, [worker_options]}
+           }) do
       {:ok, pid}
     end
   end
@@ -314,6 +323,12 @@ defmodule Kafee.Producer.AsyncAdapter do
   @spec brod_client(module()) :: module()
   defp brod_client(producer) do
     # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
-    Module.concat(producer, "BrodClient")
+    Module.concat(producer, BrodClient)
+  end
+
+  @spec supervisor_name(module()) :: module()
+  defp supervisor_name(module) do
+    # credo:disable-for-next-line Credo.Check.Warning.UnsafeToAtom
+    Module.concat(module, Supervisor)
   end
 end
