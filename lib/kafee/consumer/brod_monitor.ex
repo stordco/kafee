@@ -82,7 +82,7 @@ defmodule Kafee.Consumer.BrodMonitor do
     :brod.fetch_committed_offsets(client_id, consumer_group_id)
   end
 
-  def get_partitions(endpoints, topic, options \\ []) do
+  defp get_partitions(endpoints, topic, options) do
     case :brod.get_metadata(endpoints, [topic], options) do
       {:ok, %{topics: [%{partitions: partitions}]}} ->
         Enum.map(partitions, fn %{partition_index: id} -> id end)
@@ -129,7 +129,7 @@ defmodule Kafee.Consumer.BrodMonitor do
     {:ok, lags_map}
   end
 
-  def committed_offsets_by_partition(committed_offsets) do
+  defp committed_offsets_by_partition(committed_offsets) do
     committed_offsets
     |> Enum.map(fn %{partition_index: partition, committed_offset: committed_offset} ->
       {partition, committed_offset}
