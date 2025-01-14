@@ -108,6 +108,8 @@ defmodule Kafee.Consumer.BrodMonitorTest do
       assert {:ok, %{0 => lag}} =
                BrodMonitor.get_consumer_lag(brod_client_id, Kafee.BrodApi.endpoints(), topic, consumer_group_id)
 
+      # assert lag is above 20, meaning the offset number difference between last published message and last consumed message is
+      # more than 20 messages apart
       assert lag > 20
     end
   end
