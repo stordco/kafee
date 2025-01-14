@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.5.2](https://github.com/stordco/kafee/compare/v3.5.1...v3.5.2) (2024-12-17)
+
+
+### Miscellaneous
+
+* Update github codeowners ([#129](https://github.com/stordco/kafee/issues/129)) ([53e2904](https://github.com/stordco/kafee/commit/53e290447ea31f9ef24c9fd9e42d08fdc6ade881))
+
 ## [3.5.1](https://github.com/stordco/kafee/compare/v3.5.0...v3.5.1) (2024-12-13)
 
 
