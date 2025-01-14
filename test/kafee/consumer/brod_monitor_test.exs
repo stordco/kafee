@@ -100,8 +100,8 @@ defmodule Kafee.Consumer.BrodMonitorTest do
       assert_receive {:consume_message, _}
 
       partitions_list = Enum.map(0..(partitions - 1), & &1)
-      # last argument in poll_until_offset_tick() the expected target latest offset number for the partition.
-      # therefore we're waiting until all the messages received by the broker.
+      # last argument in poll_until_offset_tick() is the expected target latest offset number for the partition.
+      # therefore we're waiting until all the messages are received by the broker.
       assert :ok = poll_until_offset_tick(topic, partitions_list, [{0, 100}])
 
       # wait a bit for consumer lag to build up
