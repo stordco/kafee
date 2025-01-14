@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.5.3](https://github.com/stordco/kafee/compare/v3.5.2...v3.5.3) (2025-01-14)
+
+
+### Miscellaneous
+
+* Add consumer lag utility for brod ([#131](https://github.com/stordco/kafee/issues/131)) ([a03991e](https://github.com/stordco/kafee/commit/a03991ec5f85f328ea01a0cf5ab882bd9263dd30))
+
 ## [3.5.2](https://github.com/stordco/kafee/compare/v3.5.1...v3.5.2) (2024-12-17)
 
 
