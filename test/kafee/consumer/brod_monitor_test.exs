@@ -62,10 +62,9 @@ defmodule Kafee.Consumer.BrodMonitorTest do
       [consumer_pid: consumer_pid]
     end
 
-    test "should correctly handle zero consumed case", %{
+    test "should correctly handle edge case when no offset is committed yet", %{
       brod_client_id: brod_client_id,
       topic: topic,
-      partitions: partitions,
       consumer_group_id: consumer_group_id
     } do
       assert :ok =
@@ -78,10 +77,7 @@ defmodule Kafee.Consumer.BrodMonitorTest do
                  }
                ])
 
-      partitions_list = Enum.map(0..(partitions - 1), & &1)
-      assert :ok = poll_until_offset_tick(topic, partitions_list, [{0, 1}])
-
-      assert {:ok, %{}} =
+      assert {:ok, %{}} ==
                BrodMonitor.get_consumer_lag(brod_client_id, Kafee.BrodApi.endpoints(), topic, consumer_group_id)
     end
 
