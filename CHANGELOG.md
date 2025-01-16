@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.5.4](https://github.com/stordco/kafee/compare/v3.5.3...v3.5.4) (2025-01-16)
+
+
+### Bug Fixes
+
+* Test to be more accurate ([#133](https://github.com/stordco/kafee/issues/133)) ([ed7a92c](https://github.com/stordco/kafee/commit/ed7a92ca10248e2e6061619f161d7a87a47285a4))
+
 ## [3.5.3](https://github.com/stordco/kafee/compare/v3.5.2...v3.5.3) (2025-01-14)
 
 
