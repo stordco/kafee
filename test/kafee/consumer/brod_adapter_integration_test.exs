@@ -3,6 +3,7 @@ defmodule Kafee.Consumer.BrodAdapterIntegrationTest do
 
   defmodule MyConsumer do
     use Kafee.Consumer,
+      otp_app: :kafee,
       adapter: Kafee.Consumer.BrodAdapter
 
     def handle_message(%Kafee.Consumer.Message{} = message) do

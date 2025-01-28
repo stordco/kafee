@@ -12,6 +12,7 @@ defmodule Kafee.ConsumerTest do
     test "starts the adapter process tree", %{topic: topic} do
       assert {:ok, pid} =
                Kafee.Consumer.start_link(MyConsumer,
+                 otp_app: :kafee,
                  adapter: Kafee.Consumer.BroadwayAdapter,
                  host: Kafee.KafkaApi.host(),
                  port: Kafee.KafkaApi.port(),
@@ -25,6 +26,7 @@ defmodule Kafee.ConsumerTest do
     test "starts nothing if no adapter is set", %{topic: topic} do
       assert :ignore =
                Kafee.Consumer.start_link(MyConsumer,
+                 otp_app: :kafee,
                  adapter: nil,
                  host: Kafee.KafkaApi.host(),
                  port: Kafee.KafkaApi.port(),
