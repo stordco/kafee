@@ -30,8 +30,7 @@ defmodule Kafee.ProcessManagerTest do
         start: {Agent, :start_link, [fn -> %{} end]}
       }
 
-      ProcessManager.start_link(opts)
-      assert_receive {:EXIT, _pid, {{:badkey, :supervisor}, _stack}}
+      assert{:error, {{:badkey, :supervisor}, _}} = ProcessManager.start_link(opts)
     end
   end
 
@@ -78,7 +77,7 @@ defmodule Kafee.ProcessManagerTest do
           assert new_child_pid != child_pid
         end)
 
-      assert log =~ "Child process down"
+      assert log =~ "Failed to start child or child process dow"
       assert log =~ "Restarting in"
     end
 

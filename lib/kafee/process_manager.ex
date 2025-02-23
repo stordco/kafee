@@ -15,9 +15,8 @@ defmodule Kafee.ProcessManager do
 
   require Logger
 
-  # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls
-  @log_prefix "#{inspect(__MODULE__)}]"
   @restart_delay Application.compile_env(:kafee, :process_manager_restart_delay, :timer.seconds(10))
+  @max_retries Application.compile_env(:kafee, :process_manager_max_retries, 5)
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts)
@@ -34,47 +33,60 @@ defmodule Kafee.ProcessManager do
        child_pid: nil,
        child_spec: child_spec,
        monitor_ref: nil,
-       supervisor: supervisor
+       supervisor: supervisor,
+       retry_count: 0,
+       max_retries: @max_retries
      }, {:continue, :start_child}}
   end
 
   @doc false
   @impl GenServer
-  def handle_continue(:start_child, %{child_spec: child_spec, supervisor: supervisor} = state) do
+  def handle_continue(:start_child, state) do
+    start_child(state)
+  end
+
+  defp start_child(%{child_spec: child_spec, supervisor: supervisor} = state) do
     case Supervisor.start_child(supervisor, child_spec) do
       {:ok, child_pid} when is_pid(child_pid) ->
         monitor_ref = Process.monitor(child_pid)
-        {:noreply, %{state | child_pid: child_pid, monitor_ref: monitor_ref}}
+        {:noreply, %{state | child_pid: child_pid, monitor_ref: monitor_ref, retry_count: 0}}
 
       {:ok, :undefined} ->
         {:stop, :normal, state}
 
       {:error, {:already_started, child_pid}} when is_pid(child_pid) ->
         monitor_ref = Process.monitor(child_pid)
-        {:noreply, %{state | child_pid: child_pid, monitor_ref: monitor_ref}}
+        {:noreply, %{state | child_pid: child_pid, monitor_ref: monitor_ref, retry_count: 0}}
 
       {:error, reason} ->
-        Logger.info("#{@log_prefix} Failed to start child. Restarting in #{@restart_delay}ms...",
-          reason: reason
-        )
-
-        Process.sleep(@restart_delay)
-        {:noreply, state, {:continue, :start_child}}
+        restart_child(state, reason)
     end
   end
 
   @doc false
   @impl GenServer
   def handle_info({:DOWN, ref, :process, pid, reason}, %{monitor_ref: ref, child_pid: pid} = state) do
-    Logger.info("#{@log_prefix} Child process down. Restarting in #{@restart_delay}ms...",
-      reason: reason
-    )
+    restart_child(state, reason)
+  end
 
-    Process.sleep(@restart_delay)
-    {:noreply, state, {:continue, :start_child}}
+  def handle_info(msg, state) when msg in [:start_child, :timeout] do
+    start_child(state)
   end
 
   def handle_info(_req, state) do
     {:noreply, state}
+  end
+
+  defp restart_child(%{retry_count: retry_count, max_retries: max_retries} = state, reason) do
+    Logger.info("Failed to start child or child process down. Restarting in #{@restart_delay}ms...",
+      reason: reason
+    )
+
+    if retry_count >= max_retries do
+      Logger.error("Max retries reached (#{max_retries}). Shutting down ProcessManager.")
+      {:stop, :normal, state}
+    else
+      {:noreply, %{state | retry_count: retry_count + 1}, @restart_delay}
+    end
   end
 end
