@@ -30,7 +30,7 @@ defmodule Kafee.ProcessManagerTest do
         start: {Agent, :start_link, [fn -> %{} end]}
       }
 
-      assert{:error, {{:badkey, :supervisor}, _}} = ProcessManager.start_link(opts)
+      assert {:error, {{:badkey, :supervisor}, _}} = ProcessManager.start_link(opts)
     end
   end
 

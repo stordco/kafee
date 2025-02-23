@@ -76,6 +76,7 @@ defmodule Kafee.ProcessManager do
 
   defp restart_child(%{retry_count: retry_count, max_retries: max_retries} = state, reason) do
     restart_delay = get_restart_delay()
+
     Logger.info("Failed to start child or child process down. Restarting in #{restart_delay}ms...",
       reason: reason
     )

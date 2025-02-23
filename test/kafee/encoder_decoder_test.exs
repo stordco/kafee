@@ -4,10 +4,10 @@ defmodule Kafee.EncoderDecoderTest do
   defmodule TestEncoder do
     @behaviour Kafee.EncoderDecoder
 
-    @impl true
+    @impl Kafee.EncoderDecoder
     def content_type, do: "application/x-test"
 
-    @impl true
+    @impl Kafee.EncoderDecoder
     def encode!(data, _opts) do
       case data do
         map when is_map(map) -> :erlang.term_to_binary(map)
@@ -15,13 +15,12 @@ defmodule Kafee.EncoderDecoderTest do
       end
     end
 
-    @impl true
+    @impl Kafee.EncoderDecoder
     def decode!(binary, _opts) do
-      try do
         :erlang.binary_to_term(binary)
       rescue
+        # credo:disable-for-next-line Credo.Check.Warning.RaiseInsideRescue
         _ -> raise Kafee.EncoderDecoder.Error, message: "Invalid binary data"
-      end
     end
   end
 
