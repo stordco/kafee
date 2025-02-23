@@ -17,10 +17,10 @@ defmodule Kafee.EncoderDecoderTest do
 
     @impl Kafee.EncoderDecoder
     def decode!(binary, _opts) do
-        :erlang.binary_to_term(binary)
-      rescue
-        # credo:disable-for-next-line Credo.Check.Warning.RaiseInsideRescue
-        _ -> raise Kafee.EncoderDecoder.Error, message: "Invalid binary data"
+      :erlang.binary_to_term(binary)
+    rescue
+      # credo:disable-for-next-line Credo.Check.Warning.RaiseInsideRescue
+      _ -> raise Kafee.EncoderDecoder.Error, message: "Invalid binary data"
     end
   end
 
