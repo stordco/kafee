@@ -1,13 +1,15 @@
 defmodule Kafee do
   @moduledoc """
-  Kafee is an abstraction layer above multiple different lower level Kafka libraries, while also adding features relevant to Stord. This allows switching between `:brod` or `Broadway` for message consuming with a quick configuration change and no code changes. Features include:
+  Kafee is an abstraction layer above multiple different lower level Kafka libraries, while also adding features relevant to Stord. This allows switching between `:brod` or `Broadway` for message consuming with a quick configuration change and no code changes.
 
-  - Behaviour based adapters allowing quick low level changes.
-  - Built in support for testing without mocking.
-  - Automatic encoding and decoding of message values with `Jason` or `Protobuf`.
-  - `:telemetry` metrics for producing and consuming messages.
-  - Open Telemetry traces with correct attributes.
-  - DataDog data streams support via `data-streams-ex`.
+
+  ### Features
+    - Behaviour based adapters allowing quick low level changes.
+    - Built in support for testing without mocking.
+    - Automatic encoding and decoding of message values with `Jason` or `Protobuf`.
+    - `:telemetry` metrics for producing and consuming messages.
+    - Open Telemetry traces with correct attributes.
+    - DataDog data streams support via `data-streams-ex`.
   """
 
   @typedoc "A Kafka message key."
@@ -35,7 +37,7 @@ defmodule Kafee do
   @type headers :: [{binary(), binary()}]
 
   @doc """
-  Checks if the valid is a valid Kafka partition.
+  Checks if the value is a valid Kafka partition.
   """
   defguard is_partition(number) when number in -2_147_483_648..2_147_483_647
 

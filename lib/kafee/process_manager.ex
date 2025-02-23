@@ -15,9 +15,6 @@ defmodule Kafee.ProcessManager do
 
   require Logger
 
-  @restart_delay Application.compile_env(:kafee, :process_manager_restart_delay, :timer.seconds(10))
-  @max_retries Application.compile_env(:kafee, :process_manager_max_retries, 5)
-
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts)
   end
@@ -35,7 +32,7 @@ defmodule Kafee.ProcessManager do
        monitor_ref: nil,
        supervisor: supervisor,
        retry_count: 0,
-       max_retries: @max_retries
+       max_retries: get_max_retries()
      }, {:continue, :start_child}}
   end
 
@@ -78,7 +75,8 @@ defmodule Kafee.ProcessManager do
   end
 
   defp restart_child(%{retry_count: retry_count, max_retries: max_retries} = state, reason) do
-    Logger.info("Failed to start child or child process down. Restarting in #{@restart_delay}ms...",
+    restart_delay = get_restart_delay()
+    Logger.info("Failed to start child or child process down. Restarting in #{restart_delay}ms...",
       reason: reason
     )
 
@@ -86,7 +84,15 @@ defmodule Kafee.ProcessManager do
       Logger.error("Max retries reached (#{max_retries}). Shutting down ProcessManager.")
       {:stop, :normal, state}
     else
-      {:noreply, %{state | retry_count: retry_count + 1}, @restart_delay}
+      {:noreply, %{state | retry_count: retry_count + 1}, restart_delay}
     end
+  end
+
+  defp get_restart_delay do
+    Application.get_env(:kafee, :process_manager_restart_delay, :timer.seconds(10))
+  end
+
+  defp get_max_retries do
+    Application.get_env(:kafee, :process_manager_max_retries, 5)
   end
 end

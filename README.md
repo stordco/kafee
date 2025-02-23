@@ -4,6 +4,8 @@ Let's get energized with Kafka!
 
 Kafee is an abstraction layer above multiple different lower level Kafka libraries, while also adding features relevant to Stord. This allows switching between `:brod` or `Broadway` for message consuming with a quick configuration change and no code changes. Features include:
 
+### Features
+
 - Behaviour based adapters allowing quick low level changes.
 - Built in support for testing without mocking.
 - Automatic encoding and decoding of message values with `Jason` or `Protobuf`.

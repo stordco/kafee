@@ -96,5 +96,34 @@ defmodule Kafee.ProcessManagerTest do
 
       assert log =~ "Failed to start child"
     end
+
+    test "shuts down after max retries", %{supervisor: sup_pid} do
+      Process.flag(:trap_exit, true)
+
+      original_delay = Application.get_env(:kafee, :process_manager_restart_delay)
+      original_retries = Application.get_env(:kafee, :process_manager_max_retries)
+
+      Application.put_env(:kafee, :process_manager_restart_delay, 10)
+      Application.put_env(:kafee, :process_manager_max_retries, 2)
+
+      log =
+        capture_log(fn ->
+          opts = %{
+            supervisor: sup_pid,
+            id: :test_child,
+            start: {NonExistentModule, :start_link, []}
+          }
+
+          {:ok, pm_pid} = ProcessManager.start_link(opts)
+          ref = Process.monitor(pm_pid)
+          assert_receive {:DOWN, ^ref, :process, ^pm_pid, :normal}, 100
+        end)
+
+      if original_delay, do: Application.put_env(:kafee, :process_manager_restart_delay, original_delay)
+      if original_retries, do: Application.put_env(:kafee, :process_manager_max_retries, original_retries)
+
+      assert log =~ "Max retries reached"
+      assert log =~ "Shutting down ProcessManager"
+    end
   end
 end
