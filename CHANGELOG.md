@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.5.5](https://github.com/stordco/kafee/compare/v3.5.4...v3.5.5) (2025-03-19)
+
+
+### Miscellaneous
+
+* Sync files with stordco/common-config-elixir ([#135](https://github.com/stordco/kafee/issues/135)) ([d1f8084](https://github.com/stordco/kafee/commit/d1f80848e6306f3bb89ea805679d6137ae3fc772))
+
 ## [3.5.4](https://github.com/stordco/kafee/compare/v3.5.3...v3.5.4) (2025-01-16)
 
 
