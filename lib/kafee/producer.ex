@@ -1,5 +1,16 @@
 defmodule Kafee.Producer do
   @options_schema NimbleOptions.new!(
+                    otp_app: [
+                      doc: """
+                      The name of the OTP application to read configuration from.
+
+                      If the option is set, the configuration will be read from the application environment under the
+                      given name. For example, if the OTP application is `:my_app`, the configuration will be read from
+                      `Application.get_env(:my_app, Myapp.KafeeProducer)`.
+                      """,
+                      required: true,
+                      type: :atom
+                    ],
                     adapter: [
                       default: nil,
                       doc: """
@@ -107,6 +118,7 @@ defmodule Kafee.Producer do
 
       defmodule MyProducer do
         use Kafee.Producer,
+          otp_app: :my_app,
           topic: "my-topic",
           partition_fun: :random
       end
@@ -125,6 +137,7 @@ defmodule Kafee.Producer do
 
       defmodule MyProducer do
         use Kafee.Producer,
+          otp_app: :my_app,
           topic: "my-topic",
           partition_fun: :random
 
@@ -151,6 +164,7 @@ defmodule Kafee.Producer do
 
       defmodule MyProducer do
         use Kafee.Producer,
+          otp_app: :my_app,
           encoder: Kafee.JasonEncoderDecoder,
           topic: "order-created",
           partition_fun: :random
@@ -213,7 +227,13 @@ defmodule Kafee.Producer do
       @doc false
       @spec child_spec(Kafee.Producer.options()) :: Supervisor.child_spec()
       def child_spec(args) do
-        full_opts = Keyword.merge(unquote(Macro.escape(opts)), args)
+        opts = unquote(Macro.escape(opts))
+        env_opts = Application.get_env(opts[:otp_app], unquote(__MODULE__), [])
+
+        full_opts =
+          opts
+          |> Keyword.merge(env_opts)
+          |> Keyword.merge(args)
 
         %{
           id: __MODULE__,

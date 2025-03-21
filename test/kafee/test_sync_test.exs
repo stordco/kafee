@@ -8,6 +8,7 @@ defmodule Kafee.TestSyncTest do
 
   defmodule TestProducer do
     use Kafee.Producer,
+      otp_app: :kafee,
       adapter: Kafee.Producer.TestAdapter,
       topic: "kafee-test-sync-test",
       partition_fun: :random

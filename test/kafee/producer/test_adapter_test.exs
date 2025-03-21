@@ -3,6 +3,7 @@ defmodule Kafee.Producer.TestAdapterTest do
 
   defmodule MyProducer do
     use Kafee.Producer,
+      otp_app: :kafee,
       adapter: Kafee.Producer.TestAdapter,
       encoder: Kafee.JasonEncoderDecoder,
       partition_fun: :random

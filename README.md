@@ -40,6 +40,7 @@ You'll first setup a module for your consumer logic like so:
 ```elixir
 defmodule MyConsumer do
   use Kafee.Consumer,
+    otp_app: :my_app,
     adapter: Application.compile_env(:my_app, :kafee_consumer_adapter, nil),
     consumer_group_id: "my-app",
     topic: "my-topic"
@@ -91,6 +92,7 @@ So you want to send messages to Kafka eh? Well, first you will need to create a 
 ```elixir
 defmodule MyProducer do
   use Kafee.Producer,
+    otp_app: :my_app,
     adapter: Application.compile_env(:my_app, :kafee_producer_adapter, nil),
     encoder: Kafee.JasonEncoderDecoder,
     topic: "my-topic",

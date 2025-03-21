@@ -4,6 +4,7 @@ defmodule MyProducer do
   """
 
   use Kafee.Producer,
+    otp_app: :kafee,
     adapter: nil,
     topic: "test-topic",
     partition_fun: :random
