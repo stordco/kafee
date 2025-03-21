@@ -7,13 +7,13 @@ defmodule Kafee.EncoderDecoder do
   """
 
   @doc """
-  Returns the content type of the encoder decoder. This will be placed as the
+  Returns the content type of the encoder decoder. This will be set as the
   `content-type` header in the Kafka message.
   """
   @callback content_type() :: String.t()
 
   @doc """
-  Encodes a native data type (like a struct) into binary to be placed as a
+  Encodes a native data type (like a struct) into binary to be set as a
   Kafka message value.
   """
   @callback encode!(any, Keyword.t()) :: binary
