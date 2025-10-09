@@ -3,6 +3,7 @@ version: "3.5"
 services:
   kafka:
     image: bitnami/kafka:latest
+    container_name: kafee_kafka
     ports:
       - 9092:9092
       - 9093:9093

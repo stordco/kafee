@@ -2,9 +2,38 @@
 
 First off, thank you for contributing to Kafee! This documentation will help explain how to report issues, create pull requests, and even how to create a new release of the project.
 
+## Development Setup
+
+### Prerequisites
+
+- [Elixir](https://elixir-lang.org/install.html) 1.11 or higher
+- [Docker](https://docs.docker.com/get-docker/) for running Kafka locally
+
+### Running Kafka
+
+Kafee uses Docker Compose to run Kafka for integration tests.
+
+```bash
+# Start Kafka
+docker-compose up -d
+
+# Verify Kafka is running
+docker-compose ps
+
+# Stop Kafka when done
+docker-compose down
+```
+
+**Note:** The test suite expects Kafka to be available on port 9092. If you need to use a different port, set the `KAFKA_PORT` environment variable:
+
+```bash
+export KAFKA_PORT=9092  # Use standard Kafka port
+mix test
+```
+
 ## Code Changes
 
-Making code changes for Kafee should be pretty straight forward. All you need is a [working Elixir install](https://elixir-lang.org/install.html). Once you are done making changes, ensure CI will pass by running these commands:
+Making code changes for Kafee should be pretty straight forward. Once you are done making changes, ensure CI will pass by running these commands:
 
 - `mix format`
 - `mix test`

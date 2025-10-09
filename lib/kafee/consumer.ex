@@ -186,8 +186,47 @@ defmodule Kafee.Consumer do
   @doc "Handles a single message from Kafka"
   @callback handle_message(Kafee.Consumer.Message.t()) :: :ok
 
+  @doc """
+  Handles a batch of messages from Kafka. 
+
+  This callback is required when using `Kafee.Consumer.BrodAdapter` with `mode: :batch`.
+  For BroadwayAdapter, this callback is not used as Broadway handles batching internally.
+
+  ## Return values
+
+  - `:ok` - All messages processed successfully
+  - `{:ok, failed_messages}` - Some messages failed, returns list of failed messages
+  - `{:error, reason}` - Entire batch failed to process
+
+  ## Example
+
+      @impl Kafee.Consumer
+      def handle_batch(messages) do
+        case MyApp.bulk_insert(messages) do
+          {:ok, _results} -> :ok
+          {:error, failed} -> {:ok, failed}
+        end
+      end
+  """
+  @callback handle_batch([Kafee.Consumer.Message.t()]) ::
+              :ok
+              | {:ok, failed_messages :: [Kafee.Consumer.Message.t()]}
+              | {:error, reason :: term()}
+
+  @doc """
+  Handles a message that should be sent to the Dead Letter Queue.
+
+  This callback is optional and only called when DLQ is configured and a message
+  has exceeded the maximum retry count. The default implementation logs the failure.
+
+  This is useful for custom DLQ handling, metrics, or alerting.
+  """
+  @callback handle_dead_letter(Kafee.Consumer.Message.t(), reason :: term()) :: :ok
+
   @doc "Handles an error while processing a Kafka message"
   @callback handle_failure(any(), Kafee.Consumer.Message.t()) :: :ok
+
+  @optional_callbacks handle_batch: 1, handle_dead_letter: 2
 
   @doc false
   defmacro __using__(opts \\ []) do
@@ -240,7 +279,34 @@ defmodule Kafee.Consumer do
         )
       end
 
-      defoverridable child_spec: 1, handle_message: 1, handle_failure: 2
+
+      unless Module.has_attribute?(__MODULE__, :doc) do
+        @doc """
+        Handles a message that should be sent to the Dead Letter Queue.
+
+        Default implementation logs the failure.
+        """
+      end
+
+      @impl Kafee.Consumer
+      def handle_dead_letter(%Kafee.Consumer.Message{} = message, reason) do
+        Logger.error(
+          """
+          Message sent to Dead Letter Queue.
+
+          Reason: #{inspect(reason)}
+          Topic: #{message.topic}
+          Partition: #{message.partition}
+          Offset: #{message.offset}
+          """,
+          reason: reason,
+          topic: message.topic,
+          partition: message.partition,
+          offset: message.offset
+        )
+      end
+
+      defoverridable child_spec: 1, handle_message: 1, handle_failure: 2, handle_dead_letter: 2
     end
   end
 
