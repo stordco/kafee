@@ -192,21 +192,20 @@ jobs:
 
     services:
       kafka:
-        image: bitnami/kafka:latest
+        image: docker.redpanda.com/redpandadata/redpanda:v25.1.1
         ports:
           - 9092:9092
           - 9093:9093
         env:
-          KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://127.0.0.1:9092"
-          KAFKA_CFG_BROKER_ID: "0"
-          KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-          KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka:9093"
-          KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "1"
-          KAFKA_CFG_DELETE_TOPIC_ENABLE: "true"
-          KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
-          KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
-          KAFKA_CFG_NODE_ID: "0"
-          KAFKA_CFG_PROCESS_ROLES: "controller,broker"
+          RP_MODE: "dev-container"
+          RP_NODE_ID: "0"
+          RP_SMP: "1"
+          RP_KAFKA_ADDRESS: "0.0.0.0:9092"
+          RP_KAFKA_ADVERTISED_ADDRESS: "127.0.0.1:9092"
+          RP_ENABLE_TRANSACTIONS: "true"
+          RP_ENABLE_IDEMPOTENCE: "true"
+          RP_AUTO_CREATE_TOPICS_ENABLED: "true"
+          RP_DELETE_TOPICS_ENABLED: "true"
 
     steps:
       - name: Checkout
