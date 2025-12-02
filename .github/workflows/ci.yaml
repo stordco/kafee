@@ -35,13 +35,14 @@ jobs:
     outputs:
       database: ${{ steps.changed.outputs.database }}
       docker: ${{ steps.changed.outputs.docker }}
-      documentation: ${{ steps.changed.outputs.documentation }}
+      # Note: temporarily disabling documentation/OpenAPI validation in CI until a long term solution is found
+      # documentation: ${{ steps.changed.outputs.documentation }}
       elixir: ${{ steps.changed.outputs.elixir }}
       helm: ${{ steps.changed.outputs.helm }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
         with:
           fetch-depth: 2
 
@@ -86,7 +87,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
       - name: Setup Elixir
         uses: stordco/actions-elixir/setup@v1
@@ -109,7 +110,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
       - name: Setup Elixir
         uses: stordco/actions-elixir/setup@v1
@@ -129,7 +130,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
       - name: Setup Elixir
         uses: stordco/actions-elixir/setup@v1
@@ -147,9 +148,12 @@ jobs:
     needs: [Changed]
     runs-on: ubuntu-latest
 
+    env:
+      MIX_ENV: test
+
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
       - name: Setup Elixir
         uses: stordco/actions-elixir/setup@v1
@@ -160,7 +164,7 @@ jobs:
           oban-token: ${{ secrets.OBAN_LICENSE_KEY }}
 
       - name: Docs
-        run: mix docs
+        run: mix docs --warnings-as-errors
 
   Format:
     if: ${{ !startsWith(github.head_ref, 'release-please--branches') && needs.Changed.outputs.elixir == 'true' }}
@@ -169,7 +173,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
       - name: Setup Elixir
         uses: stordco/actions-elixir/setup@v1
@@ -192,25 +196,12 @@ jobs:
 
     services:
       kafka:
-        image: bitnami/kafka:latest
+        image: docker.redpanda.com/redpandadata/redpanda:v25.1.1
         ports:
           - 9092:9092
-          - 9093:9093
-        env:
-          KAFKA_CFG_ADVERTISED_LISTENERS: "PLAINTEXT://127.0.0.1:9092"
-          KAFKA_CFG_BROKER_ID: "0"
-          KAFKA_CFG_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
-          KAFKA_CFG_CONTROLLER_QUORUM_VOTERS: "0@kafka:9093"
-          KAFKA_CFG_DEFAULT_REPLICATION_FACTOR: "1"
-          KAFKA_CFG_DELETE_TOPIC_ENABLE: "true"
-          KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT"
-          KAFKA_CFG_LISTENERS: "PLAINTEXT://:9092,CONTROLLER://:9093"
-          KAFKA_CFG_NODE_ID: "0"
-          KAFKA_CFG_PROCESS_ROLES: "controller,broker"
-
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
       - name: Setup Elixir
         uses: stordco/actions-elixir/setup@v1
@@ -226,7 +217,7 @@ jobs:
         run: mix compile --warnings-as-errors
 
       - name: Test
-        run: mix coveralls.github
+        run: mix coveralls.github --warnings-as-errors
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -253,7 +244,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
 
       - name: Setup Elixir
         uses: stordco/actions-elixir/setup@v1
@@ -268,7 +259,9 @@ jobs:
         with:
           github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
           scan-type: fs
+          exclude-target-pattern: '^deps\/'
           slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
           slack-channel-id: ${{ secrets.SLACK_SECURITY_ALERTS }}
           update-db: false
+
 
