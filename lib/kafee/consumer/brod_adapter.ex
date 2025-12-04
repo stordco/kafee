@@ -40,6 +40,20 @@ defmodule Kafee.Consumer.BrodAdapter do
                       The retry backoff time in milliseconds.
                       """,
                       type: :integer
+                    ],
+                    offset_reset_policy: [
+                      default: :reset_by_subscriber,
+                      doc: """
+                      How to reset `begin_offset` if an `OffsetOutOfRange` exception is received.
+
+                      - `:reset_by_subscriber` (default): consumer is suspended and waits for
+                        subscriber to re-subscribe with a new `begin_offset` option.
+                      - `:reset_to_earliest`: consume from the earliest offset.
+                      - `:reset_to_latest`: consume from the last available offset.
+
+                      This is useful when the consumer group offset points to a deleted Kafka message.
+                      """,
+                      type: {:in, [:reset_by_subscriber, :reset_to_earliest, :reset_to_latest]}
                     ]
                   )
 
@@ -123,6 +137,7 @@ defmodule Kafee.Consumer.BrodAdapter do
                  topics: [options[:topic]],
                  cb_module: Kafee.Consumer.BrodWorker,
                  message_type: :message,
+                 consumer_config: consumer_config(adapter_options),
                  init_data: %{
                    consumer: consumer,
                    options: options
@@ -147,6 +162,12 @@ defmodule Kafee.Consumer.BrodAdapter do
   defp client_config(options, adapter_options) do
     (options ++ adapter_options)
     |> Keyword.take([:connect_timeout, :max_retries, :retry_backoff_ms, :sasl, :ssl])
+    |> Keyword.reject(fn {_k, v} -> is_nil(v) end)
+  end
+
+  defp consumer_config(adapter_options) do
+    adapter_options
+    |> Keyword.take([:offset_reset_policy])
     |> Keyword.reject(fn {_k, v} -> is_nil(v) end)
   end
 end
