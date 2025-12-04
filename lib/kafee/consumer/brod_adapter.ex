@@ -1,9 +1,9 @@
 defmodule Kafee.Consumer.BrodAdapter do
   @options_schema NimbleOptions.new!(
-                    client_config: [
+                    consumer_config: [
                       default: [],
                       doc: """
-                      Additional client configuration options to pass directly to brod_group_subscriber_v2
+                      Additional consumer configuration options to pass directly to brod_group_subscriber_v2
                       See https://hexdocs.pm/brod/brod.html#t:consumer_config/0 for details
                       """,
                       type: :keyword_list
@@ -127,7 +127,7 @@ defmodule Kafee.Consumer.BrodAdapter do
                    consumer: consumer,
                    options: options
                  },
-                 client_config: adapter_options[:client_config],
+                 consumer_config: adapter_options[:consumer_config],
                  group_config: adapter_options[:group_config]
                }
              ]},
