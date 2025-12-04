@@ -1,5 +1,17 @@
 # Changelog
 
+## [3.6.0](https://github.com/stordco/kafee/compare/v3.5.4...v3.6.0) (2025-12-04)
+
+
+### Features
+
+* WMS-1874 adding lower level brod options support ([#140](https://github.com/stordco/kafee/issues/140)) ([c13fbf0](https://github.com/stordco/kafee/commit/c13fbf0c6b8e13f4e29c574212f452ab84016d46))
+
+
+### Miscellaneous
+
+* Sync files with stordco/common-config-elixir ([#135](https://github.com/stordco/kafee/issues/135)) ([d1f8084](https://github.com/stordco/kafee/commit/d1f80848e6306f3bb89ea805679d6137ae3fc772))
+
 ## [3.5.4](https://github.com/stordco/kafee/compare/v3.5.3...v3.5.4) (2025-01-16)
 
 
