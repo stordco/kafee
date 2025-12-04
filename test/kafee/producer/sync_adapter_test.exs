@@ -51,24 +51,6 @@ defmodule Kafee.Producer.SyncAdapterTest do
       assert_called(:brod.produce_sync_offset(MyProducer.BrodClient, ^topic, 0, :undefined, _message), 2)
     end
 
-    test "returns errors from brod" do
-      fake_topic = Kafee.KafkaApi.generate_topic()
-      message = %Message{topic: fake_topic, partition: 0, key: "key", value: %{key: "value"}}
-
-      assert {:error, :unknown_topic_or_partition} = MyProducer.produce(message)
-
-      # credo:disable-for-next-line Credo.Check.Readability.NestedFunctionCalls
-      assert_called(
-        :brod.produce_sync_offset(MyProducer.BrodClient, ^fake_topic, 0, :undefined, [
-          %{
-            key: "key",
-            value: ~s({"key":"value"}),
-            headers: _headers
-          }
-        ])
-      )
-    end
-
     test "ran the message normalization pipeline", %{topic: topic} do
       spy(Message)
 

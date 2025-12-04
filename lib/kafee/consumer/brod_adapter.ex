@@ -1,5 +1,13 @@
 defmodule Kafee.Consumer.BrodAdapter do
   @options_schema NimbleOptions.new!(
+                    consumer_config: [
+                      default: [],
+                      doc: """
+                      Additional consumer configuration options to pass directly to brod_group_subscriber_v2
+                      See https://hexdocs.pm/brod/brod.html#t:consumer_config/0 for details
+                      """,
+                      type: :keyword_list
+                    ],
                     connect_timeout: [
                       default: :timer.seconds(10),
                       doc: """
@@ -8,6 +16,14 @@ defmodule Kafee.Consumer.BrodAdapter do
                       cloud connections.
                       """,
                       type: :non_neg_integer
+                    ],
+                    group_config: [
+                      default: [],
+                      doc: """
+                      Additional group subscriber configuration options to pass directly to brod_group_subscriber_v2.
+                      See https://hexdocs.pm/brod/brod.html#t:group_config/0 for details
+                      """,
+                      type: :keyword_list
                     ],
                     max_retries: [
                       default: -1,
@@ -110,7 +126,9 @@ defmodule Kafee.Consumer.BrodAdapter do
                  init_data: %{
                    consumer: consumer,
                    options: options
-                 }
+                 },
+                 consumer_config: adapter_options[:consumer_config],
+                 group_config: adapter_options[:group_config]
                }
              ]},
           type: :worker,
